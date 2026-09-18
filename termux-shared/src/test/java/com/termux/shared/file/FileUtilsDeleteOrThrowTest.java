@@ -1,11 +1,13 @@
 package com.termux.shared.file;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import com.termux.shared.errors.TermuxException;
 import com.termux.shared.file.filesystem.FileType;
 import com.termux.shared.file.filesystem.FileTypes;
+import com.termux.shared.file.filesystem.NativeDispatcherEnoentFixRule;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -19,16 +21,62 @@ import java.io.File;
  * Unit tests for the delete*OrThrow/clearDirectoryOrThrow/deleteFilesOlderThanXDaysOrThrow
  * sibling methods added for beads-km2.
  *
- * <p>As documented in beads-94h, deleteFile()'s own post-delete "does it still exist" check hits
- * the Robolectric Os.lstat ENOENT gap, so a genuinely successful delete cannot be reliably
- * asserted not to throw here. Tests instead focus on validation/wrong-type/missing-and-not-ignored
- * branches, which only ever stat paths that exist (or never call stat on the target file at all).
+ * <p>Originally, successful deletes could not be verified here: {@code deleteFile()}'s own
+ * post-delete existence check ("does it still exist?") calls {@code Os.lstat} which Robolectric
+ * never throws {@code ENOENT} for a missing path (beads-94h), so the check would always
+ * report the file as still present and return an error. Success paths are now unlocked by
+ * {@link NativeDispatcherEnoentFixRule} (beads-94h), which installs a real-filesystem
+ * existence check for the duration of each test.
  */
 @RunWith(RobolectricTestRunner.class)
 public class FileUtilsDeleteOrThrowTest {
 
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
+
+    @Rule
+    public NativeDispatcherEnoentFixRule enoentFix = new NativeDispatcherEnoentFixRule();
+
+    // -----------------------------------------------------------------------
+    // Success paths (previously blocked by beads-94h; now unlocked via enoentFix)
+    // -----------------------------------------------------------------------
+
+    @Test
+    public void deleteRegularFileOrThrow_deletesExistingFile() throws Exception {
+        File file = tempFolder.newFile("to-delete.txt");
+        assertTrue(file.exists());
+
+        FileUtils.deleteRegularFileOrThrow("test", file.getAbsolutePath(), false);
+
+        assertTrue("file must be gone after delete", !file.exists());
+    }
+
+    @Test
+    public void deleteDirectoryFileOrThrow_deletesExistingDirectory() throws Exception {
+        File dir = tempFolder.newFolder("to-delete-dir");
+        assertTrue(dir.exists());
+
+        FileUtils.deleteDirectoryFileOrThrow("test", dir.getAbsolutePath(), false);
+
+        assertTrue("directory must be gone after delete", !dir.exists());
+    }
+
+    @Test
+    public void clearDirectoryOrThrow_removesContentsOfNonEmptyDirectory() throws Exception {
+        File dir = tempFolder.newFolder("to-clear");
+        new java.io.File(dir, "child.txt").createNewFile();
+        new java.io.File(dir, "subdir").mkdir();
+        assertTrue("dir must be non-empty before clear", dir.list().length > 0);
+
+        FileUtils.clearDirectoryOrThrow("test", dir.getAbsolutePath());
+
+        assertTrue("dir must still exist after clear", dir.exists());
+        assertEquals("dir must be empty after clear", 0, dir.list().length);
+    }
+
+    // -----------------------------------------------------------------------
+    // Validation / error branches
+    // -----------------------------------------------------------------------
 
     @Test
     public void deleteFileOrThrow_throwsForNullPath() {

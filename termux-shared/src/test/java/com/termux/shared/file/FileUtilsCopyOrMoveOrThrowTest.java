@@ -1,8 +1,11 @@
 package com.termux.shared.file;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 import com.termux.shared.errors.TermuxException;
+import com.termux.shared.file.filesystem.NativeDispatcherEnoentFixRule;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -12,26 +15,28 @@ import org.robolectric.RobolectricTestRunner;
 
 import java.io.File;
 import java.io.FileWriter;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 
 /**
  * Unit tests for the copy-style, move-style, and copyOrMoveFileOrThrow sibling methods added for
  * beads-km2.
  *
- * <p>As documented in FileUtilsValidateAndCreateOrThrowTest and beads-94h, Robolectric's
- * {@code Os.lstat} never throws {@code ENOENT} for a genuinely non-existent path. This turns out
- * to block more than just "create a new file": every successful copy/move ultimately deletes an
- * old path (the pre-existing destination being overwritten, or the source after a move) and then
- * re-{@code stat}s it to confirm the delete actually took effect (see
- * {@code FileUtils.deleteFile}'s "file still exists after deleting" check) -- that re-stat of a
- * now-genuinely-deleted path hits the exact same Robolectric limitation. So "successful
- * copy/move" end states cannot be reliably asserted here either. These tests instead focus on
- * the validation/error branches, which only ever stat paths that genuinely exist throughout.
+ * <p>Originally, successful copy/move end-states could not be tested here because every move
+ * (and every overwriting copy) calls {@code FileUtils.deleteFile()} on the consumed path, which
+ * re-stats it to confirm deletion -- and Robolectric's {@code Os.lstat} never throws
+ * {@code ENOENT} for a genuinely missing path (beads-94h). Success paths are now unlocked by
+ * {@link NativeDispatcherEnoentFixRule} (beads-94h), which wires a real-filesystem
+ * existence check for the duration of each test.
  */
 @RunWith(RobolectricTestRunner.class)
 public class FileUtilsCopyOrMoveOrThrowTest {
 
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
+
+    @Rule
+    public NativeDispatcherEnoentFixRule enoentFix = new NativeDispatcherEnoentFixRule();
 
     private File writeFile(String name, String content) throws Exception {
         File file = tempFolder.newFile(name);
@@ -90,6 +95,44 @@ public class FileUtilsCopyOrMoveOrThrowTest {
         assertThrows(TermuxException.class, () ->
             FileUtils.copyOrMoveFileOrThrow("test", src.getAbsolutePath(), null, false, false,
                 com.termux.shared.file.filesystem.FileTypes.FILE_TYPE_ANY_FLAGS, true, true));
+    }
+
+    // -----------------------------------------------------------------------
+    // Success paths (previously blocked by beads-94h; now unlocked via enoentFix)
+    // -----------------------------------------------------------------------
+
+    @Test
+    public void copyRegularFileOrThrow_copiesFileToNewDestination() throws Exception {
+        File src = writeFile("source.txt", "hello copy");
+        File dest = new File(tempFolder.getRoot(), "dest-copy.txt");
+
+        FileUtils.copyRegularFileOrThrow("test", src.getAbsolutePath(), dest.getAbsolutePath(), false);
+
+        assertTrue("destination must exist after copy", dest.exists());
+        assertEquals("hello copy", new String(Files.readAllBytes(dest.toPath()), StandardCharsets.UTF_8));
+        assertTrue("source must still exist after copy", src.exists());
+    }
+
+    @Test
+    public void moveRegularFileOrThrow_movesFileAndRemovesSource() throws Exception {
+        File src = writeFile("source-to-move.txt", "hello move");
+        File dest = new File(tempFolder.getRoot(), "dest-moved.txt");
+
+        FileUtils.moveRegularFileOrThrow("test", src.getAbsolutePath(), dest.getAbsolutePath(), false);
+
+        assertTrue("destination must exist after move", dest.exists());
+        assertEquals("hello move", new String(Files.readAllBytes(dest.toPath()), StandardCharsets.UTF_8));
+        assertTrue("source must be gone after move", !src.exists());
+    }
+
+    @Test
+    public void copyRegularFileOrThrow_overwritesExistingDestination() throws Exception {
+        File src = writeFile("src-overwrite.txt", "new content");
+        File dest = writeFile("dest-overwrite.txt", "old content");
+
+        FileUtils.copyRegularFileOrThrow("test", src.getAbsolutePath(), dest.getAbsolutePath(), false);
+
+        assertEquals("new content", new String(Files.readAllBytes(dest.toPath()), StandardCharsets.UTF_8));
     }
 
     @Test

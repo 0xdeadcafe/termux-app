@@ -1,16 +1,24 @@
 package com.termux.shared.shell.command.result;
 
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 import android.app.PendingIntent;
 import android.content.Intent;
 
 import com.termux.shared.errors.TermuxException;
+import com.termux.shared.file.filesystem.NativeDispatcherEnoentFixRule;
 
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
+
+import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 
 /**
  * Unit tests for the sendCommandResultData*OrThrow sibling methods added for beads-1kf
@@ -26,6 +34,12 @@ import org.robolectric.RuntimeEnvironment;
 @RunWith(RobolectricTestRunner.class)
 public class ResultSenderOrThrowTest {
 
+    @Rule
+    public TemporaryFolder tempFolder = new TemporaryFolder();
+
+    @Rule
+    public NativeDispatcherEnoentFixRule enoentFix = new NativeDispatcherEnoentFixRule();
+
     private ResultData newResultData(String stdout, int exitCode) {
         ResultData data = new ResultData();
         data.appendStdout(stdout);
@@ -38,6 +52,34 @@ public class ResultSenderOrThrowTest {
         return PendingIntent.getActivity(RuntimeEnvironment.getApplication(), 0, intent,
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
+
+    // -----------------------------------------------------------------------
+    // Success paths (previously blocked by beads-94h; now unlocked via enoentFix)
+    // -----------------------------------------------------------------------
+
+    @Test
+    public void sendCommandResultDataToDirectoryOrThrow_singleFile_writesResultFile() throws Exception {
+        File outputDir = tempFolder.newFolder("result-output");
+
+        ResultConfig resultConfig = new ResultConfig();
+        resultConfig.resultDirectoryPath = outputDir.getAbsolutePath();
+        resultConfig.resultSingleFile = true;
+        resultConfig.resultFileBasename = "result";
+
+        ResultData resultData = newResultData("hello from result", 0);
+
+        ResultSender.sendCommandResultDataToDirectoryOrThrow(
+            RuntimeEnvironment.getApplication(), "test", "label", resultConfig, resultData, false);
+
+        File resultFile = new File(outputDir, "result");
+        assertTrue("result file must exist after send", resultFile.exists());
+        String content = new String(Files.readAllBytes(resultFile.toPath()), StandardCharsets.UTF_8);
+        assertTrue("result file must contain stdout", content.contains("hello from result"));
+    }
+
+    // -----------------------------------------------------------------------
+    // Validation / error branches
+    // -----------------------------------------------------------------------
 
     @Test
     public void sendCommandResultDataOrThrow_throwsForNullParams() {
