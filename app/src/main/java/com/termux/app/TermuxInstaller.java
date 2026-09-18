@@ -2,7 +2,6 @@ package com.termux.app;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.ProgressDialog;
 import android.content.Context;
 import android.os.Build;
 import android.os.Environment;
@@ -114,7 +113,17 @@ final class TermuxInstaller {
             Logger.logInfo(LOG_TAG, "The termux prefix directory \"" + TERMUX_PREFIX_DIR_PATH + "\" does not exist but another file exists at its destination.");
         }
 
-        final ProgressDialog progress = ProgressDialog.show(activity, null, activity.getString(R.string.bootstrap_installer_body), true, false);
+        // Build a non-cancelable progress dialog using AlertDialog (ProgressDialog was deprecated in API 26)
+        android.widget.ProgressBar spinnerView = new android.widget.ProgressBar(activity, null, android.R.attr.progressBarStyleLarge);
+        spinnerView.setIndeterminate(true);
+        int spinnerPadding = Math.round(activity.getResources().getDisplayMetrics().density * 24);
+        spinnerView.setPadding(spinnerPadding, spinnerPadding, spinnerPadding, spinnerPadding);
+        final AlertDialog progress = new AlertDialog.Builder(activity)
+            .setMessage(activity.getString(R.string.bootstrap_installer_body))
+            .setCancelable(false)
+            .setView(spinnerView)
+            .create();
+        progress.show();
         new Thread() {
             @Override
             public void run() {

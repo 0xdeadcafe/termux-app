@@ -2850,8 +2850,15 @@ public final class TerminalEmulator {
             case 52: // Manipulate Selection Data. Skip the optional first selection parameter(s).
                 int startIndex = textParameter.indexOf(";") + 1;
                 try {
-                    String clipboardText = new String(Base64.decode(textParameter.substring(startIndex), Base64.DEFAULT), StandardCharsets.UTF_8);
-                    mSession.onCopyTextToClipboard(clipboardText);
+                    byte[] decoded = Base64.decode(textParameter.substring(startIndex), Base64.DEFAULT);
+                    // Limit clipboard writes from OSC 52 to 50 KB to prevent clipboard-hijacking
+                    // by a malicious SSH server or local script sending huge/crafted sequences.
+                    if (decoded.length > 50 * 1024) {
+                        Logger.logWarn(mClient, LOG_TAG, "OSC 52: clipboard write of " + decoded.length + " bytes exceeds 50KB limit, ignoring");
+                    } else {
+                        String clipboardText = new String(decoded, StandardCharsets.UTF_8);
+                        mSession.onCopyTextToClipboard(clipboardText);
+                    }
                 } catch (Exception e) {
                     Logger.logError(mClient, LOG_TAG, "OSC Manipulate selection, invalid string '" + textParameter + "'");
                 }
