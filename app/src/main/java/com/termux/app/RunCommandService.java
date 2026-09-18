@@ -7,7 +7,6 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.app.ServiceCompat;
 import android.content.Intent;
 import android.net.Uri;
-import android.os.Build;
 import android.os.IBinder;
 
 import com.termux.R;
@@ -250,11 +249,7 @@ public class RunCommandService extends Service {
         }
 
         // Start TERMUX_SERVICE and pass it execution intent
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            this.startForegroundService(execIntent);
-        } else {
-            this.startService(execIntent);
-        }
+        this.startForegroundService(execIntent);
 
         stopService();
     }
@@ -265,10 +260,8 @@ public class RunCommandService extends Service {
     }
 
     private void runStartForeground() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            setupNotificationChannel();
-            startForeground(TermuxConstants.TERMUX_RUN_COMMAND_NOTIFICATION_ID, buildNotification());
-        }
+        setupNotificationChannel();
+        startForeground(TermuxConstants.TERMUX_RUN_COMMAND_NOTIFICATION_ID, buildNotification());
     }
 
     private void runStopForeground() {
@@ -296,8 +289,6 @@ public class RunCommandService extends Service {
     }
 
     private void setupNotificationChannel() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
-
         NotificationUtils.setupNotificationChannel(this, TermuxConstants.TERMUX_RUN_COMMAND_NOTIFICATION_CHANNEL_ID,
             TermuxConstants.TERMUX_RUN_COMMAND_NOTIFICATION_CHANNEL_NAME, NotificationManager.IMPORTANCE_LOW);
     }

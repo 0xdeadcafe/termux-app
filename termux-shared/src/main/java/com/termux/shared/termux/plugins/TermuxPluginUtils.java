@@ -3,7 +3,6 @@ package com.termux.shared.termux.plugins;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
-import android.os.Build;
 import android.os.Environment;
 
 import androidx.annotation.NonNull;
@@ -441,7 +440,6 @@ public class TermuxPluginUtils {
      * @param context The {@link Context} for operations.
      */
     public static void setupPluginCommandErrorsNotificationChannel(final Context context) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
         NotificationUtils.setupNotificationChannel(context, TermuxConstants.TERMUX_PLUGIN_COMMAND_ERRORS_NOTIFICATION_CHANNEL_ID,
             TermuxConstants.TERMUX_PLUGIN_COMMAND_ERRORS_NOTIFICATION_CHANNEL_NAME, NotificationManager.IMPORTANCE_HIGH);
     }

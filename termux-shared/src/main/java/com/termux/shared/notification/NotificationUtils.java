@@ -1,6 +1,5 @@
 package com.termux.shared.notification;
 
-import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -98,8 +97,6 @@ public class NotificationUtils {
      *                   posted to this channel are.
      */
     public static void setupNotificationChannel(final Context context, final String channelId, final CharSequence channelName, final int importance) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
-
         NotificationChannel channel = new NotificationChannel(channelId, channelName, importance);
 
         NotificationManager notificationManager = getNotificationManager(context);
@@ -115,29 +112,15 @@ public class NotificationUtils {
                 return null; // return null since notification is not supposed to be shown
             case NOTIFICATION_MODE_SILENT:
                 break;
-            // On API 26+, sound/vibrate/lights are controlled by the NotificationChannel that was
-            // created in setupNotificationChannel(). setDefaults() is a no-op above O but kept
-            // here for API 21-25 compatibility.
+            // On API 26+, sound/vibrate/lights are controlled entirely by the NotificationChannel
+            // created in setupNotificationChannel(); setDefaults() has no effect on O+.
             case NOTIFICATION_MODE_SOUND:
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) builder.setDefaults(Notification.DEFAULT_SOUND);
-                break;
             case NOTIFICATION_MODE_VIBRATE:
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) builder.setDefaults(Notification.DEFAULT_VIBRATE);
-                break;
             case NOTIFICATION_MODE_LIGHTS:
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) builder.setDefaults(Notification.DEFAULT_LIGHTS);
-                break;
             case NOTIFICATION_MODE_SOUND_AND_VIBRATE:
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) builder.setDefaults(Notification.DEFAULT_SOUND | Notification.DEFAULT_VIBRATE);
-                break;
             case NOTIFICATION_MODE_SOUND_AND_LIGHTS:
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) builder.setDefaults(Notification.DEFAULT_SOUND | Notification.DEFAULT_LIGHTS);
-                break;
             case NOTIFICATION_MODE_VIBRATE_AND_LIGHTS:
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) builder.setDefaults(Notification.DEFAULT_VIBRATE | Notification.DEFAULT_LIGHTS);
-                break;
             case NOTIFICATION_MODE_ALL:
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) builder.setDefaults(Notification.DEFAULT_ALL);
                 break;
             default:
                 Logger.logError(LOG_TAG, "Invalid notificationMode: \"" + notificationMode + "\" passed to setNotificationDefaults()");

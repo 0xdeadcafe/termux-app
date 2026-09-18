@@ -471,11 +471,7 @@ public final class ExtraKeysView extends GridLayout {
 
                 LayoutParams param = new GridLayout.LayoutParams();
                 param.width = 0;
-                if(Build.VERSION.SDK_INT == Build.VERSION_CODES.LOLLIPOP) {
-                   param.height = (int)(heightPx + 0.5);
-                } else {
-                    param.height = 0;
-                }
+                param.height = 0;
                 param.setMargins(0, 0, 0, 0);
                 param.columnSpec = GridLayout.spec(col, GridLayout.FILL, 1.f);
                 param.rowSpec = GridLayout.spec(row, GridLayout.FILL, 1.f);

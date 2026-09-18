@@ -4,7 +4,6 @@ import android.annotation.SuppressLint;
 import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
-import android.os.Build;
 import android.os.SystemClock;
 import android.view.MotionEvent;
 import android.view.View;
@@ -74,11 +73,9 @@ public class TextSelectionHandleView extends View {
         mHandle.setBackgroundDrawable(null);
         mHandle.setAnimationStyle(0);
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            mHandle.setWindowLayoutType(WindowManager.LayoutParams.TYPE_APPLICATION_SUB_PANEL);
-            mHandle.setEnterTransition(null);
-            mHandle.setExitTransition(null);
-        }
+        mHandle.setWindowLayoutType(WindowManager.LayoutParams.TYPE_APPLICATION_SUB_PANEL);
+        mHandle.setEnterTransition(null);
+        mHandle.setExitTransition(null);
         mHandle.setContentView(this);
     }
 
