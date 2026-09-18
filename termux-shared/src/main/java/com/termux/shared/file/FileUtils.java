@@ -1992,8 +1992,10 @@ public class FileUtils {
      * @param ignoreNonExistentFile The {@code boolean} that decides if it should be considered an
      *                              error if file to read doesn't exist.
      * @return Returns the {@code error} if reading was not successful, otherwise {@code null}.
+     * @deprecated Use {@link #readSerializableObjectFromFileOrThrow(String, String, Class, boolean)} instead.
      */
     @NonNull
+    @Deprecated
     public static <T extends Serializable> ReadSerializableObjectResult readSerializableObjectFromFile(String label, final String filePath, Class<T> readObjectType, final boolean ignoreNonExistentFile) {
         label = (label == null || label.isEmpty() ? "" : label + " ");
         if (filePath == null || filePath.isEmpty()) return new ReadSerializableObjectResult(FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "readSerializableObjectFromFile"), null);
@@ -2043,6 +2045,20 @@ public class FileUtils {
         }
 
         return new ReadSerializableObjectResult(null, serializableObject);
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #readSerializableObjectFromFile(String, String, Class, boolean)}.
+     *
+     * @return Returns the deserialized object, or {@code null} if the file did not exist and
+     *         {@code ignoreNonExistentFile} was {@code true}.
+     * @throws TermuxException If reading was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public static <T extends Serializable> T readSerializableObjectFromFileOrThrow(String label, final String filePath, Class<T> readObjectType, final boolean ignoreNonExistentFile) throws TermuxException {
+        ReadSerializableObjectResult result = readSerializableObjectFromFile(label, filePath, readObjectType, ignoreNonExistentFile);
+        TermuxException.throwIfFailed(result.error);
+        return readObjectType.cast(result.serializableObject);
     }
 
     /**
@@ -2135,7 +2151,9 @@ public class FileUtils {
      * @param dataString The data to write to file.
      * @param append The {@code boolean} that decides if file should be appended to or not.
      * @return Returns the {@code error} if writing was not successful, otherwise {@code null}.
+     * @deprecated Use {@link #writeTextToFileOrThrow(String, String, Charset, String, boolean)} instead.
      */
+    @Deprecated
     public static Error writeTextToFile(String label, final String filePath, Charset charset, final String dataString, final boolean append) {
         label = (label == null || label.isEmpty() ? "" : label + " ");
         if (filePath == null || filePath.isEmpty()) return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "writeStringToFile");
@@ -2175,13 +2193,24 @@ public class FileUtils {
     }
 
     /**
+     * Exception-throwing sibling of {@link #writeTextToFile(String, String, Charset, String, boolean)}.
+     * @throws TermuxException If writing was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public static void writeTextToFileOrThrow(String label, final String filePath, Charset charset, final String dataString, final boolean append) throws TermuxException {
+        TermuxException.throwIfFailed(writeTextToFile(label, filePath, charset, dataString, append));
+    }
+
+    /**
      * Write the {@link Serializable} {@code serializableObject} to file at path.
      *
      * @param label The optional label for file to write. This can optionally be {@code null}.
      * @param filePath The {@code path} for file to write.
      * @param serializableObject The object to write to file.
      * @return Returns the {@code error} if writing was not successful, otherwise {@code null}.
+     * @deprecated Use {@link #writeSerializableObjectToFileOrThrow(String, String, Serializable)} instead.
      */
+    @Deprecated
     public static <T extends Serializable> Error writeSerializableObjectToFile(String label, final String filePath, final T serializableObject) {
         label = (label == null || label.isEmpty() ? "" : label + " ");
         if (filePath == null || filePath.isEmpty()) return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "writeSerializableObjectToFile");
@@ -2213,6 +2242,15 @@ public class FileUtils {
         return null;
     }
 
+    /**
+     * Exception-throwing sibling of {@link #writeSerializableObjectToFile(String, String, Serializable)}.
+     * @throws TermuxException If writing was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public static <T extends Serializable> void writeSerializableObjectToFileOrThrow(String label, final String filePath, final T serializableObject) throws TermuxException {
+        TermuxException.throwIfFailed(writeSerializableObjectToFile(label, filePath, serializableObject));
+    }
+
     private static Error preWriteToFile(String label, String filePath) {
         Error error;
 
@@ -2238,7 +2276,9 @@ public class FileUtils {
      *
      * @param charset The {@link Charset} to check.
      * @return Returns the {@code error} if charset is not supported or failed to check it, otherwise {@code null}.
+     * @deprecated Use {@link #isCharsetSupportedOrThrow(Charset)} instead.
      */
+    @Deprecated
     public static Error isCharsetSupported(final Charset charset) {
         if (charset == null) return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError("charset", "isCharsetSupported");
 
@@ -2251,6 +2291,15 @@ public class FileUtils {
         }
 
         return null;
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #isCharsetSupported(Charset)}.
+     * @throws TermuxException If charset is not supported or failed to check it.
+     */
+    @SuppressWarnings("deprecation")
+    public static void isCharsetSupportedOrThrow(final Charset charset) throws TermuxException {
+        TermuxException.throwIfFailed(isCharsetSupported(charset));
     }
 
 
@@ -2400,9 +2449,20 @@ public class FileUtils {
      * @param ignoreIfNotExecutable The {@code boolean} that decides if missing executable permission
      *                              error is to be ignored.
      * @return Returns the {@code error} if validating permissions failed, otherwise {@code null}.
+     * @deprecated Use {@link #checkMissingFilePermissionsOrThrow(String, String, boolean)} instead.
      */
+    @Deprecated
     public static Error checkMissingFilePermissions(final String filePath, final String permissionsToCheck, final boolean ignoreIfNotExecutable) {
         return checkMissingFilePermissions(null, filePath, permissionsToCheck, ignoreIfNotExecutable);
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #checkMissingFilePermissions(String, String, boolean)}.
+     * @throws TermuxException If validating permissions failed.
+     */
+    @SuppressWarnings("deprecation")
+    public static void checkMissingFilePermissionsOrThrow(final String filePath, final String permissionsToCheck, final boolean ignoreIfNotExecutable) throws TermuxException {
+        TermuxException.throwIfFailed(checkMissingFilePermissions(filePath, permissionsToCheck, ignoreIfNotExecutable));
     }
 
     /**
@@ -2414,7 +2474,9 @@ public class FileUtils {
      * @param ignoreIfNotExecutable The {@code boolean} that decides if missing executable permission
      *                              error is to be ignored.
      * @return Returns the {@code error} if validating permissions failed, otherwise {@code null}.
+     * @deprecated Use {@link #checkMissingFilePermissionsOrThrow(String, String, String, boolean)} instead.
      */
+    @Deprecated
     public static Error checkMissingFilePermissions(String label, final String filePath, final String permissionsToCheck, final boolean ignoreIfNotExecutable) {
         label = (label == null || label.isEmpty() ? "" : label + " ");
         if (filePath == null || filePath.isEmpty()) return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "checkMissingFilePermissions");
@@ -2442,6 +2504,15 @@ public class FileUtils {
         }
 
         return null;
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #checkMissingFilePermissions(String, String, String, boolean)}.
+     * @throws TermuxException If validating permissions failed.
+     */
+    @SuppressWarnings("deprecation")
+    public static void checkMissingFilePermissionsOrThrow(String label, final String filePath, final String permissionsToCheck, final boolean ignoreIfNotExecutable) throws TermuxException {
+        TermuxException.throwIfFailed(checkMissingFilePermissions(label, filePath, permissionsToCheck, ignoreIfNotExecutable));
     }
 
 

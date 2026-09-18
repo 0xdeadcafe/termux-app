@@ -24,6 +24,7 @@ import java.io.Serializable;
  * specifically the {@code AllowListingObjectInputStream} hardening added for beads-h94.
  */
 @RunWith(RobolectricTestRunner.class)
+@SuppressWarnings("deprecation") // readSerializableObjectFromFile() deprecated by beads-km2 in favor of readSerializableObjectFromFileOrThrow()
 public class FileUtilsReadSerializableObjectFromFileTest {
 
     @Rule
