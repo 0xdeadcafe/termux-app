@@ -37,6 +37,19 @@ public class TermuxDocumentsProvider extends DocumentsProvider {
 
     private static final File BASE_DIR = TermuxConstants.TERMUX_HOME_DIR;
 
+    /**
+     * Test-only seam to override {@link #BASE_DIR} without needing write access to the real,
+     * hardcoded {@code TermuxConstants.TERMUX_HOME_DIR} path (e.g. {@code /data/data/com.termux/files/home}),
+     * which a JVM test process has no permission to create. Must be {@code null} in production;
+     * tests are responsible for resetting it after use. Mirrors the pattern used by
+     * {@code NativeDispatcher.TEST_ONLY_FILE_EXISTENCE_CHECKER}.
+     */
+    public static File TEST_ONLY_BASE_DIR_OVERRIDE = null;
+
+    private static File getBaseDir() {
+        return TEST_ONLY_BASE_DIR_OVERRIDE != null ? TEST_ONLY_BASE_DIR_OVERRIDE : BASE_DIR;
+    }
+
 
     // The default columns to return information about a root if no specific
     // columns are requested in a query.
@@ -68,13 +81,13 @@ public class TermuxDocumentsProvider extends DocumentsProvider {
         final String applicationName = getContext().getString(R.string.application_name);
 
         final MatrixCursor.RowBuilder row = result.newRow();
-        row.add(Root.COLUMN_ROOT_ID, getDocIdForFile(BASE_DIR));
-        row.add(Root.COLUMN_DOCUMENT_ID, getDocIdForFile(BASE_DIR));
+        row.add(Root.COLUMN_ROOT_ID, getDocIdForFile(getBaseDir()));
+        row.add(Root.COLUMN_DOCUMENT_ID, getDocIdForFile(getBaseDir()));
         row.add(Root.COLUMN_SUMMARY, null);
         row.add(Root.COLUMN_FLAGS, Root.FLAG_SUPPORTS_CREATE | Root.FLAG_SUPPORTS_SEARCH | Root.FLAG_SUPPORTS_IS_CHILD);
         row.add(Root.COLUMN_TITLE, applicationName);
         row.add(Root.COLUMN_MIME_TYPES, ALL_MIME_TYPES);
-        row.add(Root.COLUMN_AVAILABLE_BYTES, BASE_DIR.getFreeSpace());
+        row.add(Root.COLUMN_AVAILABLE_BYTES, getBaseDir().getFreeSpace());
         row.add(Root.COLUMN_ICON, R.mipmap.ic_launcher);
         return result;
     }
@@ -228,7 +241,7 @@ public class TermuxDocumentsProvider extends DocumentsProvider {
         // Confine to BASE_DIR to prevent arbitrary file access via crafted document IDs
         try {
             String canonPath   = f.getCanonicalPath();
-            String canonBase   = BASE_DIR.getCanonicalPath();
+            String canonBase   = getBaseDir().getCanonicalPath();
             if (!canonPath.startsWith(canonBase + File.separator) && !canonPath.equals(canonBase)) {
                 throw new FileNotFoundException("Document id out of bounds: " + docId);
             }
