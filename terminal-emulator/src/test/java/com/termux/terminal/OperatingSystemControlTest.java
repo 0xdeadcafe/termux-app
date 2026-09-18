@@ -1,8 +1,8 @@
 package com.termux.terminal;
 
-import android.util.Base64;
-
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Base64;
 import java.util.List;
 import java.util.Random;
 
@@ -137,9 +137,33 @@ public class OperatingSystemControlTest extends TerminalTestCase {
 		assertIndexColorsMatch(TerminalColors.COLOR_SCHEME.mDefaultColors);
 	}
 
-	public void disabledTestSetClipboard() {
-		// Cannot run this as a unit test since Base64 is a android.util class.
-		enterString("\033]52;c;" + Base64.encodeToString("Hello, world".getBytes(), 0) + "\007");
+	public void testSetClipboard() throws Exception {
+		withTerminalSized(10, 10);
+		String encoded = Base64.getEncoder().encodeToString("Hello, world".getBytes());
+		enterString("\033]52;c;" + encoded + "\007");
+		assertEquals(1, mOutput.clipboardPuts.size());
+		assertEquals("Hello, world", mOutput.clipboardPuts.get(0));
+	}
+
+	public void testOsc52OverLimitIgnored() throws Exception {
+		withTerminalSized(10, 10);
+		byte[] data = new byte[50 * 1024 + 1];
+		Arrays.fill(data, (byte) 'A');
+		String encoded = Base64.getEncoder().encodeToString(data);
+		enterString("\033]52;c;" + encoded + "\007");
+		assertTrue("Clipboard must not be written when payload exceeds 50 KB",
+			mOutput.clipboardPuts.isEmpty());
+	}
+
+	public void testOsc52AtLimitAccepted() throws Exception {
+		withTerminalSized(10, 10);
+		byte[] data = new byte[50 * 1024];
+		Arrays.fill(data, (byte) 'A');
+		String encoded = Base64.getEncoder().encodeToString(data);
+		enterString("\033]52;c;" + encoded + "\007");
+		assertEquals("Clipboard must be written for a payload at exactly 50 KB",
+			1, mOutput.clipboardPuts.size());
+		assertEquals(50 * 1024, mOutput.clipboardPuts.get(0).length());
 	}
 
 	public void testResettingTerminalResetsColor() throws Exception {

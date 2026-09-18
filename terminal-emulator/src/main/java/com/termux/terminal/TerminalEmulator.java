@@ -1,6 +1,6 @@
 package com.termux.terminal;
 
-import android.util.Base64;
+import java.util.Base64;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -2679,7 +2679,7 @@ public final class TerminalEmulator {
      */
     void setOscTypeVariables() {
         if (mOscType >= 0) return;
-        if (mTerminalControlArgs.indexOf(":") < 0) return;
+        if (mTerminalControlArgs.indexOf(";") < 0) return;
 
         int value = -1;
         int argsLength = mTerminalControlArgs.length();
@@ -2851,7 +2851,7 @@ public final class TerminalEmulator {
             case 52: // Manipulate Selection Data. Skip the optional first selection parameter(s).
                 int startIndex = textParameter.indexOf(";") + 1;
                 try {
-                    byte[] decoded = Base64.decode(textParameter.substring(startIndex), Base64.DEFAULT);
+                    byte[] decoded = Base64.getMimeDecoder().decode(textParameter.substring(startIndex));
                     // Limit clipboard writes from OSC 52 to 50 KB to prevent clipboard-hijacking
                     // by a malicious SSH server or local script sending huge/crafted sequences.
                     if (decoded.length > 50 * 1024) {
