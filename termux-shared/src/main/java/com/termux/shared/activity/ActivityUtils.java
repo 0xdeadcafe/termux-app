@@ -11,6 +11,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.termux.shared.errors.Error;
 import com.termux.shared.errors.FunctionErrno;
+import com.termux.shared.errors.TermuxException;
 
 
 public class ActivityUtils {
@@ -19,9 +20,20 @@ public class ActivityUtils {
 
     /**
      * Wrapper for {@link #startActivity(Context, Intent, boolean, boolean)}.
+     * @deprecated Use {@link #startActivityOrThrow(Context, Intent)} instead.
      */
+    @Deprecated
     public static Error startActivity(@NonNull Context context, @NonNull Intent intent) {
         return startActivity(context, intent, true, true);
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #startActivity(Context, Intent)}.
+     * @throws TermuxException If starting activity was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public static void startActivityOrThrow(@NonNull Context context, @NonNull Intent intent) throws TermuxException {
+        TermuxException.throwIfFailed(startActivity(context, intent));
     }
 
     /**
@@ -34,7 +46,9 @@ public class ActivityUtils {
      *                         in addition to logging a message. The {@code context} must not be
      *                         {@code null}.
      * @return Returns the {@code error} if starting activity was not successful, otherwise {@code null}.
+     * @deprecated Use {@link #startActivityOrThrow(Context, Intent, boolean, boolean)} instead.
      */
+    @Deprecated
     public static Error startActivity(Context context, @NonNull Intent intent,
                                       boolean logErrorMessage, boolean showErrorMessage) {
         Error error;
@@ -59,21 +73,54 @@ public class ActivityUtils {
         return null;
     }
 
+    /**
+     * Exception-throwing sibling of {@link #startActivity(Context, Intent, boolean, boolean)}.
+     * @throws TermuxException If starting activity was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public static void startActivityOrThrow(Context context, @NonNull Intent intent,
+                                             boolean logErrorMessage, boolean showErrorMessage) throws TermuxException {
+        TermuxException.throwIfFailed(startActivity(context, intent, logErrorMessage, showErrorMessage));
+    }
+
 
 
     /**
      * Wrapper for {@link #startActivityForResult(Context, int, Intent, boolean, boolean, ActivityResultLauncher)}.
+     * @deprecated Use {@link #startActivityForResultOrThrow(Context, int, Intent)} instead.
      */
+    @Deprecated
     public static Error startActivityForResult(Context context, int requestCode, @NonNull Intent intent) {
         return startActivityForResult(context, requestCode, intent, true, true, null);
     }
 
     /**
-     * Wrapper for {@link #startActivityForResult(Context, int, Intent, boolean, boolean, ActivityResultLauncher)}.
+     * Exception-throwing sibling of {@link #startActivityForResult(Context, int, Intent)}.
+     * @throws TermuxException If starting activity was not successful.
      */
+    @SuppressWarnings("deprecation")
+    public static void startActivityForResultOrThrow(Context context, int requestCode, @NonNull Intent intent) throws TermuxException {
+        TermuxException.throwIfFailed(startActivityForResult(context, requestCode, intent));
+    }
+
+    /**
+     * Wrapper for {@link #startActivityForResult(Context, int, Intent, boolean, boolean, ActivityResultLauncher)}.
+     * @deprecated Use {@link #startActivityForResultOrThrow(Context, int, Intent, boolean, boolean)} instead.
+     */
+    @Deprecated
     public static Error startActivityForResult(Context context, int requestCode, @NonNull Intent intent,
                                                boolean logErrorMessage, boolean showErrorMessage) {
         return startActivityForResult(context, requestCode, intent, logErrorMessage, showErrorMessage, null);
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #startActivityForResult(Context, int, Intent, boolean, boolean)}.
+     * @throws TermuxException If starting activity was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public static void startActivityForResultOrThrow(Context context, int requestCode, @NonNull Intent intent,
+                                                      boolean logErrorMessage, boolean showErrorMessage) throws TermuxException {
+        TermuxException.throwIfFailed(startActivityForResult(context, requestCode, intent, logErrorMessage, showErrorMessage));
     }
 
     /**
@@ -96,7 +143,9 @@ public class ActivityUtils {
      *                               used instead.
      *                               Note that later is deprecated.
      * @return Returns the {@code error} if starting activity was not successful, otherwise {@code null}.
+     * @deprecated Use {@link #startActivityForResultOrThrow(Context, int, Intent, boolean, boolean, ActivityResultLauncher)} instead.
      */
+    @Deprecated
     public static Error startActivityForResult(Context context, int requestCode, @NonNull Intent intent,
                                                boolean logErrorMessage, boolean showErrorMessage,
                                                @Nullable ActivityResultLauncher<Intent> activityResultLauncher) {
@@ -132,6 +181,17 @@ public class ActivityUtils {
         }
 
         return null;
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #startActivityForResult(Context, int, Intent, boolean, boolean, ActivityResultLauncher)}.
+     * @throws TermuxException If starting activity was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public static void startActivityForResultOrThrow(Context context, int requestCode, @NonNull Intent intent,
+                                                      boolean logErrorMessage, boolean showErrorMessage,
+                                                      @Nullable ActivityResultLauncher<Intent> activityResultLauncher) throws TermuxException {
+        TermuxException.throwIfFailed(startActivityForResult(context, requestCode, intent, logErrorMessage, showErrorMessage, activityResultLauncher));
     }
 
 }
