@@ -12,6 +12,7 @@ import com.termux.shared.R;
 import com.termux.shared.android.PackageUtils;
 import com.termux.shared.android.PermissionUtils;
 import com.termux.shared.errors.Error;
+import com.termux.shared.errors.TermuxException;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.net.socket.local.ILocalSocketManager;
 import com.termux.shared.net.socket.local.LocalClientSocket;
@@ -180,7 +181,9 @@ public class AmSocketServer {
      * @param amCommandString The am command {@link String}.
      * @param amCommandList The {@link List<String>} to set list of arguments in.
      * @return Returns the {@code error} if parsing am command failed, otherwise {@code null}.
+     * @deprecated Use {@link #parseAmCommandOrThrow(String, List)} instead.
      */
+    @Deprecated
     public static Error parseAmCommand(String amCommandString, List<String> amCommandList) {
 
         if (amCommandString == null || amCommandString.isEmpty()) {
@@ -197,6 +200,15 @@ public class AmSocketServer {
     }
 
     /**
+     * Exception-throwing sibling of {@link #parseAmCommand(String, List)}.
+     * @throws TermuxException If parsing am command failed.
+     */
+    @SuppressWarnings("deprecation")
+    public static void parseAmCommandOrThrow(String amCommandString, List<String> amCommandList) throws TermuxException {
+        TermuxException.throwIfFailed(parseAmCommand(amCommandString, amCommandList));
+    }
+
+    /**
      * Call termux-am-library to run the am command.
      *
      * @param context The {@link Context} to run am command with.
@@ -207,7 +219,9 @@ public class AmSocketServer {
      *                                       has been granted if running on Android `>= 10` and
      *                                       starting activity or service.
      * @return Returns the {@code error} if am command failed, otherwise {@code null}.
+     * @deprecated Use {@link #runAmCommandOrThrow(Context, String[], StringBuilder, StringBuilder, boolean)} instead.
      */
+    @Deprecated
     public static Error runAmCommand(@NonNull Context context,
                                      String[] amCommandArray,
                                      @NonNull StringBuilder stdout, @NonNull StringBuilder stderr,
@@ -238,6 +252,18 @@ public class AmSocketServer {
         }
 
         return null;
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #runAmCommand(Context, String[], StringBuilder, StringBuilder, boolean)}.
+     * @throws TermuxException If am command failed.
+     */
+    @SuppressWarnings("deprecation")
+    public static void runAmCommandOrThrow(@NonNull Context context,
+                                           String[] amCommandArray,
+                                           @NonNull StringBuilder stdout, @NonNull StringBuilder stderr,
+                                           boolean checkDisplayOverAppsPermission) throws TermuxException {
+        TermuxException.throwIfFailed(runAmCommand(context, amCommandArray, stdout, stderr, checkDisplayOverAppsPermission));
     }
 
 
