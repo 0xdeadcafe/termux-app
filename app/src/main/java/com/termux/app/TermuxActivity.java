@@ -62,6 +62,7 @@ import com.termux.view.TerminalViewClient;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.viewpager.widget.ViewPager;
 
@@ -928,7 +929,16 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         intentFilter.addAction(TERMUX_ACTIVITY.ACTION_RELOAD_STYLE);
         intentFilter.addAction(TERMUX_ACTIVITY.ACTION_REQUEST_PERMISSIONS);
 
-        registerReceiver(mTermuxActivityBroadcastReceiver, intentFilter);
+        // RECEIVER_EXPORTED is required (not RECEIVER_NOT_EXPORTED) since
+        // ACTION_NOTIFY_APP_CRASH is sent cross-app: other Termux plugin apps
+        // (Termux:API, Termux:Styling, etc.) that bundle termux-shared and crash
+        // notify this activity via TermuxCrashUtils, and that broadcast originates
+        // from a different app UID even though it targets this package explicitly.
+        // Mandatory since targetSdkVersion=33 for any context-registered receiver
+        // that isn't exclusively for system broadcasts; omitting it throws a
+        // SecurityException at registration time on API 33+ devices.
+        ContextCompat.registerReceiver(this, mTermuxActivityBroadcastReceiver, intentFilter,
+            ContextCompat.RECEIVER_EXPORTED);
     }
 
     private void unregisterTermuxActivityBroadcastReceiver() {
