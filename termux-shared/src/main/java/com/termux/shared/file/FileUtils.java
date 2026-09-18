@@ -27,9 +27,13 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.InvalidClassException;
+import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.ObjectStreamClass;
 import java.io.OutputStreamWriter;
 import java.io.Serializable;
 import java.nio.charset.Charset;
@@ -38,8 +42,10 @@ import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 public class FileUtils {
@@ -1668,7 +1674,11 @@ public class FileUtils {
         try {
             // Read serializable object from file
             fileInputStream = new FileInputStream(filePath);
-            objectInputStream = new ObjectInputStream(fileInputStream);
+            // Use a hardened ObjectInputStream that only allows resolving readObjectType (and a
+            // small set of always-safe JDK value types) to protect against deserialization
+            // gadget-chain attacks (CWE-502) if this file is ever attacker-controlled. See
+            // beads-h94 and AllowListingObjectInputStream's javadoc.
+            objectInputStream = new AllowListingObjectInputStream(fileInputStream, readObjectType);
             //serializableObject = (T) objectInputStream.readObject();
             serializableObject = readObjectType.cast(objectInputStream.readObject());
 
@@ -1681,6 +1691,86 @@ public class FileUtils {
         }
 
         return new ReadSerializableObjectResult(null, serializableObject);
+    }
+
+    /**
+     * A hardened {@link ObjectInputStream} that only resolves an allow-listed set of classes
+     * during {@link #readObject()}, to protect against Java deserialization gadget-chain attacks
+     * (CWE-502) if the underlying data is ever attacker-controlled (e.g. via a future path
+     * traversal bug, a misconfigured exported component, or a rooted device). See beads-h94.
+     *
+     * <p>The allow-list is: the specific {@code readObjectType} the caller asked for, its arrays,
+     * and a small fixed set of common JDK value types ({@link String} and the primitive wrapper
+     * classes) that are needed to deserialize plain data objects but are not themselves usable as
+     * gadget-chain entry points (they have no dangerous {@code readObject()}/{@code readResolve()}
+     * side effects). Anything else -- including dynamic proxies -- is rejected before the class is
+     * even resolved, so a disallowed class's {@code readObject()}/{@code readResolve()} never runs.
+     *
+     * <p>If a future caller's {@code readObjectType} legitimately needs to deserialize a richer
+     * object graph (e.g. containing collections), extend {@link #ALWAYS_ALLOWED_CLASS_NAMES} here
+     * deliberately rather than falling back to an unrestricted {@link ObjectInputStream}.
+     */
+    private static final class AllowListingObjectInputStream extends ObjectInputStream {
+
+        private static final Set<String> ALWAYS_ALLOWED_CLASS_NAMES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+            String.class.getName(),
+            Boolean.class.getName(), Byte.class.getName(), Short.class.getName(), Integer.class.getName(),
+            Long.class.getName(), Float.class.getName(), Double.class.getName(), Character.class.getName()
+        )));
+
+        @NonNull
+        private final Set<String> allowedClassNames;
+
+        AllowListingObjectInputStream(@NonNull final InputStream in, @NonNull final Class<?> readObjectType) throws IOException {
+            super(in);
+            Set<String> allowedClassNames = new HashSet<>(ALWAYS_ALLOWED_CLASS_NAMES);
+            allowedClassNames.add(readObjectType.getName());
+            this.allowedClassNames = allowedClassNames;
+        }
+
+        @Override
+        protected Class<?> resolveClass(@NonNull final ObjectStreamClass desc) throws IOException, ClassNotFoundException {
+            String className = desc.getName();
+            if (!isAllowedClassName(className)) {
+                throw new InvalidClassException(className,
+                    "Deserialization of this class is not allow-listed by AllowListingObjectInputStream.");
+            }
+            return super.resolveClass(desc);
+        }
+
+        @Override
+        protected Class<?> resolveProxyClass(@NonNull final String[] interfaces) throws IOException, ClassNotFoundException {
+            // Dynamic proxy deserialization is another known gadget-chain vector and is never
+            // needed for the plain data objects this method is meant to read.
+            throw new InvalidObjectException("Deserialization of dynamic proxy classes is not allowed by AllowListingObjectInputStream.");
+        }
+
+        private boolean isAllowedClassName(@NonNull String className) {
+            // Class.getName() (which is what ObjectStreamClass.getName() returns) for a plain,
+            // non-array class is just its fully-qualified dotted name, e.g. "com.foo.Bar" -- it is
+            // NOT wrapped in the "Lcom.foo.Bar;" JVM descriptor form. That wrapped form is only
+            // used for the *component type* inside an array class name, e.g. "[Ljava.lang.String;"
+            // for String[], or "[I" for int[]. Only strip/interpret "L...;"/array brackets once we
+            // have actually confirmed this is an array type name; otherwise compare directly.
+            if (!className.startsWith("["))
+                return allowedClassNames.contains(className);
+
+            String componentDescriptor = className;
+            while (componentDescriptor.startsWith("["))
+                componentDescriptor = componentDescriptor.substring(1);
+
+            // A primitive array component type descriptor, e.g. "I" for int[], "J" for long[], etc.
+            // Primitives can never carry a readObject()/readResolve() gadget.
+            if (!componentDescriptor.startsWith("L"))
+                return true;
+
+            // Strip the leading 'L' and trailing ';' from the object array component descriptor.
+            String componentClassName = componentDescriptor.endsWith(";")
+                ? componentDescriptor.substring(1, componentDescriptor.length() - 1)
+                : componentDescriptor.substring(1);
+
+            return allowedClassNames.contains(componentClassName);
+        }
     }
 
     /**
