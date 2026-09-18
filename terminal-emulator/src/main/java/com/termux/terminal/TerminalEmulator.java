@@ -216,7 +216,8 @@ public final class TerminalEmulator {
     private final Stack<String> mTitleStack = new Stack<>();
 
     /** The cursor position. Between (0,0) and (mRows-1, mColumns-1). */
-    private int mCursorRow, mCursorCol;
+    /** Written by the main thread, read by the render thread; declared volatile for cross-thread visibility. */
+    private volatile int mCursorRow, mCursorCol;
 
     /** The number of character rows and columns in the terminal screen. */
     public int mRows, mColumns;

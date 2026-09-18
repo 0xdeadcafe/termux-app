@@ -60,6 +60,13 @@ final class TermuxInstaller {
 
     private static final String LOG_TAG = "TermuxInstaller";
 
+    /**
+     * Guards against concurrent bootstrap installs when the Activity is recreated
+     * (rotation, memory pressure) while an install thread is still running.
+     */
+    private static final java.util.concurrent.atomic.AtomicBoolean sInstallInProgress =
+        new java.util.concurrent.atomic.AtomicBoolean(false);
+
     /** Performs bootstrap setup if necessary. */
     static void setupBootstrapIfNeeded(final Activity activity, final Runnable whenDone) {
         String bootstrapErrorMessage;
@@ -124,6 +131,13 @@ final class TermuxInstaller {
             .setView(spinnerView)
             .create();
         progress.show();
+        // Prevent a second install thread from starting if the Activity is recreated
+        // (rotation, memory pressure) while an install is already in progress.
+        if (!sInstallInProgress.compareAndSet(false, true)) {
+            Logger.logInfo(LOG_TAG, "Bootstrap install already in progress, skipping duplicate start.");
+            activity.runOnUiThread(() -> { try { progress.dismiss(); } catch (Exception ignored) {} });
+            return;
+        }
         new Thread() {
             @Override
             public void run() {
@@ -242,6 +256,7 @@ final class TermuxInstaller {
                     showBootstrapErrorDialog(activity, whenDone, Logger.getStackTracesMarkdownString(null, Logger.getStackTracesStringArray(e)));
 
                 } finally {
+                    sInstallInProgress.set(false);
                     activity.runOnUiThread(() -> {
                         try {
                             progress.dismiss();
