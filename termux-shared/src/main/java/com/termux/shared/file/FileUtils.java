@@ -14,6 +14,7 @@ import com.termux.shared.logger.Logger;
 import com.termux.shared.errors.Errno;
 import com.termux.shared.errors.Error;
 import com.termux.shared.errors.FunctionErrno;
+import com.termux.shared.errors.FunctionException;
 import com.termux.shared.errors.TermuxException;
 
 import org.apache.commons.io.filefilter.AgeFileFilter;
@@ -1606,6 +1607,9 @@ public class FileUtils {
      */
     @SuppressWarnings("deprecation")
     public static String readTextFromFileOrThrow(String label, final String filePath, Charset charset, final boolean ignoreNonExistentFile) throws TermuxException {
+        String labelPrefix = (label == null || label.isEmpty() ? "" : label + " ");
+        FunctionException.throwIfNullOrEmpty(filePath, labelPrefix + "file path", "readTextFromFileOrThrow");
+
         StringBuilder dataStringBuilder = new StringBuilder();
         TermuxException.throwIfFailed(readTextFromFile(label, filePath, charset, dataStringBuilder, ignoreNonExistentFile));
         return dataStringBuilder.toString();
