@@ -60,7 +60,7 @@ final class ByteQueue {
         if (lengthToWrite + offset > buffer.length) {
             throw new IllegalArgumentException("length + offset > buffer.length");
         } else if (lengthToWrite <= 0) {
-            throw new IllegalArgumentException("length <= 0");
+            return true; // nothing to write; treat as a no-op
         }
 
         final int bufferLength = mBuffer.length;

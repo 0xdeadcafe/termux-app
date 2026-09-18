@@ -9,6 +9,7 @@ public abstract class TerminalOutput {
     public final void write(String data) {
         if (data == null) return;
         byte[] bytes = data.getBytes(StandardCharsets.UTF_8);
+        if (bytes.length == 0) return; // e.g. pasting a bare ESC which paste() strips
         write(bytes, 0, bytes.length);
     }
 

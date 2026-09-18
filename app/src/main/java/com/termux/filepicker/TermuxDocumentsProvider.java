@@ -90,8 +90,11 @@ public class TermuxDocumentsProvider extends DocumentsProvider {
     public Cursor queryChildDocuments(String parentDocumentId, String[] projection, String sortOrder) throws FileNotFoundException {
         final MatrixCursor result = new MatrixCursor(projection != null ? projection : DEFAULT_DOCUMENT_PROJECTION);
         final File parent = getFileForDocId(parentDocumentId);
-        for (File file : parent.listFiles()) {
-            includeFile(result, null, file);
+        final File[] children = parent.listFiles();
+        if (children != null) {
+            for (File file : children) {
+                includeFile(result, null, file);
+            }
         }
         return result;
     }
@@ -173,11 +176,12 @@ public class TermuxDocumentsProvider extends DocumentsProvider {
             try {
                 isInsideHome = file.getCanonicalPath().startsWith(TermuxConstants.TERMUX_HOME_DIR_PATH);
             } catch (IOException e) {
-                isInsideHome = true;
+                isInsideHome = false; // fail-closed: exclude unresolvable paths
             }
             if (isInsideHome) {
                 if (file.isDirectory()) {
-                    Collections.addAll(pending, file.listFiles());
+                    final File[] children = file.listFiles();
+                    if (children != null) Collections.addAll(pending, children);
                 } else {
                     if (file.getName().toLowerCase().contains(query)) {
                         includeFile(result, null, file);
@@ -191,7 +195,13 @@ public class TermuxDocumentsProvider extends DocumentsProvider {
 
     @Override
     public boolean isChildDocument(String parentDocumentId, String documentId) {
-        return documentId.startsWith(parentDocumentId);
+        try {
+            String parentCanon = new File(parentDocumentId).getCanonicalPath();
+            String childCanon  = new File(documentId).getCanonicalPath();
+            return childCanon.startsWith(parentCanon + File.separator) || childCanon.equals(parentCanon);
+        } catch (IOException e) {
+            return false;
+        }
     }
 
     /**
@@ -210,6 +220,16 @@ public class TermuxDocumentsProvider extends DocumentsProvider {
     private static File getFileForDocId(String docId) throws FileNotFoundException {
         final File f = new File(docId);
         if (!f.exists()) throw new FileNotFoundException(f.getAbsolutePath() + " not found");
+        // Confine to BASE_DIR to prevent arbitrary file access via crafted document IDs
+        try {
+            String canonPath   = f.getCanonicalPath();
+            String canonBase   = BASE_DIR.getCanonicalPath();
+            if (!canonPath.startsWith(canonBase + File.separator) && !canonPath.equals(canonBase)) {
+                throw new FileNotFoundException("Document id out of bounds: " + docId);
+            }
+        } catch (IOException e) {
+            throw new FileNotFoundException("Cannot resolve canonical path for: " + docId);
+        }
         return f;
     }
 
