@@ -1021,11 +1021,22 @@ public class FileUtils {
      * @param ignoreNonExistentSrcFile The {@code boolean} that decides if it should be considered an
      *                              error if source file to copied doesn't exist.
      * @return Returns the {@code error} if copy was not successful, otherwise {@code null}.
+     * @deprecated Use {@link #copyRegularFileOrThrow(String, String, String, boolean)} instead.
      */
+    @Deprecated
     public static Error copyRegularFile(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) {
         return copyOrMoveFile(label, srcFilePath, destFilePath,
             false, ignoreNonExistentSrcFile, FileType.REGULAR.getValue(),
             true, true);
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #copyRegularFile(String, String, String, boolean)}.
+     * @throws TermuxException If copy was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public static void copyRegularFileOrThrow(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) throws TermuxException {
+        TermuxException.throwIfFailed(copyRegularFile(label, srcFilePath, destFilePath, ignoreNonExistentSrcFile));
     }
 
     /**
@@ -1043,11 +1054,22 @@ public class FileUtils {
      * @param ignoreNonExistentSrcFile The {@code boolean} that decides if it should be considered an
      *                              error if source file to moved doesn't exist.
      * @return Returns the {@code error} if move was not successful, otherwise {@code null}.
+     * @deprecated Use {@link #moveRegularFileOrThrow(String, String, String, boolean)} instead.
      */
+    @Deprecated
     public static Error moveRegularFile(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) {
         return copyOrMoveFile(label, srcFilePath, destFilePath,
             true, ignoreNonExistentSrcFile, FileType.REGULAR.getValue(),
             true, true);
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #moveRegularFile(String, String, String, boolean)}.
+     * @throws TermuxException If move was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public static void moveRegularFileOrThrow(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) throws TermuxException {
+        TermuxException.throwIfFailed(moveRegularFile(label, srcFilePath, destFilePath, ignoreNonExistentSrcFile));
     }
 
     /**
@@ -1065,11 +1087,22 @@ public class FileUtils {
      * @param ignoreNonExistentSrcFile The {@code boolean} that decides if it should be considered an
      *                              error if source file to copied doesn't exist.
      * @return Returns the {@code error} if copy was not successful, otherwise {@code null}.
+     * @deprecated Use {@link #copyDirectoryFileOrThrow(String, String, String, boolean)} instead.
      */
+    @Deprecated
     public static Error copyDirectoryFile(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) {
         return copyOrMoveFile(label, srcFilePath, destFilePath,
             false, ignoreNonExistentSrcFile, FileType.DIRECTORY.getValue(),
             true, true);
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #copyDirectoryFile(String, String, String, boolean)}.
+     * @throws TermuxException If copy was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public static void copyDirectoryFileOrThrow(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) throws TermuxException {
+        TermuxException.throwIfFailed(copyDirectoryFile(label, srcFilePath, destFilePath, ignoreNonExistentSrcFile));
     }
 
     /**
@@ -1087,11 +1120,22 @@ public class FileUtils {
      * @param ignoreNonExistentSrcFile The {@code boolean} that decides if it should be considered an
      *                              error if source file to moved doesn't exist.
      * @return Returns the {@code error} if move was not successful, otherwise {@code null}.
+     * @deprecated Use {@link #moveDirectoryFileOrThrow(String, String, String, boolean)} instead.
      */
+    @Deprecated
     public static Error moveDirectoryFile(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) {
         return copyOrMoveFile(label, srcFilePath, destFilePath,
             true, ignoreNonExistentSrcFile, FileType.DIRECTORY.getValue(),
             true, true);
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #moveDirectoryFile(String, String, String, boolean)}.
+     * @throws TermuxException If move was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public static void moveDirectoryFileOrThrow(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) throws TermuxException {
+        TermuxException.throwIfFailed(moveDirectoryFile(label, srcFilePath, destFilePath, ignoreNonExistentSrcFile));
     }
 
     /**
@@ -1109,11 +1153,22 @@ public class FileUtils {
      * @param ignoreNonExistentSrcFile The {@code boolean} that decides if it should be considered an
      *                              error if source file to copied doesn't exist.
      * @return Returns the {@code error} if copy was not successful, otherwise {@code null}.
+     * @deprecated Use {@link #copySymlinkFileOrThrow(String, String, String, boolean)} instead.
      */
+    @Deprecated
     public static Error copySymlinkFile(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) {
         return copyOrMoveFile(label, srcFilePath, destFilePath,
             false, ignoreNonExistentSrcFile, FileType.SYMLINK.getValue(),
             true, true);
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #copySymlinkFile(String, String, String, boolean)}.
+     * @throws TermuxException If copy was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public static void copySymlinkFileOrThrow(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) throws TermuxException {
+        TermuxException.throwIfFailed(copySymlinkFile(label, srcFilePath, destFilePath, ignoreNonExistentSrcFile));
     }
 
     /**
@@ -1131,11 +1186,22 @@ public class FileUtils {
      * @param ignoreNonExistentSrcFile The {@code boolean} that decides if it should be considered an
      *                              error if source file to moved doesn't exist.
      * @return Returns the {@code error} if move was not successful, otherwise {@code null}.
+     * @deprecated Use {@link #moveSymlinkFileOrThrow(String, String, String, boolean)} instead.
      */
+    @Deprecated
     public static Error moveSymlinkFile(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) {
         return copyOrMoveFile(label, srcFilePath, destFilePath,
             true, ignoreNonExistentSrcFile, FileType.SYMLINK.getValue(),
             true, true);
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #moveSymlinkFile(String, String, String, boolean)}.
+     * @throws TermuxException If move was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public static void moveSymlinkFileOrThrow(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) throws TermuxException {
+        TermuxException.throwIfFailed(moveSymlinkFile(label, srcFilePath, destFilePath, ignoreNonExistentSrcFile));
     }
 
     /**
@@ -1153,11 +1219,22 @@ public class FileUtils {
      * @param ignoreNonExistentSrcFile The {@code boolean} that decides if it should be considered an
      *                              error if source file to copied doesn't exist.
      * @return Returns the {@code error} if copy was not successful, otherwise {@code null}.
+     * @deprecated Use {@link #copyFileOrThrow(String, String, String, boolean)} instead.
      */
+    @Deprecated
     public static Error copyFile(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) {
         return copyOrMoveFile(label, srcFilePath, destFilePath,
             false, ignoreNonExistentSrcFile, FileTypes.FILE_TYPE_NORMAL_FLAGS,
             true, true);
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #copyFile(String, String, String, boolean)}.
+     * @throws TermuxException If copy was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public static void copyFileOrThrow(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) throws TermuxException {
+        TermuxException.throwIfFailed(copyFile(label, srcFilePath, destFilePath, ignoreNonExistentSrcFile));
     }
 
     /**
@@ -1175,11 +1252,22 @@ public class FileUtils {
      * @param ignoreNonExistentSrcFile The {@code boolean} that decides if it should be considered an
      *                              error if source file to moved doesn't exist.
      * @return Returns the {@code error} if move was not successful, otherwise {@code null}.
+     * @deprecated Use {@link #moveFileOrThrow(String, String, String, boolean)} instead.
      */
+    @Deprecated
     public static Error moveFile(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) {
         return copyOrMoveFile(label, srcFilePath, destFilePath,
             true, ignoreNonExistentSrcFile, FileTypes.FILE_TYPE_NORMAL_FLAGS,
             true, true);
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #moveFile(String, String, String, boolean)}.
+     * @throws TermuxException If move was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public static void moveFileOrThrow(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) throws TermuxException {
+        TermuxException.throwIfFailed(moveFile(label, srcFilePath, destFilePath, ignoreNonExistentSrcFile));
     }
 
     /**
@@ -1212,7 +1300,9 @@ public class FileUtils {
      *                                         only be done if destination file is also the same file
      *                                          type as the source file.
      * @return Returns the {@code error} if copy or move was not successful, otherwise {@code null}.
+     * @deprecated Use {@link #copyOrMoveFileOrThrow(String, String, String, boolean, boolean, int, boolean, boolean)} instead.
      */
+    @Deprecated
     public static Error copyOrMoveFile(String label, final String srcFilePath, final String destFilePath,
                                        final boolean moveFile, final boolean ignoreNonExistentSrcFile, int allowedFileTypeFlags,
                                        final boolean overwrite, final boolean overwriteOnlyIfDestSameFileTypeAsSrc) {
@@ -1345,6 +1435,17 @@ public class FileUtils {
         }
 
         return null;
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #copyOrMoveFile(String, String, String, boolean, boolean, int, boolean, boolean)}.
+     * @throws TermuxException If copy or move was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public static void copyOrMoveFileOrThrow(String label, final String srcFilePath, final String destFilePath,
+                                              final boolean moveFile, final boolean ignoreNonExistentSrcFile, int allowedFileTypeFlags,
+                                              final boolean overwrite, final boolean overwriteOnlyIfDestSameFileTypeAsSrc) throws TermuxException {
+        TermuxException.throwIfFailed(copyOrMoveFile(label, srcFilePath, destFilePath, moveFile, ignoreNonExistentSrcFile, allowedFileTypeFlags, overwrite, overwriteOnlyIfDestSameFileTypeAsSrc));
     }
 
 
