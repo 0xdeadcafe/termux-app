@@ -1460,9 +1460,20 @@ public class FileUtils {
      * @param ignoreNonExistentFile The {@code boolean} that decides if it should be considered an
      *                              error if file to deleted doesn't exist.
      * @return Returns the {@code error} if deletion was not successful, otherwise {@code null}.
+     * @deprecated Use {@link #deleteRegularFileOrThrow(String, String, boolean)} instead.
      */
+    @Deprecated
     public static Error deleteRegularFile(String label, final String filePath, final boolean ignoreNonExistentFile) {
         return deleteFile(label, filePath, ignoreNonExistentFile, false, FileType.REGULAR.getValue());
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #deleteRegularFile(String, String, boolean)}.
+     * @throws TermuxException If deletion was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public static void deleteRegularFileOrThrow(String label, final String filePath, final boolean ignoreNonExistentFile) throws TermuxException {
+        TermuxException.throwIfFailed(deleteRegularFile(label, filePath, ignoreNonExistentFile));
     }
 
     /**
@@ -1475,9 +1486,20 @@ public class FileUtils {
      * @param ignoreNonExistentFile The {@code boolean} that decides if it should be considered an
      *                              error if file to deleted doesn't exist.
      * @return Returns the {@code error} if deletion was not successful, otherwise {@code null}.
+     * @deprecated Use {@link #deleteDirectoryFileOrThrow(String, String, boolean)} instead.
      */
+    @Deprecated
     public static Error deleteDirectoryFile(String label, final String filePath, final boolean ignoreNonExistentFile) {
         return deleteFile(label, filePath, ignoreNonExistentFile, false, FileType.DIRECTORY.getValue());
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #deleteDirectoryFile(String, String, boolean)}.
+     * @throws TermuxException If deletion was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public static void deleteDirectoryFileOrThrow(String label, final String filePath, final boolean ignoreNonExistentFile) throws TermuxException {
+        TermuxException.throwIfFailed(deleteDirectoryFile(label, filePath, ignoreNonExistentFile));
     }
 
     /**
@@ -1490,9 +1512,20 @@ public class FileUtils {
      * @param ignoreNonExistentFile The {@code boolean} that decides if it should be considered an
      *                              error if file to deleted doesn't exist.
      * @return Returns the {@code error} if deletion was not successful, otherwise {@code null}.
+     * @deprecated Use {@link #deleteSymlinkFileOrThrow(String, String, boolean)} instead.
      */
+    @Deprecated
     public static Error deleteSymlinkFile(String label, final String filePath, final boolean ignoreNonExistentFile) {
         return deleteFile(label, filePath, ignoreNonExistentFile, false, FileType.SYMLINK.getValue());
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #deleteSymlinkFile(String, String, boolean)}.
+     * @throws TermuxException If deletion was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public static void deleteSymlinkFileOrThrow(String label, final String filePath, final boolean ignoreNonExistentFile) throws TermuxException {
+        TermuxException.throwIfFailed(deleteSymlinkFile(label, filePath, ignoreNonExistentFile));
     }
 
     /**
@@ -1505,9 +1538,20 @@ public class FileUtils {
      * @param ignoreNonExistentFile The {@code boolean} that decides if it should be considered an
      *                              error if file to deleted doesn't exist.
      * @return Returns the {@code error} if deletion was not successful, otherwise {@code null}.
+     * @deprecated Use {@link #deleteSocketFileOrThrow(String, String, boolean)} instead.
      */
+    @Deprecated
     public static Error deleteSocketFile(String label, final String filePath, final boolean ignoreNonExistentFile) {
         return deleteFile(label, filePath, ignoreNonExistentFile, false, FileType.SOCKET.getValue());
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #deleteSocketFile(String, String, boolean)}.
+     * @throws TermuxException If deletion was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public static void deleteSocketFileOrThrow(String label, final String filePath, final boolean ignoreNonExistentFile) throws TermuxException {
+        TermuxException.throwIfFailed(deleteSocketFile(label, filePath, ignoreNonExistentFile));
     }
 
     /**
@@ -1520,9 +1564,20 @@ public class FileUtils {
      * @param ignoreNonExistentFile The {@code boolean} that decides if it should be considered an
      *                              error if file to deleted doesn't exist.
      * @return Returns the {@code error} if deletion was not successful, otherwise {@code null}.
+     * @deprecated Use {@link #deleteFileOrThrow(String, String, boolean)} instead.
      */
+    @Deprecated
     public static Error deleteFile(String label, final String filePath, final boolean ignoreNonExistentFile) {
         return deleteFile(label, filePath, ignoreNonExistentFile, false, FileTypes.FILE_TYPE_NORMAL_FLAGS);
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #deleteFile(String, String, boolean)}.
+     * @throws TermuxException If deletion was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public static void deleteFileOrThrow(String label, final String filePath, final boolean ignoreNonExistentFile) throws TermuxException {
+        TermuxException.throwIfFailed(deleteFile(label, filePath, ignoreNonExistentFile));
     }
 
     /**
@@ -1545,7 +1600,9 @@ public class FileUtils {
      *                             directory instead of a regular file. You can pass
      *                             {@link FileTypes#FILE_TYPE_ANY_FLAGS} to allow deletion of any file type.
      * @return Returns the {@code error} if deletion was not successful, otherwise {@code null}.
+     * @deprecated Use {@link #deleteFileOrThrow(String, String, boolean, boolean, int)} instead.
      */
+    @Deprecated
     public static Error deleteFile(String label, final String filePath, final boolean ignoreNonExistentFile, final boolean ignoreWrongFileType, int allowedFileTypeFlags) {
         label = (label == null || label.isEmpty() ? "" : label + " ");
         if (filePath == null || filePath.isEmpty()) return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "deleteFile");
@@ -1626,6 +1683,15 @@ public class FileUtils {
         return null;
     }
 
+    /**
+     * Exception-throwing sibling of {@link #deleteFile(String, String, boolean, boolean, int)}.
+     * @throws TermuxException If deletion was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public static void deleteFileOrThrow(String label, final String filePath, final boolean ignoreNonExistentFile, final boolean ignoreWrongFileType, int allowedFileTypeFlags) throws TermuxException {
+        TermuxException.throwIfFailed(deleteFile(label, filePath, ignoreNonExistentFile, ignoreWrongFileType, allowedFileTypeFlags));
+    }
+
 
 
     /**
@@ -1637,9 +1703,20 @@ public class FileUtils {
      *
      * @param filePath The {@code path} for directory to clear.
      * @return Returns the {@code error} if clearing was not successful, otherwise {@code null}.
+     * @deprecated Use {@link #clearDirectoryOrThrow(String)} instead.
      */
+    @Deprecated
     public static Error clearDirectory(String filePath) {
         return clearDirectory(null, filePath);
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #clearDirectory(String)}.
+     * @throws TermuxException If clearing was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public static void clearDirectoryOrThrow(String filePath) throws TermuxException {
+        TermuxException.throwIfFailed(clearDirectory(filePath));
     }
 
     /**
@@ -1652,7 +1729,9 @@ public class FileUtils {
      * @param label The optional label for directory to clear. This can optionally be {@code null}.
      * @param filePath The {@code path} for directory to clear.
      * @return Returns the {@code error} if clearing was not successful, otherwise {@code null}.
+     * @deprecated Use {@link #clearDirectoryOrThrow(String, String)} instead.
      */
+    @Deprecated
     public static Error clearDirectory(String label, final String filePath) {
         label = (label == null || label.isEmpty() ? "" : label + " ");
         if (filePath == null || filePath.isEmpty()) return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "clearDirectory");
@@ -1696,6 +1775,15 @@ public class FileUtils {
     }
 
     /**
+     * Exception-throwing sibling of {@link #clearDirectory(String, String)}.
+     * @throws TermuxException If clearing was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public static void clearDirectoryOrThrow(String label, final String filePath) throws TermuxException {
+        TermuxException.throwIfFailed(clearDirectory(label, filePath));
+    }
+
+    /**
      * Delete files under a directory older than x days.
      *
      * The {@code filePath} must be the canonical path to a directory since symlinks will not be followed.
@@ -1715,7 +1803,9 @@ public class FileUtils {
      *                             directory instead of a regular file. You can pass
      *                             {@link FileTypes#FILE_TYPE_ANY_FLAGS} to allow deletion of any file type.
      * @return Returns the {@code error} if deleting was not successful, otherwise {@code null}.
+     * @deprecated Use {@link #deleteFilesOlderThanXDaysOrThrow(String, String, IOFileFilter, int, boolean, int)} instead.
      */
+    @Deprecated
     public static Error deleteFilesOlderThanXDays(String label, final String filePath, final IOFileFilter dirFilter, int days, final boolean ignoreNonExistentFile, int allowedFileTypeFlags) {
         label = (label == null || label.isEmpty() ? "" : label + " ");
         if (filePath == null || filePath.isEmpty()) return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "deleteFilesOlderThanXDays");
@@ -1768,6 +1858,15 @@ public class FileUtils {
 
         return null;
 
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #deleteFilesOlderThanXDays(String, String, IOFileFilter, int, boolean, int)}.
+     * @throws TermuxException If deleting was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public static void deleteFilesOlderThanXDaysOrThrow(String label, final String filePath, final IOFileFilter dirFilter, int days, final boolean ignoreNonExistentFile, int allowedFileTypeFlags) throws TermuxException {
+        TermuxException.throwIfFailed(deleteFilesOlderThanXDays(label, filePath, dirFilter, days, ignoreNonExistentFile, allowedFileTypeFlags));
     }
 
 
