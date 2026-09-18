@@ -31,7 +31,7 @@ import java.util.Stack;
 public final class TerminalEmulator {
 
     /** Log unknown or unimplemented escape sequences received from the shell process. */
-    private static final boolean LOG_ESCAPE_SEQUENCES = false;
+    private static final boolean LOG_ESCAPE_SEQUENCES = com.termux.emulator.BuildConfig.DEBUG;
 
     public static final int MOUSE_LEFT_BUTTON = 0;
 
