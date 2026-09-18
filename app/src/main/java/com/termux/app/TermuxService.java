@@ -518,7 +518,9 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
                 if (executionCommand != null && executionCommand.isPluginExecutionCommand)
                     TermuxPluginUtils.processPluginExecutionCommandResult(this, LOG_TAG, executionCommand);
 
-                mShellManager.mTermuxTasks.remove(termuxTask);
+                synchronized (TermuxService.this) {
+                    mShellManager.mTermuxTasks.remove(termuxTask);
+                }
             }
 
             updateNotification();
@@ -639,7 +641,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
 
     /** Callback received when a {@link TermuxSession} finishes. */
     @Override
-    public void onTermuxSessionExited(final TermuxSession termuxSession) {
+    public synchronized void onTermuxSessionExited(final TermuxSession termuxSession) {
         if (termuxSession != null) {
             ExecutionCommand executionCommand = termuxSession.getExecutionCommand();
 

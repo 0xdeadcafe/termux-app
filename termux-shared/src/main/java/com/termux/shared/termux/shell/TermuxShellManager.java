@@ -16,7 +16,7 @@ import java.util.List;
 
 public class TermuxShellManager {
 
-    private static TermuxShellManager shellManager;
+    private static volatile TermuxShellManager shellManager;
 
     private static int SHELL_ID = 0;
 

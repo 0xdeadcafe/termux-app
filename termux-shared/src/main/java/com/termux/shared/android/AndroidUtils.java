@@ -185,22 +185,24 @@ public class AndroidUtils {
                 .redirectErrorStream(true)
                 .start();
 
-            InputStream inputStream = process.getInputStream();
-            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-            String line, key, value;
+            try {
+                InputStream inputStream = process.getInputStream();
+                try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream))) {
+                    String line, key, value;
 
-            while ((line = bufferedReader.readLine()) != null) {
-                Matcher matcher = propertiesPattern.matcher(line);
-                if (matcher.matches()) {
-                    key = matcher.group(1);
-                    value = matcher.group(2);
-                    if (key != null && value != null && !key.isEmpty() && !value.isEmpty())
-                        systemProperties.put(key, value);
+                    while ((line = bufferedReader.readLine()) != null) {
+                        Matcher matcher = propertiesPattern.matcher(line);
+                        if (matcher.matches()) {
+                            key = matcher.group(1);
+                            value = matcher.group(2);
+                            if (key != null && value != null && !key.isEmpty() && !value.isEmpty())
+                                systemProperties.put(key, value);
+                        }
+                    }
                 }
+            } finally {
+                process.destroy();
             }
-
-            bufferedReader.close();
-            process.destroy();
 
         } catch (IOException e) {
             Logger.logStackTraceWithMessage("Failed to get run \"/system/bin/getprop\" to get system properties.", e);
