@@ -135,28 +135,52 @@ public class FileReceiverActivity extends AppCompatActivity {
     }
 
     void handleContentUri(@NonNull final Uri uri, String subjectFromIntent) {
-        try {
-            Logger.logVerbose(LOG_TAG, "uri: \"" + uri + "\", path: \"" + uri.getPath() + "\", fragment: \"" + uri.getFragment() + "\"");
+        // ContentResolver I/O must not run on the main thread (ANR risk).
+        // Show a transient progress dialog, do the blocking work on a background thread,
+        // then return to the main thread for the interactive save dialog.
+        final android.app.AlertDialog loadingDialog = new android.app.AlertDialog.Builder(this)
+            .setMessage("Loading file…")
+            .setCancelable(false)
+            .create();
+        loadingDialog.show();
 
+        final String subjectFinal = subjectFromIntent;
+        new Thread(() -> {
             String attachmentFileName = null;
+            InputStream in = null;
+            Exception caught = null;
+            try {
+                Logger.logVerbose(LOG_TAG, "uri: \"" + uri + "\", path: \"" + uri.getPath() + "\", fragment: \"" + uri.getFragment() + "\"");
 
-            String[] projection = new String[]{OpenableColumns.DISPLAY_NAME};
-            try (Cursor c = getContentResolver().query(uri, projection, null, null, null)) {
-                if (c != null && c.moveToFirst()) {
-                    final int fileNameColumnId = c.getColumnIndex(OpenableColumns.DISPLAY_NAME);
-                    if (fileNameColumnId >= 0) attachmentFileName = c.getString(fileNameColumnId);
+                String[] projection = new String[]{OpenableColumns.DISPLAY_NAME};
+                try (Cursor c = getContentResolver().query(uri, projection, null, null, null)) {
+                    if (c != null && c.moveToFirst()) {
+                        final int fileNameColumnId = c.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                        if (fileNameColumnId >= 0) attachmentFileName = c.getString(fileNameColumnId);
+                    }
                 }
+
+                if (attachmentFileName == null) attachmentFileName = subjectFinal;
+                if (attachmentFileName == null) attachmentFileName = UriUtils.getUriFileBasename(uri, true);
+
+                in = getContentResolver().openInputStream(uri);
+            } catch (Exception e) {
+                caught = e;
             }
 
-            if (attachmentFileName == null) attachmentFileName = subjectFromIntent;
-            if (attachmentFileName == null) attachmentFileName = UriUtils.getUriFileBasename(uri, true);
-
-            InputStream in = getContentResolver().openInputStream(uri);
-            promptNameAndSave(in, attachmentFileName);
-        } catch (Exception e) {
-            showErrorDialogAndQuit("Unable to handle shared content:\n\n" + e.getMessage());
-            Logger.logStackTraceWithMessage(LOG_TAG, "handleContentUri(uri=" + uri + ") failed", e);
-        }
+            final String finalFileName = attachmentFileName;
+            final InputStream finalIn = in;
+            final Exception finalCaught = caught;
+            runOnUiThread(() -> {
+                loadingDialog.dismiss();
+                if (finalCaught != null) {
+                    showErrorDialogAndQuit("Unable to handle shared content:\n\n" + finalCaught.getMessage());
+                    Logger.logStackTraceWithMessage(LOG_TAG, "handleContentUri(uri=" + uri + ") failed", finalCaught);
+                } else {
+                    promptNameAndSave(finalIn, finalFileName);
+                }
+            });
+        }).start();
     }
 
     void promptNameAndSave(final InputStream in, final String attachmentFileName) {
