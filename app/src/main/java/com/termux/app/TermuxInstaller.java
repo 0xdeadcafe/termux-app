@@ -169,6 +169,9 @@ final class TermuxInstaller {
                                         throw new RuntimeException("Malformed symlink line: " + line);
                                     String oldPath = parts[0];
                                     String newPath = TERMUX_STAGING_PREFIX_DIR_PATH + "/" + parts[1];
+                                    // Path traversal protection: ensure symlink placement stays inside staging dir
+                                    if (!new File(newPath).getCanonicalPath().startsWith(TERMUX_STAGING_PREFIX_DIR_PATH + "/"))
+                                        throw new RuntimeException("Symlink path escapes staging directory: " + parts[1]);
                                     symlinks.add(Pair.create(oldPath, newPath));
 
                                     error = ensureDirectoryExists(new File(newPath).getParentFile());
@@ -180,6 +183,9 @@ final class TermuxInstaller {
                             } else {
                                 String zipEntryName = zipEntry.getName();
                                 File targetFile = new File(TERMUX_STAGING_PREFIX_DIR_PATH, zipEntryName);
+                                // Zip Slip protection: ensure extraction target stays inside staging dir
+                                if (!targetFile.getCanonicalPath().startsWith(TERMUX_STAGING_PREFIX_DIR_PATH + "/"))
+                                    throw new RuntimeException("Zip entry escapes staging directory: " + zipEntryName);
                                 boolean isDirectory = zipEntry.isDirectory();
 
                                 error = ensureDirectoryExists(isDirectory ? targetFile : targetFile.getParentFile());

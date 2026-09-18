@@ -328,7 +328,7 @@ public final class TerminalSession extends TerminalOutput {
             descriptorField.set(result, fileDescriptor);
         } catch (NoSuchFieldException | IllegalAccessException | IllegalArgumentException e) {
             Logger.logStackTraceWithMessage(client, LOG_TAG, "Error accessing FileDescriptor#descriptor private field", e);
-            System.exit(1);
+            throw new RuntimeException("Error wrapping file descriptor", e);
         }
         return result;
     }

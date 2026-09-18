@@ -212,7 +212,7 @@ public class FileReceiverActivity extends AppCompatActivity {
         }
 
         try {
-            final File outFile = new File(receiveDir, attachmentFileName);
+            final File outFile = new File(receiveDir, new File(attachmentFileName).getName());
             try (FileOutputStream f = new FileOutputStream(outFile)) {
                 byte[] buffer = new byte[4096];
                 int readBytes;
