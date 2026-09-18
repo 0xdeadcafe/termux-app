@@ -166,6 +166,16 @@ public class Error implements Serializable {
         return code > Errno.ERRNO_SUCCESS.getCode();
     }
 
+    /**
+     * Throw this {@link Error} as a {@link TermuxException} if it {@link #isStateFailed()}.
+     * Convenience bridge used while migrating {@code Error}-returning APIs to exception-throwing
+     * ones (see {@code beads-xs0} and {@link TermuxException}). No-op if this {@link Error} does
+     * not represent a failure.
+     */
+    public void throwIfFailed() throws TermuxException {
+        TermuxException.throwIfFailed(this);
+    }
+
 
     @NonNull
     @Override

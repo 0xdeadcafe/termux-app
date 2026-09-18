@@ -14,6 +14,7 @@ import com.termux.shared.logger.Logger;
 import com.termux.shared.errors.Errno;
 import com.termux.shared.errors.Error;
 import com.termux.shared.errors.FunctionErrno;
+import com.termux.shared.errors.TermuxException;
 
 import org.apache.commons.io.filefilter.AgeFileFilter;
 import org.apache.commons.io.filefilter.IOFileFilter;
@@ -1524,7 +1525,11 @@ public class FileUtils {
      * @param ignoreNonExistentFile The {@code boolean} that decides if it should be considered an
      *                              error if file to read doesn't exist.
      * @return Returns the {@code error} if reading was not successful, otherwise {@code null}.
+     * @deprecated Use {@link #readTextFromFileOrThrow(String, String, Charset, boolean)} instead,
+     *             which throws a {@link com.termux.shared.errors.TermuxException} instead of
+     *             returning a nullable {@link Error}. See {@code beads-xs0}.
      */
+    @Deprecated
     public static Error readTextFromFile(String label, final String filePath, Charset charset, @NonNull final StringBuilder dataStringBuilder, final boolean ignoreNonExistentFile) {
         label = (label == null || label.isEmpty() ? "" : label + " ");
         if (filePath == null || filePath.isEmpty()) return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "readStringFromFile");
@@ -1583,6 +1588,27 @@ public class FileUtils {
         }
 
         return null;
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #readTextFromFile(String, String, Charset, StringBuilder, boolean)}.
+     * Reads a text {@link String} from file at path with a specific {@link Charset}.
+     *
+     * @param label The optional label for file to read. This can optionally be {@code null}.
+     * @param filePath The {@code path} for file to read.
+     * @param charset The {@link Charset} of the file. If this is {@code null},
+     *                then default {@link Charset} will be used.
+     * @param ignoreNonExistentFile The {@code boolean} that decides if it should be considered an
+     *                              error if file to read doesn't exist.
+     * @return Returns the file content, or an empty {@link String} if the file did not exist and
+     *         {@code ignoreNonExistentFile} was {@code true}.
+     * @throws TermuxException If reading was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public static String readTextFromFileOrThrow(String label, final String filePath, Charset charset, final boolean ignoreNonExistentFile) throws TermuxException {
+        StringBuilder dataStringBuilder = new StringBuilder();
+        TermuxException.throwIfFailed(readTextFromFile(label, filePath, charset, dataStringBuilder, ignoreNonExistentFile));
+        return dataStringBuilder.toString();
     }
 
     public static class ReadSerializableObjectResult {
