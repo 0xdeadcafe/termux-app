@@ -69,8 +69,13 @@ public class TerminalToolbarViewPager {
                     if (session != null) {
                         if (session.isRunning()) {
                             String textToSend = editText.getText().toString();
-                            if (textToSend.length() == 0) textToSend = "\r";
-                            session.write(textToSend);
+                            if (textToSend.length() == 0) {
+                                session.write("\r"); // send bare Enter
+                            } else {
+                                // Route through paste() so bracketed paste mode (DECSET 2004)
+                                // wrapping is applied when the terminal app requests it
+                                mActivity.getTerminalView().mEmulator.paste(textToSend);
+                            }
                         } else {
                             mActivity.getTermuxTerminalSessionClient().removeFinishedSession(session);
                         }

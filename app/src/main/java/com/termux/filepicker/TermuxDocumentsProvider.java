@@ -120,6 +120,11 @@ public class TermuxDocumentsProvider extends DocumentsProvider {
 
     @Override
     public String createDocument(String parentDocumentId, String mimeType, String displayName) throws FileNotFoundException {
+        // Strip directory components to prevent path traversal via crafted displayName
+        displayName = new File(displayName).getName();
+        if (displayName.isEmpty()) {
+            throw new FileNotFoundException("displayName must not be empty or purely path separators");
+        }
         File newFile = new File(parentDocumentId, displayName);
         int noConflictId = 2;
         while (newFile.exists()) {

@@ -94,7 +94,10 @@ public class FileUtils {
     /**
      * Removes one or more forward slashes "//" with single slash "/"
      * Removes "./"
+     * Removes "../" (and leading "..")
      * Removes trailing forward slash "/"
+     * Note: for security-critical path confinement always prefer
+     * {@link File#getCanonicalPath()} over this method.
      *
      * @param path The {@code path} to convert.
      * @return Returns the {@code normalized path}.
@@ -104,6 +107,8 @@ public class FileUtils {
         if (path == null) return null;
 
         path = path.replaceAll("/+", "/");
+        path = path.replaceAll("(\\./|(?:(?:^|/)\\.\.(?=/|$)))", "");
+        path = path.replaceAll("\\.\\./", "");
         path = path.replaceAll("\\./", "");
 
         if (path.endsWith("/")) {
