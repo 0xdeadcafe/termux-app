@@ -5,6 +5,7 @@ import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import androidx.core.app.NotificationCompat;
 import androidx.core.app.ServiceCompat;
 import android.content.Context;
 import android.content.Intent;
@@ -813,11 +814,11 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         // Set notification priority
         // If holding a wake or wifi lock consider the notification of high priority since it's using power,
         // otherwise use a low priority
-        int priority = (wakeLockHeld) ? Notification.PRIORITY_HIGH : Notification.PRIORITY_LOW;
+        int priority = (wakeLockHeld) ? NotificationCompat.PRIORITY_HIGH : NotificationCompat.PRIORITY_LOW;
 
 
         // Build the notification
-        Notification.Builder builder =  NotificationUtils.geNotificationBuilder(this,
+        NotificationCompat.Builder builder =  NotificationUtils.geNotificationBuilder(this,
             TermuxConstants.TERMUX_APP_NOTIFICATION_CHANNEL_ID, priority,
             TermuxConstants.TERMUX_APP_NAME, notificationText, null,
             contentIntent, null, NotificationUtils.NOTIFICATION_MODE_SILENT);

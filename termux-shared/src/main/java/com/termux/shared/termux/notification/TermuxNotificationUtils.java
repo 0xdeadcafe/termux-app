@@ -1,12 +1,12 @@
 package com.termux.shared.termux.notification;
 
-import android.app.Notification;
 import android.app.PendingIntent;
 import android.content.Context;
-import android.graphics.drawable.Icon;
+import androidx.core.graphics.drawable.IconCompat;
 import android.os.Build;
 
 import androidx.annotation.Nullable;
+import androidx.core.app.NotificationCompat;
 
 import com.termux.shared.R;
 import com.termux.shared.android.resource.ResourceUtils;
@@ -46,7 +46,7 @@ public class TermuxNotificationUtils {
     }
 
     /**
-     * Get {@link Notification.Builder} for termux app or its plugin.
+     * Get {@link NotificationCompat.Builder} for termux app or its plugin.
      *
      * @param currentPackageContext The {@link Context} of current package.
      * @param termuxPackageContext The {@link Context} of termux package.
@@ -58,10 +58,10 @@ public class TermuxNotificationUtils {
      * @param contentIntent The {@link PendingIntent} which should be sent when notification is clicked.
      * @param deleteIntent The {@link PendingIntent} which should be sent when notification is deleted.
      * @param notificationMode The notification mode. It must be one of {@code NotificationUtils.NOTIFICATION_MODE_*}.
-     * @return Returns the {@link Notification.Builder}.
+     * @return Returns the {@link NotificationCompat.Builder}.
      */
     @Nullable
-    public static Notification.Builder getTermuxOrPluginAppNotificationBuilder(final Context currentPackageContext,
+    public static NotificationCompat.Builder getTermuxOrPluginAppNotificationBuilder(final Context currentPackageContext,
                                                                                  final Context termuxPackageContext,
                                                                                  final String channelId,
                                                                                  final int priority,
@@ -71,7 +71,7 @@ public class TermuxNotificationUtils {
                                                                                  final PendingIntent contentIntent,
                                                                                  final PendingIntent deleteIntent,
                                                                                  final int notificationMode) {
-        Notification.Builder builder =  NotificationUtils.geNotificationBuilder(termuxPackageContext,
+        NotificationCompat.Builder builder =  NotificationUtils.geNotificationBuilder(termuxPackageContext,
             channelId, priority,
             title, notificationText, notificationBigText, contentIntent, deleteIntent, notificationMode);
 
@@ -88,7 +88,7 @@ public class TermuxNotificationUtils {
         // not be thrown.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             // Set Icon instead of drawable resource id
-            builder.setSmallIcon(Icon.createWithResource(currentPackageContext, R.drawable.ic_error_notification));
+            builder.setSmallIcon(IconCompat.createWithResource(currentPackageContext, R.drawable.ic_error_notification));
         } else {
             // Set drawable resource id used by termux-app package
             Integer iconResId = ResourceUtils.getDrawableResourceId(termuxPackageContext, "ic_error_notification",

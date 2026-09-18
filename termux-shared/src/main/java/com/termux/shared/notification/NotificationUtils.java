@@ -8,6 +8,7 @@ import android.content.Context;
 import android.os.Build;
 
 import androidx.annotation.Nullable;
+import androidx.core.app.NotificationCompat;
 
 import com.termux.shared.logger.Logger;
 
@@ -47,12 +48,12 @@ public class NotificationUtils {
     }
 
     /**
-     * Get {@link Notification.Builder}.
+     * Get {@link NotificationCompat.Builder}.
      *
      * @param context The {@link Context} for operations.
-     * @param title The title for the notification.
      * @param channelId The channel id for the notification.
      * @param priority The priority for the notification.
+     * @param title The title for the notification.
      * @param notificationText The second line text of the notification.
      * @param notificationBigText The full text of the notification that may optionally be styled.
      * @param contentIntent The {@link PendingIntent} which should be sent when notification is clicked.
@@ -60,27 +61,26 @@ public class NotificationUtils {
      * @param notificationMode The notification mode. It must be one of {@code NotificationUtils.NOTIFICATION_MODE_*}.
      *                         The builder returned will be {@code null} if {@link #NOTIFICATION_MODE_NONE}
      *                         is passed. That case should ideally be handled before calling this function.
-     * @return Returns the {@link Notification.Builder}.
+     * @return Returns the {@link NotificationCompat.Builder}.
      */
     @Nullable
-    public static Notification.Builder geNotificationBuilder(
+    public static NotificationCompat.Builder geNotificationBuilder(
         final Context context, final String channelId, final int priority, final CharSequence title,
         final CharSequence notificationText, final CharSequence notificationBigText,
         final PendingIntent contentIntent, final PendingIntent deleteIntent, final int notificationMode) {
         if (context == null) return null;
-        Notification.Builder builder = new Notification.Builder(context);
+        // NotificationCompat.Builder accepts channelId in the constructor and calls setChannelId()
+        // automatically on API 26+, so the manual >= O version guard is no longer needed.
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, channelId);
         builder.setContentTitle(title);
         builder.setContentText(notificationText);
         if (notificationBigText != null) {
-            builder.setStyle(new Notification.BigTextStyle().bigText(notificationBigText));
+            builder.setStyle(new NotificationCompat.BigTextStyle().bigText(notificationBigText));
         }
         builder.setContentIntent(contentIntent);
         builder.setDeleteIntent(deleteIntent);
 
         builder.setPriority(priority);
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-            builder.setChannelId(channelId);
 
         builder = setNotificationDefaults(builder, notificationMode);
 
@@ -107,7 +107,7 @@ public class NotificationUtils {
             notificationManager.createNotificationChannel(channel);
     }
 
-    public static Notification.Builder setNotificationDefaults(Notification.Builder builder, final int notificationMode) {
+    public static NotificationCompat.Builder setNotificationDefaults(NotificationCompat.Builder builder, final int notificationMode) {
 
         switch (notificationMode) {
             case NOTIFICATION_MODE_NONE:

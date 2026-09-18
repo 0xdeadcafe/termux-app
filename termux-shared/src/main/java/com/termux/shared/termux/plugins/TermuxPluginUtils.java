@@ -1,6 +1,5 @@
 package com.termux.shared.termux.plugins;
 
-import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -9,6 +8,7 @@ import android.os.Environment;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.app.NotificationCompat;
 
 import com.termux.shared.R;
 import com.termux.shared.activities.ReportActivity;
@@ -394,7 +394,7 @@ public class TermuxPluginUtils {
         //CharSequence notificationTextCharSequence = notificationTextString;
 
         // Build the notification
-        Notification.Builder builder = getPluginCommandErrorsNotificationBuilder(currentPackageContext, termuxPackageContext,
+        NotificationCompat.Builder builder = getPluginCommandErrorsNotificationBuilder(currentPackageContext, termuxPackageContext,
             title, notificationTextCharSequence, notificationTextCharSequence, contentIntent, deleteIntent,
             NotificationUtils.NOTIFICATION_MODE_VIBRATE);
         if (builder == null) return;
@@ -406,7 +406,7 @@ public class TermuxPluginUtils {
     }
 
     /**
-     * Get {@link Notification.Builder} for {@link TermuxConstants#TERMUX_PLUGIN_COMMAND_ERRORS_NOTIFICATION_CHANNEL_ID}
+     * Get {@link NotificationCompat.Builder} for {@link TermuxConstants#TERMUX_PLUGIN_COMMAND_ERRORS_NOTIFICATION_CHANNEL_ID}
      * and {@link TermuxConstants#TERMUX_PLUGIN_COMMAND_ERRORS_NOTIFICATION_CHANNEL_NAME}.
      *
      * @param currentPackageContext The {@link Context} of current package.
@@ -417,10 +417,10 @@ public class TermuxPluginUtils {
      * @param contentIntent The {@link PendingIntent} which should be sent when notification is clicked.
      * @param deleteIntent The {@link PendingIntent} which should be sent when notification is deleted.
      * @param notificationMode The notification mode. It must be one of {@code NotificationUtils.NOTIFICATION_MODE_*}.
-     * @return Returns the {@link Notification.Builder}.
+     * @return Returns the {@link NotificationCompat.Builder}.
      */
     @Nullable
-    public static Notification.Builder getPluginCommandErrorsNotificationBuilder(final Context currentPackageContext,
+    public static NotificationCompat.Builder getPluginCommandErrorsNotificationBuilder(final Context currentPackageContext,
                                                                                  final Context termuxPackageContext,
                                                                                  final CharSequence title,
                                                                                  final CharSequence notificationText,
@@ -430,7 +430,7 @@ public class TermuxPluginUtils {
                                                                                  final int notificationMode) {
         return TermuxNotificationUtils.getTermuxOrPluginAppNotificationBuilder(
             currentPackageContext, termuxPackageContext,
-            TermuxConstants.TERMUX_PLUGIN_COMMAND_ERRORS_NOTIFICATION_CHANNEL_ID, Notification.PRIORITY_HIGH,
+            TermuxConstants.TERMUX_PLUGIN_COMMAND_ERRORS_NOTIFICATION_CHANNEL_ID, NotificationCompat.PRIORITY_HIGH,
             title, notificationText, notificationBigText, contentIntent, deleteIntent, notificationMode);
     }
 

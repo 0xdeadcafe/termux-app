@@ -3,6 +3,7 @@ package com.termux.app;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.Service;
+import androidx.core.app.NotificationCompat;
 import androidx.core.app.ServiceCompat;
 import android.content.Intent;
 import android.net.Uri;
@@ -276,8 +277,8 @@ public class RunCommandService extends Service {
 
     private Notification buildNotification() {
         // Build the notification
-        Notification.Builder builder =  NotificationUtils.geNotificationBuilder(this,
-            TermuxConstants.TERMUX_RUN_COMMAND_NOTIFICATION_CHANNEL_ID, Notification.PRIORITY_LOW,
+        NotificationCompat.Builder builder =  NotificationUtils.geNotificationBuilder(this,
+            TermuxConstants.TERMUX_RUN_COMMAND_NOTIFICATION_CHANNEL_ID, NotificationCompat.PRIORITY_LOW,
             TermuxConstants.TERMUX_RUN_COMMAND_NOTIFICATION_CHANNEL_NAME, null, null,
             null, null, NotificationUtils.NOTIFICATION_MODE_SILENT);
         if (builder == null)  return null;

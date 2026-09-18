@@ -1,6 +1,5 @@
 package com.termux.shared.termux.crash;
 
-import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -10,6 +9,7 @@ import android.os.Environment;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.app.NotificationCompat;
 
 import com.termux.shared.activities.ReportActivity;
 import com.termux.shared.android.AndroidUtils;
@@ -356,7 +356,7 @@ public class TermuxCrashUtils implements CrashHandler.CrashHandlerClient {
         //CharSequence notificationTextCharSequence = notificationTextString;
 
         // Build the notification
-        Notification.Builder builder = getCrashReportsNotificationBuilder(currentPackageContext, termuxPackageContext,
+        NotificationCompat.Builder builder = getCrashReportsNotificationBuilder(currentPackageContext, termuxPackageContext,
             title, notificationTextCharSequence, notificationTextCharSequence, contentIntent, deleteIntent,
             NotificationUtils.NOTIFICATION_MODE_VIBRATE);
         if (builder == null) return;
@@ -368,7 +368,7 @@ public class TermuxCrashUtils implements CrashHandler.CrashHandlerClient {
     }
 
     /**
-     * Get {@link Notification.Builder} for {@link TermuxConstants#TERMUX_CRASH_REPORTS_NOTIFICATION_CHANNEL_ID}
+     * Get {@link NotificationCompat.Builder} for {@link TermuxConstants#TERMUX_CRASH_REPORTS_NOTIFICATION_CHANNEL_ID}
      * and {@link TermuxConstants#TERMUX_CRASH_REPORTS_NOTIFICATION_CHANNEL_NAME}.
      *
      * @param currentPackageContext The {@link Context} of current package.
@@ -379,10 +379,10 @@ public class TermuxCrashUtils implements CrashHandler.CrashHandlerClient {
      * @param contentIntent The {@link PendingIntent} which should be sent when notification is clicked.
      * @param deleteIntent The {@link PendingIntent} which should be sent when notification is deleted.
      * @param notificationMode The notification mode. It must be one of {@code NotificationUtils.NOTIFICATION_MODE_*}.
-     * @return Returns the {@link Notification.Builder}.
+     * @return Returns the {@link NotificationCompat.Builder}.
      */
     @Nullable
-    public static Notification.Builder getCrashReportsNotificationBuilder(final Context currentPackageContext,
+    public static NotificationCompat.Builder getCrashReportsNotificationBuilder(final Context currentPackageContext,
                                                                           final Context termuxPackageContext,
                                                                           final CharSequence title,
                                                                           final CharSequence notificationText,
@@ -392,7 +392,7 @@ public class TermuxCrashUtils implements CrashHandler.CrashHandlerClient {
                                                                           final int notificationMode) {
         return TermuxNotificationUtils.getTermuxOrPluginAppNotificationBuilder(
             currentPackageContext, termuxPackageContext,
-            TermuxConstants.TERMUX_CRASH_REPORTS_NOTIFICATION_CHANNEL_ID, Notification.PRIORITY_HIGH,
+            TermuxConstants.TERMUX_CRASH_REPORTS_NOTIFICATION_CHANNEL_ID, NotificationCompat.PRIORITY_HIGH,
             title, notificationText, notificationBigText, contentIntent, deleteIntent, notificationMode);
     }
 
