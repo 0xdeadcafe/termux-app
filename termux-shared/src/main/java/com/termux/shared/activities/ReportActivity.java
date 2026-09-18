@@ -24,17 +24,15 @@ import com.termux.shared.file.filesystem.FileType;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.errors.Error;
 import com.termux.shared.termux.TermuxConstants;
+import com.termux.shared.markdown.MarkdownBlockAdapter;
 import com.termux.shared.markdown.MarkdownUtils;
 import com.termux.shared.interact.ShareUtils;
 import com.termux.shared.models.ReportInfo;
 import com.termux.shared.theme.NightMode;
 
-import org.commonmark.node.FencedCodeBlock;
 import org.jetbrains.annotations.NotNull;
 
-import io.noties.markwon.Markwon;
-import io.noties.markwon.recycler.MarkwonAdapter;
-import io.noties.markwon.recycler.SimpleEntry;
+import java.util.List;
 
 /**
  * An activity to show reports in markdown format as per CommonMark spec based on config passed as {@link ReportInfo}.
@@ -156,18 +154,12 @@ public class ReportActivity extends AppCompatActivity {
 
         RecyclerView recyclerView = findViewById(R.id.recycler_view);
 
-        final Markwon markwon = MarkdownUtils.getRecyclerMarkwonBuilder(this);
-
-        final MarkwonAdapter adapter = MarkwonAdapter.builderTextViewIsRoot(R.layout.markdown_adapter_node_default)
-            .include(FencedCodeBlock.class, SimpleEntry.create(R.layout.markdown_adapter_node_code_block, R.id.code_text_view))
-            .build();
+        generateReportActivityMarkdownString();
+        List<MarkdownUtils.MarkdownBlock> blocks = MarkdownUtils.parseMarkdownBlocks(this, mReportActivityMarkdownString);
+        MarkdownBlockAdapter adapter = new MarkdownBlockAdapter(blocks);
 
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setAdapter(adapter);
-
-        generateReportActivityMarkdownString();
-        adapter.setMarkdown(markwon, mReportActivityMarkdownString);
-        adapter.notifyDataSetChanged();
     }
 
 
