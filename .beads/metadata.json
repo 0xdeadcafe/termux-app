@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "termux_app",
+  "project_id": "275911b9-76f5-429f-b7e5-21a432ee2bcf"
+}
