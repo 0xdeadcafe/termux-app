@@ -10,6 +10,7 @@ import com.termux.shared.R;
 import com.termux.shared.data.DataUtils;
 import com.termux.shared.markdown.MarkdownUtils;
 import com.termux.shared.errors.Error;
+import com.termux.shared.errors.TermuxException;
 import com.termux.shared.file.FileUtils;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.errors.FunctionErrno;
@@ -34,7 +35,9 @@ public class ResultSender {
      * @param logStdoutAndStderr Set to {@code true} if {@link ResultData#stdout} and {@link ResultData#stderr}
      *                           should be logged.
      * @return Returns the {@link Error} if failed to send the result, otherwise {@code null}.
+     * @deprecated Use {@link #sendCommandResultDataOrThrow(Context, String, String, ResultConfig, ResultData, boolean)} instead.
      */
+    @Deprecated
     public static Error sendCommandResultData(Context context, String logTag, String label, ResultConfig resultConfig, ResultData resultData, boolean logStdoutAndStderr) {
         if (context == null || resultConfig == null || resultData == null)
             return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETERS.getError("context, resultConfig or resultData", "sendCommandResultData");
@@ -55,6 +58,15 @@ public class ResultSender {
     }
 
     /**
+     * Exception-throwing sibling of {@link #sendCommandResultData(Context, String, String, ResultConfig, ResultData, boolean)}.
+     * @throws TermuxException If failed to send the result.
+     */
+    @SuppressWarnings("deprecation")
+    public static void sendCommandResultDataOrThrow(Context context, String logTag, String label, ResultConfig resultConfig, ResultData resultData, boolean logStdoutAndStderr) throws TermuxException {
+        TermuxException.throwIfFailed(sendCommandResultData(context, logTag, label, resultConfig, resultData, logStdoutAndStderr));
+    }
+
+    /**
      * Send result stored in {@link ResultConfig} to command caller via {@link ResultConfig#resultPendingIntent}.
      *
      * @param context The {@link Context} for operations.
@@ -65,7 +77,9 @@ public class ResultSender {
      * @param logStdoutAndStderr Set to {@code true} if {@link ResultData#stdout} and {@link ResultData#stderr}
      *                           should be logged.
      * @return Returns the {@link Error} if failed to send the result, otherwise {@code null}.
+     * @deprecated Use {@link #sendCommandResultDataWithPendingIntentOrThrow(Context, String, String, ResultConfig, ResultData, boolean)} instead.
      */
+    @Deprecated
     public static Error sendCommandResultDataWithPendingIntent(Context context, String logTag, String label, ResultConfig resultConfig, ResultData resultData, boolean logStdoutAndStderr) {
         if (context == null || resultConfig == null || resultData == null || resultConfig.resultPendingIntent == null || resultConfig.resultBundleKey == null)
             return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError("context, resultConfig, resultData, resultConfig.resultPendingIntent or resultConfig.resultBundleKey", "sendCommandResultDataWithPendingIntent");
@@ -145,6 +159,15 @@ public class ResultSender {
     }
 
     /**
+     * Exception-throwing sibling of {@link #sendCommandResultDataWithPendingIntent(Context, String, String, ResultConfig, ResultData, boolean)}.
+     * @throws TermuxException If failed to send the result.
+     */
+    @SuppressWarnings("deprecation")
+    public static void sendCommandResultDataWithPendingIntentOrThrow(Context context, String logTag, String label, ResultConfig resultConfig, ResultData resultData, boolean logStdoutAndStderr) throws TermuxException {
+        TermuxException.throwIfFailed(sendCommandResultDataWithPendingIntent(context, logTag, label, resultConfig, resultData, logStdoutAndStderr));
+    }
+
+    /**
      * Send result stored in {@link ResultConfig} to command caller by writing it to files in
      * {@link ResultConfig#resultDirectoryPath}.
      *
@@ -156,7 +179,9 @@ public class ResultSender {
      * @param logStdoutAndStderr Set to {@code true} if {@link ResultData#stdout} and {@link ResultData#stderr}
      *                           should be logged.
      * @return Returns the {@link Error} if failed to send the result, otherwise {@code null}.
+     * @deprecated Use {@link #sendCommandResultDataToDirectoryOrThrow(Context, String, String, ResultConfig, ResultData, boolean)} instead.
      */
+    @Deprecated
     public static Error sendCommandResultDataToDirectory(Context context, String logTag, String label, ResultConfig resultConfig, ResultData resultData, boolean logStdoutAndStderr) {
         if (context == null || resultConfig == null || resultData == null || DataUtils.isNullOrEmpty(resultConfig.resultDirectoryPath))
             return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError("context, resultConfig, resultData or resultConfig.resultDirectoryPath", "sendCommandResultDataToDirectory");
@@ -344,6 +369,15 @@ public class ResultSender {
         }
 
         return null;
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #sendCommandResultDataToDirectory(Context, String, String, ResultConfig, ResultData, boolean)}.
+     * @throws TermuxException If failed to send the result.
+     */
+    @SuppressWarnings("deprecation")
+    public static void sendCommandResultDataToDirectoryOrThrow(Context context, String logTag, String label, ResultConfig resultConfig, ResultData resultData, boolean logStdoutAndStderr) throws TermuxException {
+        TermuxException.throwIfFailed(sendCommandResultDataToDirectory(context, logTag, label, resultConfig, resultData, logStdoutAndStderr));
     }
 
 }
