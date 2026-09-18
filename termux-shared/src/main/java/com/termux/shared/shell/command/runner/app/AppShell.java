@@ -190,8 +190,6 @@ public final class AppShell {
                 STDIN.write((mExecutionCommand.stdin + "\n").getBytes(StandardCharsets.UTF_8));
                 STDIN.flush();
                 STDIN.close();
-                //STDIN.write("exit\n".getBytes(StandardCharsets.UTF_8));
-                //STDIN.flush();
             } catch(IOException e) {
                 if (e.getMessage() != null && (e.getMessage().contains("EPIPE") || e.getMessage().contains("Stream closed"))) {
                     // Method most horrid to catch broken pipe, in which case we

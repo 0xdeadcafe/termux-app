@@ -172,6 +172,9 @@ public class LocalClientSocket implements Closeable {
         return null;
     }
 
+    /** Maximum number of bytes allowed in a single AM-socket message (1 MiB). */
+    private static final int MAX_READ_DATA_SIZE = 1024 * 1024;
+
     /**
      * Attempts to read all the bytes available on {@link SocketInputStream} and appends them to
      * {@code data} {@link StringBuilder}.
@@ -190,6 +193,10 @@ public class LocalClientSocket implements Closeable {
         try {
             while ((c = inputStreamReader.read()) > 0) {
                 data.append((char) c);
+                if (data.length() > MAX_READ_DATA_SIZE) {
+                    return LocalSocketErrno.ERRNO_READ_DATA_FROM_INPUT_STREAM_OF_CLIENT_SOCKET_FAILED_WITH_EXCEPTION.getError(
+                        mLocalSocketRunConfig.getTitle(), "AM command exceeds " + MAX_READ_DATA_SIZE + " byte limit");
+                }
             }
         } catch (IOException e) {
             // The SocketInputStream.read() throws the Error message in an IOException,

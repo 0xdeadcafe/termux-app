@@ -230,7 +230,7 @@ public class TermuxOpenReceiver extends BroadcastReceiver {
                 throw new IllegalArgumentException(e);
             }
 
-            return ParcelFileDescriptor.open(file, ParcelFileDescriptor.parseMode(mode));
+            return ParcelFileDescriptor.open(new File(path), ParcelFileDescriptor.parseMode(mode));
         }
     }
 

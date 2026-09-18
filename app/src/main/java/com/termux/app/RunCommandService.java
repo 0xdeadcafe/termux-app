@@ -5,7 +5,6 @@ import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Intent;
 import android.net.Uri;
-import android.os.Binder;
 import android.os.Build;
 import android.os.IBinder;
 
@@ -37,15 +36,9 @@ public class RunCommandService extends Service {
 
     private static final String LOG_TAG = "RunCommandService";
 
-    class LocalBinder extends Binder {
-        public final RunCommandService service = RunCommandService.this;
-    }
-
-    private final IBinder mBinder = new RunCommandService.LocalBinder();
-
     @Override
     public IBinder onBind(Intent intent) {
-        return mBinder;
+        return null; // This service is not designed to be bound
     }
 
     @Override

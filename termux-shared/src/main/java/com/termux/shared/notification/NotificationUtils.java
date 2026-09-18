@@ -109,33 +109,35 @@ public class NotificationUtils {
 
     public static Notification.Builder setNotificationDefaults(Notification.Builder builder, final int notificationMode) {
 
-        // TODO: setDefaults() is deprecated and should also implement setting notification mode via notification channel
         switch (notificationMode) {
             case NOTIFICATION_MODE_NONE:
                 Logger.logWarn(LOG_TAG, "The NOTIFICATION_MODE_NONE passed to setNotificationDefaults(), force setting builder to null.");
                 return null; // return null since notification is not supposed to be shown
             case NOTIFICATION_MODE_SILENT:
                 break;
+            // On API 26+, sound/vibrate/lights are controlled by the NotificationChannel that was
+            // created in setupNotificationChannel(). setDefaults() is a no-op above O but kept
+            // here for API 21-25 compatibility.
             case NOTIFICATION_MODE_SOUND:
-                builder.setDefaults(Notification.DEFAULT_SOUND);
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) builder.setDefaults(Notification.DEFAULT_SOUND);
                 break;
             case NOTIFICATION_MODE_VIBRATE:
-                builder.setDefaults(Notification.DEFAULT_VIBRATE);
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) builder.setDefaults(Notification.DEFAULT_VIBRATE);
                 break;
             case NOTIFICATION_MODE_LIGHTS:
-                builder.setDefaults(Notification.DEFAULT_LIGHTS);
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) builder.setDefaults(Notification.DEFAULT_LIGHTS);
                 break;
             case NOTIFICATION_MODE_SOUND_AND_VIBRATE:
-                builder.setDefaults(Notification.DEFAULT_SOUND | Notification.DEFAULT_VIBRATE);
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) builder.setDefaults(Notification.DEFAULT_SOUND | Notification.DEFAULT_VIBRATE);
                 break;
             case NOTIFICATION_MODE_SOUND_AND_LIGHTS:
-                builder.setDefaults(Notification.DEFAULT_SOUND | Notification.DEFAULT_LIGHTS);
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) builder.setDefaults(Notification.DEFAULT_SOUND | Notification.DEFAULT_LIGHTS);
                 break;
             case NOTIFICATION_MODE_VIBRATE_AND_LIGHTS:
-                builder.setDefaults(Notification.DEFAULT_VIBRATE | Notification.DEFAULT_LIGHTS);
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) builder.setDefaults(Notification.DEFAULT_VIBRATE | Notification.DEFAULT_LIGHTS);
                 break;
             case NOTIFICATION_MODE_ALL:
-                builder.setDefaults(Notification.DEFAULT_ALL);
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) builder.setDefaults(Notification.DEFAULT_ALL);
                 break;
             default:
                 Logger.logError(LOG_TAG, "Invalid notificationMode: \"" + notificationMode + "\" passed to setNotificationDefaults()");
