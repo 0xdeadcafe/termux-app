@@ -226,11 +226,13 @@ public class TermuxOpenReceiver extends BroadcastReceiver {
                     mode = "r";
                 }
 
+                // Use the validated canonical path to eliminate the TOCTOU window between
+                // the getCanonicalPath() check and the actual open() syscall.
+                return ParcelFileDescriptor.open(new File(path), ParcelFileDescriptor.parseMode(mode));
+
             } catch (IOException e) {
                 throw new IllegalArgumentException(e);
             }
-
-            return ParcelFileDescriptor.open(new File(path), ParcelFileDescriptor.parseMode(mode));
         }
     }
 

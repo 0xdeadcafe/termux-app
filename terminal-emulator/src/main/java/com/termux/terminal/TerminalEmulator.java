@@ -3273,7 +3273,7 @@ public final class TerminalEmulator {
                 }
             }
             if (!firstArg) buf.append('}');
-            finishSequenceAndLogError(buf.toString());
+            Logger.logWarn(mClient, LOG_TAG, buf.toString());
         }
     }
 

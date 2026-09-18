@@ -48,7 +48,6 @@ public class RunCommandService extends Service {
     }
 
     @Override
-    @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Logger.logDebug(LOG_TAG, "onStartCommand");
 

@@ -107,7 +107,7 @@ public class FileUtils {
         if (path == null) return null;
 
         path = path.replaceAll("/+", "/");
-        path = path.replaceAll("(\\./|(?:(?:^|/)\\.\.(?=/|$)))", "");
+        path = path.replaceAll("(\\./|(?:(?:^|/)\\.\\.(?=/|$)))", "");
         path = path.replaceAll("\\.\\./", "");
         path = path.replaceAll("\\./", "");
 
