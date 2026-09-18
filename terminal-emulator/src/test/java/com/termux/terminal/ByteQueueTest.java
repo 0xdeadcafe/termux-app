@@ -51,4 +51,32 @@ public class ByteQueueTest extends TestCase {
 		assertEquals(0, q.read(new byte[128], false));
 	}
 
+	/** write(buf, 0, 0) must be a silent no-op — was IllegalArgumentException before beads-x0g. */
+	public void testZeroLengthWriteIsNoOp() throws Exception {
+		ByteQueue q = new ByteQueue(10);
+		assertTrue("zero-length write must return true", q.write(new byte[3], 0, 0));
+		// Queue must still be empty — non-blocking read returns 0.
+		assertEquals(0, q.read(new byte[10], false));
+	}
+
+	/** Zero effective length via non-zero offset must also be a no-op. */
+	public void testZeroLengthWriteWithOffsetIsNoOp() throws Exception {
+		ByteQueue q = new ByteQueue(10);
+		assertTrue("zero-length write with offset must return true", q.write(new byte[3], 3, 0));
+		assertEquals(0, q.read(new byte[10], false));
+	}
+
+	/** Zero-length write must not disturb data already in the queue. */
+	public void testZeroLengthWriteDoesNotCorruptExistingData() throws Exception {
+		ByteQueue q = new ByteQueue(10);
+		q.write(new byte[]{7, 8, 9}, 0, 3);
+		// Zero-length write sandwiched between real writes.
+		assertTrue(q.write(new byte[0], 0, 0));
+		byte[] out = new byte[10];
+		assertEquals(3, q.read(out, true));
+		assertEquals(7, out[0]);
+		assertEquals(8, out[1]);
+		assertEquals(9, out[2]);
+	}
+
 }
