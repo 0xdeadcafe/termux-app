@@ -2,7 +2,6 @@ package com.termux.shared.termux.shell;
 
 import android.content.Context;
 import android.content.Intent;
-import android.widget.ArrayAdapter;
 
 import androidx.annotation.NonNull;
 

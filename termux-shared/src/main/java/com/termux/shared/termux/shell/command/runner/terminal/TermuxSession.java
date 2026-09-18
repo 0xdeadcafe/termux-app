@@ -202,7 +202,7 @@ public class TermuxSession {
     }
 
     /**
-     * Kill this {@link TermuxSession} by sending a {@link OsConstants#SIGILL} to its {@link #mTerminalSession}
+     * Kill this {@link TermuxSession} by sending a {@link OsConstants#SIGKILL} to its {@link #mTerminalSession}
      * if its still executing.
      *
      * @param context The {@link Context} for operations.

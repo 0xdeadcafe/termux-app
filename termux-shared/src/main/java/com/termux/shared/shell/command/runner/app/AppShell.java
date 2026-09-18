@@ -140,7 +140,9 @@ public final class AppShell {
             try {
                 appShell.executeInner(currentPackageContext);
             } catch (IllegalThreadStateException | InterruptedException e) {
-                // TODO: Should either of these be handled or returned?
+                // Restore interrupt flag if interrupted so callers and the thread scheduler
+                // are aware the thread was interrupted.
+                if (e instanceof InterruptedException) Thread.currentThread().interrupt();
             }
         } else {
             new Thread() {
@@ -149,7 +151,7 @@ public final class AppShell {
                     try {
                         appShell.executeInner(currentPackageContext);
                     } catch (IllegalThreadStateException | InterruptedException e) {
-                        // TODO: Should either of these be handled or returned?
+                        if (e instanceof InterruptedException) Thread.currentThread().interrupt();
                     }
                 }
             }.start();
@@ -246,7 +248,7 @@ public final class AppShell {
     }
 
     /**
-     * Kill this {@link AppShell} by sending a {@link OsConstants#SIGILL} to its {@link #mProcess}
+     * Kill this {@link AppShell} by sending a {@link OsConstants#SIGKILL} to its {@link #mProcess}
      * if its still executing.
      *
      * @param context The {@link Context} for operations.
@@ -275,7 +277,7 @@ public final class AppShell {
     }
 
     /**
-     * Kill this {@link AppShell} by sending a {@link OsConstants#SIGILL} to its {@link #mProcess}.
+     * Kill this {@link AppShell} by sending a {@link OsConstants#SIGKILL} to its {@link #mProcess}.
      */
     public void kill() {
         int pid = ShellUtils.getPid(mProcess);

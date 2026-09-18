@@ -515,7 +515,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
                 Logger.logVerbose(LOG_TAG, "The onTermuxTaskExited() callback called for \"" + executionCommand.getCommandIdAndLabelLogString() + "\" TermuxTask command");
 
                 // If the execution command was started for a plugin, then process the results
-                if (executionCommand != null && executionCommand.isPluginExecutionCommand)
+                if (executionCommand.isPluginExecutionCommand)
                     TermuxPluginUtils.processPluginExecutionCommandResult(this, LOG_TAG, executionCommand);
 
                 synchronized (TermuxService.this) {
@@ -648,7 +648,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
             Logger.logVerbose(LOG_TAG, "The onTermuxSessionExited() callback called for \"" + executionCommand.getCommandIdAndLabelLogString() + "\" TermuxSession command");
 
             // If the execution command was started for a plugin, then process the results
-            if (executionCommand != null && executionCommand.isPluginExecutionCommand)
+            if (executionCommand.isPluginExecutionCommand)
                 TermuxPluginUtils.processPluginExecutionCommandResult(this, LOG_TAG, executionCommand);
 
             mShellManager.mTermuxSessions.remove(termuxSession);

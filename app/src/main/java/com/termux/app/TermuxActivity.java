@@ -531,9 +531,15 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         final ViewPager terminalToolbarViewPager = getTerminalToolbarViewPager();
         if (terminalToolbarViewPager == null) return;
 
+        if (mTermuxTerminalExtraKeys.getExtraKeysInfo() == null) {
+            // No extra keys configured — hide the toolbar so it doesn't occupy a zero-pixel slot
+            terminalToolbarViewPager.setVisibility(View.GONE);
+            return;
+        }
+
         ViewGroup.LayoutParams layoutParams = terminalToolbarViewPager.getLayoutParams();
         layoutParams.height = Math.round(mTerminalToolbarDefaultHeight *
-            (mTermuxTerminalExtraKeys.getExtraKeysInfo() == null ? 0 : mTermuxTerminalExtraKeys.getExtraKeysInfo().getMatrix().length) *
+            mTermuxTerminalExtraKeys.getExtraKeysInfo().getMatrix().length *
             mProperties.getTerminalToolbarHeightScaleFactor());
         terminalToolbarViewPager.setLayoutParams(layoutParams);
     }
