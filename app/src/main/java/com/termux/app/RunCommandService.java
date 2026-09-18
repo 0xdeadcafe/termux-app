@@ -48,14 +48,27 @@ public class RunCommandService extends Service {
     }
 
     @Override
+    @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Logger.logDebug(LOG_TAG, "onStartCommand");
 
         if (intent == null) return Service.START_NOT_STICKY;
 
-        // Run again in case service is already started and onCreate() is not called
+        // Start foreground notification before spawning the background thread so the service
+        // is not killed while the background work (SharedPreferences / file I/O) is running.
         runStartForeground();
 
+        // Move all intent processing to a background thread to avoid blocking the main thread
+        // with disk I/O (properties file, SharedPreferences, canonical path, file validation)
+        // which risks an ANR after 5 seconds.
+        final Intent intentToProcess = intent;
+        new Thread(() -> processCommandIntentAsync(intentToProcess)).start();
+
+        return Service.START_NOT_STICKY;
+    }
+
+    /** Processes the RUN_COMMAND intent on a background thread. */
+    private void processCommandIntentAsync(Intent intent) {
         Logger.logVerboseExtended(LOG_TAG, "Intent Received:\n" + IntentUtils.getIntentString(intent));
 
         ExecutionCommand executionCommand = new ExecutionCommand();
@@ -69,7 +82,7 @@ public class RunCommandService extends Service {
             errmsg = this.getString(R.string.error_run_command_service_invalid_intent_action, intent.getAction());
             executionCommand.setStateFailed(Errno.ERRNO_FAILED.getCode(), errmsg);
             TermuxPluginUtils.processPluginExecutionCommandError(this, LOG_TAG, executionCommand, false);
-            return stopService();
+            stopService(); return;
         }
 
         String executableExtra = executionCommand.executable = IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_COMMAND_PATH, null);
@@ -104,7 +117,7 @@ public class RunCommandService extends Service {
             errmsg = this.getString(R.string.error_run_command_service_invalid_execution_command_runner, executionCommand.runner);
             executionCommand.setStateFailed(Errno.ERRNO_FAILED.getCode(), errmsg);
             TermuxPluginUtils.processPluginExecutionCommandError(this, LOG_TAG, executionCommand, false);
-            return stopService();
+            stopService(); return;
         }
 
         executionCommand.backgroundCustomLogLevel = IntentUtils.getIntegerExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_BACKGROUND_CUSTOM_LOG_LEVEL, null);
@@ -126,7 +139,7 @@ public class RunCommandService extends Service {
         if (errmsg != null) {
             executionCommand.setStateFailed(Errno.ERRNO_FAILED.getCode(), errmsg);
             TermuxPluginUtils.processPluginExecutionCommandError(this, LOG_TAG, executionCommand, true);
-            return stopService();
+            stopService(); return;
         }
 
         // Do not send result back to any file based result config before "allow-external-app"
@@ -157,7 +170,7 @@ public class RunCommandService extends Service {
             errmsg  = this.getString(R.string.error_run_command_service_mandatory_extra_missing, RUN_COMMAND_SERVICE.EXTRA_COMMAND_PATH);
             executionCommand.setStateFailed(Errno.ERRNO_FAILED.getCode(), errmsg);
             TermuxPluginUtils.processPluginExecutionCommandError(this, LOG_TAG, executionCommand, false);
-            return stopService();
+            stopService(); return;
         }
 
         // Get canonical path of executable
@@ -171,7 +184,7 @@ public class RunCommandService extends Service {
         if (error != null) {
             executionCommand.setStateFailed(error);
             TermuxPluginUtils.processPluginExecutionCommandError(this, LOG_TAG, executionCommand, false);
-            return stopService();
+            stopService(); return;
         }
 
 
@@ -192,7 +205,7 @@ public class RunCommandService extends Service {
             if (error != null) {
                 executionCommand.setStateFailed(error);
                 TermuxPluginUtils.processPluginExecutionCommandError(this, LOG_TAG, executionCommand, false);
-                return stopService();
+                stopService(); return;
             }
         }
 
@@ -242,12 +255,12 @@ public class RunCommandService extends Service {
             this.startService(execIntent);
         }
 
-        return stopService();
+        stopService();
     }
 
-    private int stopService() {
+    private void stopService() {
         runStopForeground();
-        return Service.START_NOT_STICKY;
+        stopSelf();
     }
 
     private void runStartForeground() {
