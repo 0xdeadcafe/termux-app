@@ -8,6 +8,12 @@ on:
   pull_request:
     branches:
       - master
+  workflow_dispatch:
+    inputs:
+      package_variant:
+        description: 'Package variant (apt-android-7 or apt-android-5)'
+        required: false
+        default: 'apt-android-7'
 
 jobs:
   build:
