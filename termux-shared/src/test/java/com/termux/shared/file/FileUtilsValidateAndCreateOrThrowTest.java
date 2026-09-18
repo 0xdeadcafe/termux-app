@@ -14,6 +14,8 @@ import org.robolectric.RobolectricTestRunner;
 import java.io.File;
 import java.util.Collections;
 
+import com.termux.shared.file.filesystem.NativeDispatcherEnoentFixRule;
+
 /**
  * Unit tests for the validate*OrThrow and create*OrThrow sibling methods added for beads-km2.
  *
@@ -25,12 +27,19 @@ import java.util.Collections;
  * already-existing paths (both the correct-type no-op path and the wrong-type error path), which
  * stat correctly under Robolectric, to still get real coverage of the Error-to-TermuxException
  * conversion this migration is about.
+ *
+ * <p>{@code createsGenuinelyNewFile}/{@code createsGenuinelyNewDirectory} below are the exception
+ * to that: they use {@link NativeDispatcherEnoentFixRule} (beads-94h's fix) to prove the
+ * previously-unreliable "create something that does not exist yet" branch now works correctly.
  */
 @RunWith(RobolectricTestRunner.class)
 public class FileUtilsValidateAndCreateOrThrowTest {
 
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
+
+    @Rule
+    public NativeDispatcherEnoentFixRule enoentFix = new NativeDispatcherEnoentFixRule();
 
     @Test
     public void validateDirectoryFileEmptyOrThrow_doesNotThrowForEmptyDirectory() throws TermuxException {
@@ -67,6 +76,20 @@ public class FileUtilsValidateAndCreateOrThrowTest {
     }
 
     @Test
+    public void createRegularFileOrThrow_createsGenuinelyNewFile() throws Exception {
+        // Unlike the rest of this test class, this exercises the previously-broken-under-Robolectric
+        // "path does not exist yet, go create it" branch, now fixed via NativeDispatcherEnoentFixRule
+        // (beads-94h).
+        File file = new File(tempFolder.getRoot(), "brand-new-file.txt");
+        assertTrue(!file.exists());
+
+        FileUtils.createRegularFileOrThrow("test", file.getAbsolutePath(), null, false, false);
+
+        assertTrue(file.exists());
+        assertTrue(file.isFile());
+    }
+
+    @Test
     public void createRegularFileOrThrow_throwsWhenPathIsAnExistingDirectory() throws Exception {
         File dir = tempFolder.newFolder("existing-dir");
 
@@ -80,6 +103,18 @@ public class FileUtilsValidateAndCreateOrThrowTest {
 
         FileUtils.createDirectoryFileOrThrow("test", dir.getAbsolutePath(), null, false, false);
 
+        assertTrue(dir.isDirectory());
+    }
+
+    @Test
+    public void createDirectoryFileOrThrow_createsGenuinelyNewDirectory() throws Exception {
+        // See createRegularFileOrThrow_createsGenuinelyNewFile re NativeDispatcherEnoentFixRule.
+        File dir = new File(tempFolder.getRoot(), "brand-new-dir");
+        assertTrue(!dir.exists());
+
+        FileUtils.createDirectoryFileOrThrow("test", dir.getAbsolutePath(), null, false, false);
+
+        assertTrue(dir.exists());
         assertTrue(dir.isDirectory());
     }
 
