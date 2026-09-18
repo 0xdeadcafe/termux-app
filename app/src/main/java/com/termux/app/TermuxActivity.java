@@ -610,6 +610,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         if (getDrawer().isDrawerOpen(Gravity.LEFT)) {
             getDrawer().closeDrawers();
         } else {
+            super.onBackPressed();
             finishActivityIfNotFinishing();
         }
     }
