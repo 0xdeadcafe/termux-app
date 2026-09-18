@@ -216,7 +216,9 @@ public class FileUtils {
      * Returns {@code FileUtilsErrno#ERRNO_NON_EMPTY_DIRECTORY_FILE} if a file was found that did not
      * exist in the {@code ignoredSubFilePaths}, otherwise returns an appropriate {@code error} if
      * checking was not successful.
+     * @deprecated Use {@link #validateDirectoryFileEmptyOrOnlyContainsSpecificFilesOrThrow(String, String, List, boolean)} instead.
      */
+    @Deprecated
     public static Error validateDirectoryFileEmptyOrOnlyContainsSpecificFiles(String label, String filePath,
                                                                               final List<String> ignoredSubFilePaths,
                                                                               final boolean ignoreNonExistentFile) {
@@ -261,6 +263,17 @@ public class FileUtils {
         }
 
         return null;
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #validateDirectoryFileEmptyOrOnlyContainsSpecificFiles(String, String, List, boolean)}.
+     * @throws TermuxException If directory is not empty or contains files not in {@code ignoredSubFilePaths}, or checking failed.
+     */
+    @SuppressWarnings("deprecation")
+    public static void validateDirectoryFileEmptyOrOnlyContainsSpecificFilesOrThrow(String label, String filePath,
+                                                                                     final List<String> ignoredSubFilePaths,
+                                                                                     final boolean ignoreNonExistentFile) throws TermuxException {
+        TermuxException.throwIfFailed(validateDirectoryFileEmptyOrOnlyContainsSpecificFiles(label, filePath, ignoredSubFilePaths, ignoreNonExistentFile));
     }
 
     /**
@@ -415,7 +428,9 @@ public class FileUtils {
      *                                               {@code parentDirPath}.
      * @return Returns the {@code error} if path is not a regular file, or validating permissions
      * failed, otherwise {@code null}.
+     * @deprecated Use {@link #validateRegularFileExistenceAndPermissionsOrThrow(String, String, String, String, boolean, boolean, boolean)} instead.
      */
+    @Deprecated
     public static Error validateRegularFileExistenceAndPermissions(String label, final String filePath, final String parentDirPath,
                                                                    final String permissionsToCheck, final boolean setPermissions, final boolean setMissingPermissionsOnly,
                                                                    final boolean ignoreErrorsIfPathIsUnderParentDirPath) {
@@ -471,6 +486,18 @@ public class FileUtils {
     }
 
     /**
+     * Exception-throwing sibling of {@link #validateRegularFileExistenceAndPermissions(String, String, String, String, boolean, boolean, boolean)}.
+     * @throws TermuxException If path is not a regular file, or validating permissions failed.
+     */
+    @SuppressWarnings("deprecation")
+    public static void validateRegularFileExistenceAndPermissionsOrThrow(String label, final String filePath, final String parentDirPath,
+                                                                          final String permissionsToCheck, final boolean setPermissions, final boolean setMissingPermissionsOnly,
+                                                                          final boolean ignoreErrorsIfPathIsUnderParentDirPath) throws TermuxException {
+        TermuxException.throwIfFailed(validateRegularFileExistenceAndPermissions(label, filePath, parentDirPath,
+            permissionsToCheck, setPermissions, setMissingPermissionsOnly, ignoreErrorsIfPathIsUnderParentDirPath));
+    }
+
+    /**
      * Validate the existence and permissions of directory file at path.
      *
      * If the {@code parentDirPath} is not {@code null}, then creation of missing directory and
@@ -496,7 +523,9 @@ public class FileUtils {
      *                              executable permissions, but ignoring if it fails.
      * @return Returns the {@code error} if path is not a directory file, failed to create it,
      * or validating permissions failed, otherwise {@code null}.
+     * @deprecated Use {@link #validateDirectoryFileExistenceAndPermissionsOrThrow(String, String, String, boolean, String, boolean, boolean, boolean, boolean)} instead.
      */
+    @Deprecated
     public static Error validateDirectoryFileExistenceAndPermissions(String label, final String filePath, final String parentDirPath, final boolean createDirectoryIfMissing,
                                                                      final String permissionsToCheck, final boolean setPermissions, final boolean setMissingPermissionsOnly,
                                                                      final boolean ignoreErrorsIfPathIsInParentDirPath, final boolean ignoreIfNotExecutable) {
@@ -564,6 +593,18 @@ public class FileUtils {
         return null;
     }
 
+    /**
+     * Exception-throwing sibling of {@link #validateDirectoryFileExistenceAndPermissions(String, String, String, boolean, String, boolean, boolean, boolean, boolean)}.
+     * @throws TermuxException If path is not a directory file, failed to create it, or validating permissions failed.
+     */
+    @SuppressWarnings("deprecation")
+    public static void validateDirectoryFileExistenceAndPermissionsOrThrow(String label, final String filePath, final String parentDirPath, final boolean createDirectoryIfMissing,
+                                                                            final String permissionsToCheck, final boolean setPermissions, final boolean setMissingPermissionsOnly,
+                                                                            final boolean ignoreErrorsIfPathIsInParentDirPath, final boolean ignoreIfNotExecutable) throws TermuxException {
+        TermuxException.throwIfFailed(validateDirectoryFileExistenceAndPermissions(label, filePath, parentDirPath, createDirectoryIfMissing,
+            permissionsToCheck, setPermissions, setMissingPermissionsOnly, ignoreErrorsIfPathIsInParentDirPath, ignoreIfNotExecutable));
+    }
+
 
 
     /**
@@ -575,9 +616,20 @@ public class FileUtils {
      * @param filePath The {@code path} for regular file to create.
      * @return Returns the {@code error} if path is not a regular file or failed to create it,
      * otherwise {@code null}.
+     * @deprecated Use {@link #createRegularFileOrThrow(String)} instead.
      */
+    @Deprecated
     public static Error createRegularFile(final String filePath) {
         return createRegularFile(null, filePath);
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #createRegularFile(String)}.
+     * @throws TermuxException If path is not a regular file or failed to create it.
+     */
+    @SuppressWarnings("deprecation")
+    public static void createRegularFileOrThrow(final String filePath) throws TermuxException {
+        TermuxException.throwIfFailed(createRegularFile(filePath));
     }
 
     /**
@@ -590,10 +642,21 @@ public class FileUtils {
      * @param filePath The {@code path} for regular file to create.
      * @return Returns the {@code error} if path is not a regular file or failed to create it,
      * otherwise {@code null}.
+     * @deprecated Use {@link #createRegularFileOrThrow(String, String)} instead.
      */
+    @Deprecated
     public static Error createRegularFile(final String label, final String filePath) {
         return createRegularFile(label, filePath,
             null, false, false);
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #createRegularFile(String, String)}.
+     * @throws TermuxException If path is not a regular file or failed to create it.
+     */
+    @SuppressWarnings("deprecation")
+    public static void createRegularFileOrThrow(final String label, final String filePath) throws TermuxException {
+        TermuxException.throwIfFailed(createRegularFile(label, filePath));
     }
 
     /**
@@ -611,7 +674,9 @@ public class FileUtils {
      *                                  are to be set or if they should be overridden.
      * @return Returns the {@code error} if path is not a regular file, failed to create it,
      * or validating permissions failed, otherwise {@code null}.
+     * @deprecated Use {@link #createRegularFileOrThrow(String, String, String, boolean, boolean)} instead.
      */
+    @Deprecated
     public static Error createRegularFile(String label, final String filePath,
                                           final String permissionsToCheck, final boolean setPermissions, final boolean setMissingPermissionsOnly) {
         label = (label == null || label.isEmpty() ? "" : label + " ");
@@ -652,6 +717,16 @@ public class FileUtils {
             false);
     }
 
+    /**
+     * Exception-throwing sibling of {@link #createRegularFile(String, String, String, boolean, boolean)}.
+     * @throws TermuxException If path is not a regular file, failed to create it, or validating permissions failed.
+     */
+    @SuppressWarnings("deprecation")
+    public static void createRegularFileOrThrow(String label, final String filePath,
+                                                 final String permissionsToCheck, final boolean setPermissions, final boolean setMissingPermissionsOnly) throws TermuxException {
+        TermuxException.throwIfFailed(createRegularFile(label, filePath, permissionsToCheck, setPermissions, setMissingPermissionsOnly));
+    }
+
 
 
     /**
@@ -664,7 +739,9 @@ public class FileUtils {
      * @param filePath The {@code path} for file whose parent needs to be created.
      * @return Returns the {@code error} if parent path is not a directory file or failed to create it,
      * otherwise {@code null}.
+     * @deprecated Use {@link #createParentDirectoryFileOrThrow(String, String)} instead.
      */
+    @Deprecated
     public static Error createParentDirectoryFile(final String label, final String filePath) {
         if (filePath == null || filePath.isEmpty()) return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "createParentDirectoryFile");
 
@@ -676,6 +753,15 @@ public class FileUtils {
                 null, false, false);
         else
             return null;
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #createParentDirectoryFile(String, String)}.
+     * @throws TermuxException If parent path is not a directory file or failed to create it.
+     */
+    @SuppressWarnings("deprecation")
+    public static void createParentDirectoryFileOrThrow(final String label, final String filePath) throws TermuxException {
+        TermuxException.throwIfFailed(createParentDirectoryFile(label, filePath));
     }
 
     /**
@@ -693,6 +779,15 @@ public class FileUtils {
     }
 
     /**
+     * Exception-throwing sibling of {@link #createDirectoryFile(String)}.
+     * @throws TermuxException If path is not a directory file or failed to create it.
+     */
+    @SuppressWarnings("deprecation")
+    public static void createDirectoryFileOrThrow(final String filePath) throws TermuxException {
+        TermuxException.throwIfFailed(createDirectoryFile(filePath));
+    }
+
+    /**
      * Create a directory file at path.
      *
      * This function is a wrapper for
@@ -702,10 +797,21 @@ public class FileUtils {
      * @param filePath The {@code path} for directory file to create.
      * @return Returns the {@code error} if path is not a directory file or failed to create it,
      * otherwise {@code null}.
+     * @deprecated Use {@link #createDirectoryFileOrThrow(String, String)} instead.
      */
+    @Deprecated
     public static Error createDirectoryFile(final String label, final String filePath) {
         return createDirectoryFile(label, filePath,
             null, false, false);
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #createDirectoryFile(String, String)}.
+     * @throws TermuxException If path is not a directory file or failed to create it.
+     */
+    @SuppressWarnings("deprecation")
+    public static void createDirectoryFileOrThrow(final String label, final String filePath) throws TermuxException {
+        TermuxException.throwIfFailed(createDirectoryFile(label, filePath));
     }
 
     /**
@@ -723,13 +829,25 @@ public class FileUtils {
      *                                  are to be set or if they should be overridden.
      * @return Returns the {@code error} if path is not a directory file, failed to create it,
      * or validating permissions failed, otherwise {@code null}.
+     * @deprecated Use {@link #createDirectoryFileOrThrow(String, String, String, boolean, boolean)} instead.
      */
+    @Deprecated
     public static Error createDirectoryFile(final String label, final String filePath,
                                             final String permissionsToCheck, final boolean setPermissions, final boolean setMissingPermissionsOnly) {
         return validateDirectoryFileExistenceAndPermissions(label, filePath,
             null, true,
             permissionsToCheck, setPermissions, setMissingPermissionsOnly,
             false, false);
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #createDirectoryFile(String, String, String, boolean, boolean)}.
+     * @throws TermuxException If path is not a directory file, failed to create it, or validating permissions failed.
+     */
+    @SuppressWarnings("deprecation")
+    public static void createDirectoryFileOrThrow(final String label, final String filePath,
+                                                   final String permissionsToCheck, final boolean setPermissions, final boolean setMissingPermissionsOnly) throws TermuxException {
+        TermuxException.throwIfFailed(createDirectoryFile(label, filePath, permissionsToCheck, setPermissions, setMissingPermissionsOnly));
     }
 
 
@@ -747,10 +865,21 @@ public class FileUtils {
      * @param destFilePath The {@code path} AT which the symlink file will be created.
      * @return Returns the {@code error} if path is not a symlink file, failed to create it,
      * otherwise {@code null}.
+     * @deprecated Use {@link #createSymlinkFileOrThrow(String, String)} instead.
      */
+    @Deprecated
     public static Error createSymlinkFile(final String targetFilePath, final String destFilePath) {
         return createSymlinkFile(null, targetFilePath, destFilePath,
             true, true, true);
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #createSymlinkFile(String, String)}.
+     * @throws TermuxException If path is not a symlink file or failed to create it.
+     */
+    @SuppressWarnings("deprecation")
+    public static void createSymlinkFileOrThrow(final String targetFilePath, final String destFilePath) throws TermuxException {
+        TermuxException.throwIfFailed(createSymlinkFile(targetFilePath, destFilePath));
     }
 
     /**
@@ -767,10 +896,21 @@ public class FileUtils {
      * @param destFilePath The {@code path} AT which the symlink file will be created.
      * @return Returns the {@code error} if path is not a symlink file, failed to create it,
      * otherwise {@code null}.
+     * @deprecated Use {@link #createSymlinkFileOrThrow(String, String, String)} instead.
      */
+    @Deprecated
     public static Error createSymlinkFile(String label, final String targetFilePath, final String destFilePath) {
         return createSymlinkFile(label, targetFilePath, destFilePath,
             true, true, true);
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #createSymlinkFile(String, String, String)}.
+     * @throws TermuxException If path is not a symlink file or failed to create it.
+     */
+    @SuppressWarnings("deprecation")
+    public static void createSymlinkFileOrThrow(String label, final String targetFilePath, final String destFilePath) throws TermuxException {
+        TermuxException.throwIfFailed(createSymlinkFile(label, targetFilePath, destFilePath));
     }
 
     /**
@@ -788,7 +928,9 @@ public class FileUtils {
      *                                         only be done if destination file is also a symlink.
      * @return Returns the {@code error} if path is not a symlink file, failed to create it,
      * or validating permissions failed, otherwise {@code null}.
+     * @deprecated Use {@link #createSymlinkFileOrThrow(String, String, String, boolean, boolean, boolean)} instead.
      */
+    @Deprecated
     public static Error createSymlinkFile(String label, final String targetFilePath, final String destFilePath,
                                           final boolean allowDangling, final boolean overwrite, final boolean overwriteOnlyIfDestIsASymlink) {
         label = (label == null || label.isEmpty() ? "" : label + " ");
@@ -850,6 +992,16 @@ public class FileUtils {
         }
 
         return null;
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #createSymlinkFile(String, String, String, boolean, boolean, boolean)}.
+     * @throws TermuxException If path is not a symlink file, failed to create it, or validating permissions failed.
+     */
+    @SuppressWarnings("deprecation")
+    public static void createSymlinkFileOrThrow(String label, final String targetFilePath, final String destFilePath,
+                                                 final boolean allowDangling, final boolean overwrite, final boolean overwriteOnlyIfDestIsASymlink) throws TermuxException {
+        TermuxException.throwIfFailed(createSymlinkFile(label, targetFilePath, destFilePath, allowDangling, overwrite, overwriteOnlyIfDestIsASymlink));
     }
 
 
