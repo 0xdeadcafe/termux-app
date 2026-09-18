@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 
 import com.termux.shared.data.DataUtils;
 import com.termux.shared.errors.Error;
+import com.termux.shared.errors.TermuxException;
 import com.termux.shared.jni.models.JniResult;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.markdown.MarkdownUtils;
@@ -65,7 +66,10 @@ public class LocalClientSocket implements Closeable {
     }
 
 
-    /** Close client socket. */
+    /** Close client socket.
+     * @deprecated Use {@link #closeClientSocketOrThrow(boolean)} instead.
+     */
+    @Deprecated
     public synchronized Error closeClientSocket(boolean logErrorMessage) {
         try {
             close();
@@ -77,6 +81,15 @@ public class LocalClientSocket implements Closeable {
         }
 
         return null;
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #closeClientSocket(boolean)}.
+     * @throws TermuxException If closing client socket failed.
+     */
+    @SuppressWarnings("deprecation")
+    public synchronized void closeClientSocketOrThrow(boolean logErrorMessage) throws TermuxException {
+        TermuxException.throwIfFailed(closeClientSocket(logErrorMessage));
     }
 
     /** Close client socket that exists at fd. */
@@ -119,7 +132,9 @@ public class LocalClientSocket implements Closeable {
      * @param bytesRead The actual bytes read.
      * @return Returns the {@code error} if reading was not successful containing {@link JniResult}
      * error {@link String}, otherwise {@code null}.
+     * @deprecated Use {@link #readOrThrow(byte[], MutableInt)} instead.
      */
+    @Deprecated
     public Error read(@NonNull byte[] data, MutableInt bytesRead) {
         bytesRead.value = 0;
 
@@ -141,6 +156,15 @@ public class LocalClientSocket implements Closeable {
     }
 
     /**
+     * Exception-throwing sibling of {@link #read(byte[], MutableInt)}.
+     * @throws TermuxException If reading was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public void readOrThrow(@NonNull byte[] data, MutableInt bytesRead) throws TermuxException {
+        TermuxException.throwIfFailed(read(data, bytesRead));
+    }
+
+    /**
      * Attempts to send data buffer to the file descriptor.
      *
      * If while sending the {@link #mCreationTime} + the milliseconds returned by
@@ -154,7 +178,9 @@ public class LocalClientSocket implements Closeable {
      * @param data The data buffer containing bytes to send.
      * @return Returns the {@code error} if sending was not successful containing {@link JniResult}
      * error {@link String}, otherwise {@code null}.
+     * @deprecated Use {@link #sendOrThrow(byte[])} instead.
      */
+    @Deprecated
     public Error send(@NonNull byte[] data) {
         if (mFD < 0) {
             return LocalSocketErrno.ERRNO_USING_CLIENT_SOCKET_WITH_INVALID_FD.getError(mFD,
@@ -172,6 +198,15 @@ public class LocalClientSocket implements Closeable {
         return null;
     }
 
+    /**
+     * Exception-throwing sibling of {@link #send(byte[])}.
+     * @throws TermuxException If sending was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public void sendOrThrow(@NonNull byte[] data) throws TermuxException {
+        TermuxException.throwIfFailed(send(data));
+    }
+
     /** Maximum number of bytes allowed in a single AM-socket message (1 MiB). */
     private static final int MAX_READ_DATA_SIZE = 1024 * 1024;
 
@@ -186,7 +221,9 @@ public class LocalClientSocket implements Closeable {
      *                            and further attempts to read from socket will fail.
      * @return Returns the {@code error} if reading was not successful containing {@link JniResult}
      * error {@link String}, otherwise {@code null}.
+     * @deprecated Use {@link #readDataOnInputStreamOrThrow(StringBuilder, boolean)} instead.
      */
+    @Deprecated
     public Error readDataOnInputStream(@NonNull StringBuilder data, boolean closeStreamOnFinish) {
         int c;
         InputStreamReader inputStreamReader = getInputStreamReader();
@@ -220,6 +257,15 @@ public class LocalClientSocket implements Closeable {
     }
 
     /**
+     * Exception-throwing sibling of {@link #readDataOnInputStream(StringBuilder, boolean)}.
+     * @throws TermuxException If reading was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public void readDataOnInputStreamOrThrow(@NonNull StringBuilder data, boolean closeStreamOnFinish) throws TermuxException {
+        TermuxException.throwIfFailed(readDataOnInputStream(data, closeStreamOnFinish));
+    }
+
+    /**
      * Attempts to send all the bytes passed to {@link SocketOutputStream} .
      *
      * This is a wrapper for {@link #send(byte[])} called via {@link SocketOutputStream#write(int)}.
@@ -229,7 +275,9 @@ public class LocalClientSocket implements Closeable {
      *                            and further attempts to send to socket will fail.
      * @return Returns the {@code error} if sending was not successful containing {@link JniResult}
      * error {@link String}, otherwise {@code null}.
+     * @deprecated Use {@link #sendDataToOutputStreamOrThrow(String, boolean)} instead.
      */
+    @Deprecated
     public Error sendDataToOutputStream(@NonNull String data, boolean closeStreamOnFinish) {
 
         OutputStreamWriter outputStreamWriter = getOutputStreamWriter();
@@ -259,16 +307,40 @@ public class LocalClientSocket implements Closeable {
         return null;
     }
 
+    /**
+     * Exception-throwing sibling of {@link #sendDataToOutputStream(String, boolean)}.
+     * @throws TermuxException If sending was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public void sendDataToOutputStreamOrThrow(@NonNull String data, boolean closeStreamOnFinish) throws TermuxException {
+        TermuxException.throwIfFailed(sendDataToOutputStream(data, closeStreamOnFinish));
+    }
+
     /** Wrapper for {@link #available(MutableInt, boolean)} that checks deadline. The
-     * {@link SocketInputStream} calls this. */
+     * {@link SocketInputStream} calls this.
+     * @deprecated Use {@link #availableOrThrow(MutableInt)} instead.
+     */
+    @Deprecated
+    @SuppressWarnings("deprecation")
     public Error available(MutableInt available) {
         return available(available, true);
     }
 
     /**
+     * Exception-throwing sibling of {@link #available(MutableInt)}.
+     * @throws TermuxException If getting available bytes was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public void availableOrThrow(MutableInt available) throws TermuxException {
+        TermuxException.throwIfFailed(available(available));
+    }
+
+    /**
      * Get available bytes on {@link #mInputStream} and optionally check if value returned by
      * {@link LocalSocketRunConfig#getDeadline()} has passed.
+     * @deprecated Use {@link #availableOrThrow(MutableInt, boolean)} instead.
      */
+    @Deprecated
     public Error available(MutableInt available, boolean checkDeadline) {
         available.value = 0;
 
@@ -291,9 +363,21 @@ public class LocalClientSocket implements Closeable {
         return null;
     }
 
+    /**
+     * Exception-throwing sibling of {@link #available(MutableInt, boolean)}.
+     * @throws TermuxException If getting available bytes was not successful.
+     */
+    @SuppressWarnings("deprecation")
+    public void availableOrThrow(MutableInt available, boolean checkDeadline) throws TermuxException {
+        TermuxException.throwIfFailed(available(available, checkDeadline));
+    }
 
 
-    /** Set {@link LocalClientSocket} receiving (SO_RCVTIMEO) timeout to value returned by {@link LocalSocketRunConfig#getReceiveTimeout()}. */
+
+    /** Set {@link LocalClientSocket} receiving (SO_RCVTIMEO) timeout to value returned by {@link LocalSocketRunConfig#getReceiveTimeout()}.
+     * @deprecated Use {@link #setReadTimeoutOrThrow()} instead.
+     */
+    @Deprecated
     public Error setReadTimeout() {
         if (mFD >= 0) {
             JniResult result = LocalSocketManager.setSocketReadTimeout(mLocalSocketRunConfig.getLogTitle() + " (client)",
@@ -306,7 +390,19 @@ public class LocalClientSocket implements Closeable {
         return null;
     }
 
-    /** Set {@link LocalClientSocket} sending (SO_SNDTIMEO) timeout to value returned by {@link LocalSocketRunConfig#getSendTimeout()}. */
+    /**
+     * Exception-throwing sibling of {@link #setReadTimeout()}.
+     * @throws TermuxException If setting the read timeout failed.
+     */
+    @SuppressWarnings("deprecation")
+    public void setReadTimeoutOrThrow() throws TermuxException {
+        TermuxException.throwIfFailed(setReadTimeout());
+    }
+
+    /** Set {@link LocalClientSocket} sending (SO_SNDTIMEO) timeout to value returned by {@link LocalSocketRunConfig#getSendTimeout()}.
+     * @deprecated Use {@link #setWriteTimeoutOrThrow()} instead.
+     */
+    @Deprecated
     public Error setWriteTimeout() {
         if (mFD >= 0) {
             JniResult result = LocalSocketManager.setSocketSendTimeout(mLocalSocketRunConfig.getLogTitle() + " (client)",
@@ -317,6 +413,15 @@ public class LocalClientSocket implements Closeable {
             }
         }
         return null;
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #setWriteTimeout()}.
+     * @throws TermuxException If setting the write timeout failed.
+     */
+    @SuppressWarnings("deprecation")
+    public void setWriteTimeoutOrThrow() throws TermuxException {
+        TermuxException.throwIfFailed(setWriteTimeout());
     }
 
 
@@ -414,6 +519,7 @@ public class LocalClientSocket implements Closeable {
 
 
     /** The {@link InputStream} implementation for the {@link LocalClientSocket}. */
+    @SuppressWarnings("deprecation") // intentionally uses the Error-returning read()/available() to convert to IOException
     protected class SocketInputStream extends InputStream {
         private final byte[] mBytes = new byte[1];
 
@@ -465,6 +571,7 @@ public class LocalClientSocket implements Closeable {
 
 
     /** The {@link OutputStream} implementation for the {@link LocalClientSocket}. */
+    @SuppressWarnings("deprecation") // intentionally uses the Error-returning send() to convert to IOException
     protected class SocketOutputStream extends OutputStream {
         private final byte[] mBytes = new byte[1];
 

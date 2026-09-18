@@ -3,6 +3,7 @@ package com.termux.shared.net.socket.local;
 import androidx.annotation.NonNull;
 
 import com.termux.shared.errors.Error;
+import com.termux.shared.errors.TermuxException;
 import com.termux.shared.file.FileUtils;
 import com.termux.shared.jni.models.JniResult;
 import com.termux.shared.logger.Logger;
@@ -48,7 +49,10 @@ public class LocalServerSocket implements Closeable {
         mClientSocketListener = new Thread(new ClientSocketListener());
     }
 
-    /** Start server by creating server socket. */
+    /** Start server by creating server socket.
+     * @deprecated Use {@link #startOrThrow()} instead.
+     */
+    @Deprecated
     public synchronized Error start() {
         Logger.logDebug(LOG_TAG, "start");
 
@@ -123,7 +127,19 @@ public class LocalServerSocket implements Closeable {
         return null;
     }
 
-    /** Stop server. */
+    /**
+     * Exception-throwing sibling of {@link #start()}.
+     * @throws TermuxException If starting server failed.
+     */
+    @SuppressWarnings("deprecation")
+    public synchronized void startOrThrow() throws TermuxException {
+        TermuxException.throwIfFailed(start());
+    }
+
+    /** Stop server.
+     * @deprecated Use {@link #stopOrThrow()} instead.
+     */
+    @Deprecated
     public synchronized Error stop() {
         Logger.logDebug(LOG_TAG, "stop");
 
@@ -139,7 +155,19 @@ public class LocalServerSocket implements Closeable {
         return deleteServerSocketFile();
     }
 
-    /** Close server socket. */
+    /**
+     * Exception-throwing sibling of {@link #stop()}.
+     * @throws TermuxException If stopping server failed.
+     */
+    @SuppressWarnings("deprecation")
+    public synchronized void stopOrThrow() throws TermuxException {
+        TermuxException.throwIfFailed(stop());
+    }
+
+    /** Close server socket.
+     * @deprecated Use {@link #closeServerSocketOrThrow(boolean)} instead.
+     */
+    @Deprecated
     public synchronized Error closeServerSocket(boolean logErrorMessage) {
         Logger.logDebug(LOG_TAG, "closeServerSocket");
 
@@ -153,6 +181,15 @@ public class LocalServerSocket implements Closeable {
         }
 
         return null;
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #closeServerSocket(boolean)}.
+     * @throws TermuxException If closing server socket failed.
+     */
+    @SuppressWarnings("deprecation")
+    public synchronized void closeServerSocketOrThrow(boolean logErrorMessage) throws TermuxException {
+        TermuxException.throwIfFailed(closeServerSocket(logErrorMessage));
     }
 
     /** Implementation for {@link Closeable#close()} to close server socket. */

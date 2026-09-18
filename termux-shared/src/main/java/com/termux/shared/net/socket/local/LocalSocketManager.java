@@ -6,6 +6,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.termux.shared.errors.Error;
+import com.termux.shared.errors.TermuxException;
 import com.termux.shared.jni.models.JniResult;
 import com.termux.shared.logger.Logger;
 
@@ -66,7 +67,9 @@ public class LocalSocketManager {
 
     /**
      * Create the {@link LocalServerSocket} and start listening for new {@link LocalClientSocket}.
+     * @deprecated Use {@link #startOrThrow()} instead.
      */
+    @Deprecated
     public synchronized Error start() {
         Logger.logDebugExtended(LOG_TAG, "start\n" + mLocalSocketRunConfig);
 
@@ -87,8 +90,19 @@ public class LocalSocketManager {
     }
 
     /**
-     * Stop the {@link LocalServerSocket} and stop listening for new {@link LocalClientSocket}.
+     * Exception-throwing sibling of {@link #start()}.
+     * @throws TermuxException If starting server failed.
      */
+    @SuppressWarnings("deprecation")
+    public synchronized void startOrThrow() throws TermuxException {
+        TermuxException.throwIfFailed(start());
+    }
+
+    /**
+     * Stop the {@link LocalServerSocket} and stop listening for new {@link LocalClientSocket}.
+     * @deprecated Use {@link #stopOrThrow()} instead.
+     */
+    @Deprecated
     public synchronized Error stop() {
         if (mIsRunning) {
             Logger.logDebugExtended(LOG_TAG, "stop\n" + mLocalSocketRunConfig);
@@ -96,6 +110,15 @@ public class LocalSocketManager {
             return mServerSocket.stop();
         }
         return null;
+    }
+
+    /**
+     * Exception-throwing sibling of {@link #stop()}.
+     * @throws TermuxException If stopping server failed.
+     */
+    @SuppressWarnings("deprecation")
+    public synchronized void stopOrThrow() throws TermuxException {
+        TermuxException.throwIfFailed(stop());
     }
 
 
