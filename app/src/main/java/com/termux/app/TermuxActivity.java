@@ -50,7 +50,7 @@ import com.termux.shared.termux.extrakeys.ExtraKeysView;
 import com.termux.shared.termux.interact.TextInputDialogUtils;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.termux.TermuxUtils;
-import com.termux.shared.termux.settings.properties.TermuxAppSharedProperties;
+import com.termux.shared.termux.settings.properties.TermuxProperties;
 import com.termux.shared.termux.theme.TermuxThemeUtils;
 import com.termux.shared.theme.NightMode;
 import com.termux.shared.view.ViewUtils;
@@ -110,9 +110,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private TermuxAppSharedPreferences mPreferences;
 
     /**
-     * Termux app SharedProperties loaded from termux.properties
+     * Termux app properties loaded from termux.properties
      */
-    private TermuxAppSharedProperties mProperties;
+    private TermuxProperties mProperties;
 
     /**
      * The root view of the {@link TermuxActivity}.
@@ -206,8 +206,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         // Delete ReportInfo serialized object files from cache older than 14 days
         ReportActivity.deleteReportInfoFilesOlderThanXDays(this, 14, false);
 
-        // Load Termux app SharedProperties from disk
-        mProperties = TermuxAppSharedProperties.getProperties();
+        // Load Termux app properties from disk
+        mProperties = TermuxProperties.getProperties();
         reloadProperties();
 
         setActivityTheme();
@@ -444,7 +444,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
 
     private void reloadProperties() {
-        mProperties.loadTermuxPropertiesFromDisk();
+        mProperties.loadFromDisk();
 
         if (mTermuxTerminalViewClient != null)
             mTermuxTerminalViewClient.onReloadProperties();
@@ -909,7 +909,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         return mPreferences;
     }
 
-    public TermuxAppSharedProperties getProperties() {
+    public TermuxProperties getProperties() {
         return mProperties;
     }
 

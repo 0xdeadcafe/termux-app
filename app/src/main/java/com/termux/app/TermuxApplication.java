@@ -11,7 +11,7 @@ import com.termux.shared.termux.TermuxConstants;
 import com.termux.shared.termux.crash.TermuxCrashUtils;
 import com.termux.shared.termux.file.TermuxFileUtils;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
-import com.termux.shared.termux.settings.properties.TermuxAppSharedProperties;
+import com.termux.shared.termux.settings.properties.TermuxProperties;
 import com.termux.shared.termux.shell.command.environment.TermuxShellEnvironment;
 import com.termux.shared.termux.shell.am.TermuxAmSocketServer;
 import com.termux.shared.termux.shell.TermuxShellManager;
@@ -37,8 +37,8 @@ public class TermuxApplication extends Application {
         // Set TermuxBootstrap.TERMUX_APP_PACKAGE_MANAGER and TermuxBootstrap.TERMUX_APP_PACKAGE_VARIANT
         TermuxBootstrap.setTermuxPackageManagerAndVariant(BuildConfig.TERMUX_PACKAGE_VARIANT);
 
-        // Init app wide SharedProperties loaded from termux.properties
-        TermuxAppSharedProperties properties = TermuxAppSharedProperties.init(context);
+        // Init app wide TermuxProperties loaded from termux.properties
+        TermuxProperties properties = TermuxProperties.init(context);
 
         // Init app wide shell manager
         TermuxShellManager shellManager = TermuxShellManager.init(context);

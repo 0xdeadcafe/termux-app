@@ -9,7 +9,7 @@ import com.termux.shared.file.filesystem.FileTypes;
 import com.termux.shared.termux.TermuxConstants;
 import com.termux.shared.file.FileUtils;
 import com.termux.shared.logger.Logger;
-import com.termux.shared.termux.settings.properties.TermuxAppSharedProperties;
+import com.termux.shared.termux.settings.properties.TermuxProperties;
 
 import org.apache.commons.io.filefilter.TrueFileFilter;
 
@@ -93,7 +93,7 @@ public class TermuxShellUtils {
         if(onlyIfExists && !FileUtils.directoryFileExists(TermuxConstants.TERMUX_TMP_PREFIX_DIR_PATH, false))
             return;
 
-        TermuxAppSharedProperties properties = TermuxAppSharedProperties.getProperties();
+        TermuxProperties properties = TermuxProperties.getProperties();
         int days = properties.getDeleteTMPDIRFilesOlderThanXDaysOnExit();
 
         // Disable currently until FileUtils.deleteFilesOlderThanXDays() is fixed.

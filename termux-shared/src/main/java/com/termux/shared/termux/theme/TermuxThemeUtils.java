@@ -6,7 +6,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.termux.shared.termux.settings.properties.TermuxPropertyConstants;
-import com.termux.shared.termux.settings.properties.TermuxSharedProperties;
+import com.termux.shared.termux.settings.properties.TermuxProperties;
 import com.termux.shared.theme.NightMode;
 
 public class TermuxThemeUtils {
@@ -14,7 +14,7 @@ public class TermuxThemeUtils {
     /** Get the {@link TermuxPropertyConstants#KEY_NIGHT_MODE} value from the properties file on disk
      * and set it to app wide night mode value. */
     public static void setAppNightMode(@NonNull Context context) {
-        NightMode.setAppNightMode(TermuxSharedProperties.getNightMode(context));
+        NightMode.setAppNightMode(TermuxProperties.getNightMode(context));
     }
 
     /** Set name as app wide night mode value. */

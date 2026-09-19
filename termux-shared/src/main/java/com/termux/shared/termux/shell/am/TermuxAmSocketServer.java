@@ -18,7 +18,7 @@ import com.termux.shared.shell.am.AmSocketServer;
 import com.termux.shared.termux.TermuxConstants;
 import com.termux.shared.termux.crash.TermuxCrashUtils;
 import com.termux.shared.termux.plugins.TermuxPluginUtils;
-import com.termux.shared.termux.settings.properties.TermuxAppSharedProperties;
+import com.termux.shared.termux.settings.properties.TermuxProperties;
 import com.termux.shared.termux.settings.properties.TermuxPropertyConstants;
 import com.termux.shared.termux.shell.command.environment.TermuxAppShellEnvironment;
 
@@ -78,7 +78,7 @@ public class TermuxAmSocketServer {
     public static void setupTermuxAmSocketServer(@NonNull Context context) {
         // Start termux-am-socket server if enabled by user
         boolean enabled = false;
-        if (TermuxAppSharedProperties.getProperties().shouldRunTermuxAmSocketServer()) {
+        if (TermuxProperties.getProperties().shouldRunTermuxAmSocketServer()) {
             Logger.logDebug(LOG_TAG, "Starting " + TITLE + " socket server since its enabled");
             start(context);
             if (termuxAmSocketServer != null && termuxAmSocketServer.isRunning()) {
@@ -126,7 +126,7 @@ public class TermuxAmSocketServer {
      * value of {@link TermuxPropertyConstants#KEY_RUN_TERMUX_AM_SOCKET_SERVER}.
      */
     public static synchronized void updateState(@NonNull Context context) {
-        TermuxAppSharedProperties properties = TermuxAppSharedProperties.getProperties();
+        TermuxProperties properties = TermuxProperties.getProperties();
         if (properties.shouldRunTermuxAmSocketServer()) {
             if (termuxAmSocketServer == null) {
                 Logger.logDebug(LOG_TAG, "updateState: Starting " + TITLE + " socket server");

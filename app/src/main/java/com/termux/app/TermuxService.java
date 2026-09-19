@@ -28,7 +28,7 @@ import com.termux.shared.net.uri.UriUtils;
 import com.termux.shared.errors.Errno;
 import com.termux.shared.shell.ShellUtils;
 import com.termux.shared.shell.command.runner.app.AppShell;
-import com.termux.shared.termux.settings.properties.TermuxAppSharedProperties;
+import com.termux.shared.termux.settings.properties.TermuxProperties;
 import com.termux.shared.termux.shell.command.environment.TermuxShellEnvironment;
 import com.termux.shared.termux.shell.TermuxShellUtils;
 import com.termux.shared.termux.TermuxConstants;
@@ -98,7 +98,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     /**
      * Termux app shared properties manager, loaded from termux.properties
      */
-    private TermuxAppSharedProperties mProperties;
+    private TermuxProperties mProperties;
 
     /**
      * Termux app shell manager
@@ -118,9 +118,9 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     public void onCreate() {
         Logger.logVerbose(LOG_TAG, "onCreate");
 
-        // Get Termux app SharedProperties without loading from disk since TermuxApplication handles
+        // Get Termux app properties without loading from disk since TermuxApplication handles
         // load and TermuxActivity handles reloads
-        mProperties = TermuxAppSharedProperties.getProperties();
+        mProperties = TermuxProperties.getProperties();
 
         mShellManager = TermuxShellManager.getShellManager();
 

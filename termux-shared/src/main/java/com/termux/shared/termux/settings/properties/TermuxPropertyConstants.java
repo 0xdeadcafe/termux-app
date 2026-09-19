@@ -4,15 +4,17 @@ import com.termux.shared.termux.shell.am.TermuxAmSocketServer;
 import com.termux.shared.theme.NightMode;
 import com.termux.shared.file.FileUtils;
 import com.termux.shared.file.filesystem.FileType;
-import com.termux.shared.settings.properties.SharedProperties;
 import com.termux.shared.termux.TermuxConstants;
 import com.termux.shared.logger.Logger;
 import com.termux.terminal.TerminalEmulator;
 import com.termux.view.TerminalView;
 
 import java.io.File;
+import java.util.AbstractMap;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -83,7 +85,7 @@ import java.util.Set;
  */
 
 /**
- * A class that defines shared constants of the SharedProperties used by Termux app and its plugins.
+ * A class that defines constants for the properties used by Termux app and its plugins.
  * This class will be hosted by termux-shared lib and should be imported by other termux plugin
  * apps as is instead of copying constants to random classes. The 3rd party apps can also import
  * it for interacting with termux apps. If changes are made to this file, increment the version number
@@ -94,6 +96,21 @@ import java.util.Set;
  * {@link TermuxConstants#TERMUX_PROPERTIES_SECONDARY_FILE_PATH}
  */
 public final class TermuxPropertyConstants {
+
+    /**
+     * Build an immutable, insertion-order-preserving {@link Map} from the given entries.
+     */
+    @SafeVarargs
+    static <K, V> Map<K, V> mapOf(Map.Entry<K, V>... entries) {
+        Map<K, V> map = new LinkedHashMap<>();
+        for (Map.Entry<K, V> entry : entries) map.put(entry.getKey(), entry.getValue());
+        return Collections.unmodifiableMap(map);
+    }
+
+    /** Build a {@link Map.Entry} for use with {@link #mapOf(Map.Entry[])}. */
+    static <K, V> Map.Entry<K, V> entry(K key, V value) {
+        return new AbstractMap.SimpleEntry<>(key, value);
+    }
 
     private static final String LOG_TAG = "TermuxPropertyConstants";
 
@@ -181,10 +198,10 @@ public final class TermuxPropertyConstants {
     public static final int DEFAULT_IVALUE_BELL_BEHAVIOUR = IVALUE_BELL_BEHAVIOUR_VIBRATE;
 
     /** Defines the bidirectional map for bell behaviour values and their internal values */
-    public static final Map<String, Integer> MAP_BELL_BEHAVIOUR = SharedProperties.mapOf(
-        SharedProperties.entry(VALUE_BELL_BEHAVIOUR_VIBRATE, IVALUE_BELL_BEHAVIOUR_VIBRATE),
-        SharedProperties.entry(VALUE_BELL_BEHAVIOUR_BEEP, IVALUE_BELL_BEHAVIOUR_BEEP),
-        SharedProperties.entry(VALUE_BELL_BEHAVIOUR_IGNORE, IVALUE_BELL_BEHAVIOUR_IGNORE));
+    public static final Map<String, Integer> MAP_BELL_BEHAVIOUR = mapOf(
+        entry(VALUE_BELL_BEHAVIOUR_VIBRATE, IVALUE_BELL_BEHAVIOUR_VIBRATE),
+        entry(VALUE_BELL_BEHAVIOUR_BEEP, IVALUE_BELL_BEHAVIOUR_BEEP),
+        entry(VALUE_BELL_BEHAVIOUR_IGNORE, IVALUE_BELL_BEHAVIOUR_IGNORE));
 
 
 
@@ -209,10 +226,10 @@ public final class TermuxPropertyConstants {
     public static final int DEFAULT_IVALUE_TERMINAL_CURSOR_STYLE = TerminalEmulator.DEFAULT_TERMINAL_CURSOR_STYLE;
 
     /** Defines the bidirectional map for terminal cursor styles and their internal values */
-    public static final Map<String, Integer> MAP_TERMINAL_CURSOR_STYLE = SharedProperties.mapOf(
-        SharedProperties.entry(VALUE_TERMINAL_CURSOR_STYLE_BLOCK, IVALUE_TERMINAL_CURSOR_STYLE_BLOCK),
-        SharedProperties.entry(VALUE_TERMINAL_CURSOR_STYLE_UNDERLINE, IVALUE_TERMINAL_CURSOR_STYLE_UNDERLINE),
-        SharedProperties.entry(VALUE_TERMINAL_CURSOR_STYLE_BAR, IVALUE_TERMINAL_CURSOR_STYLE_BAR));
+    public static final Map<String, Integer> MAP_TERMINAL_CURSOR_STYLE = mapOf(
+        entry(VALUE_TERMINAL_CURSOR_STYLE_BLOCK, IVALUE_TERMINAL_CURSOR_STYLE_BLOCK),
+        entry(VALUE_TERMINAL_CURSOR_STYLE_UNDERLINE, IVALUE_TERMINAL_CURSOR_STYLE_UNDERLINE),
+        entry(VALUE_TERMINAL_CURSOR_STYLE_BAR, IVALUE_TERMINAL_CURSOR_STYLE_BAR));
 
 
 
@@ -282,11 +299,11 @@ public final class TermuxPropertyConstants {
     public static final int ACTION_SHORTCUT_RENAME_SESSION = 4;
 
     /** Defines the bidirectional map for session shortcut values and their internal actions */
-    public static final Map<String, Integer> MAP_SESSION_SHORTCUTS = SharedProperties.mapOf(
-        SharedProperties.entry(KEY_SHORTCUT_CREATE_SESSION, ACTION_SHORTCUT_CREATE_SESSION),
-        SharedProperties.entry(KEY_SHORTCUT_NEXT_SESSION, ACTION_SHORTCUT_NEXT_SESSION),
-        SharedProperties.entry(KEY_SHORTCUT_PREVIOUS_SESSION, ACTION_SHORTCUT_PREVIOUS_SESSION),
-        SharedProperties.entry(KEY_SHORTCUT_RENAME_SESSION, ACTION_SHORTCUT_RENAME_SESSION));
+    public static final Map<String, Integer> MAP_SESSION_SHORTCUTS = mapOf(
+        entry(KEY_SHORTCUT_CREATE_SESSION, ACTION_SHORTCUT_CREATE_SESSION),
+        entry(KEY_SHORTCUT_NEXT_SESSION, ACTION_SHORTCUT_NEXT_SESSION),
+        entry(KEY_SHORTCUT_PREVIOUS_SESSION, ACTION_SHORTCUT_PREVIOUS_SESSION),
+        entry(KEY_SHORTCUT_RENAME_SESSION, ACTION_SHORTCUT_RENAME_SESSION));
 
 
 
@@ -302,9 +319,9 @@ public final class TermuxPropertyConstants {
     public static final String DEFAULT_IVALUE_BACK_KEY_BEHAVIOUR = IVALUE_BACK_KEY_BEHAVIOUR_BACK;
 
     /** Defines the bidirectional map for back key behaviour values and their internal values */
-    public static final Map<String, String> MAP_BACK_KEY_BEHAVIOUR = SharedProperties.mapOf(
-        SharedProperties.entry(IVALUE_BACK_KEY_BEHAVIOUR_BACK, IVALUE_BACK_KEY_BEHAVIOUR_BACK),
-        SharedProperties.entry(IVALUE_BACK_KEY_BEHAVIOUR_ESCAPE, IVALUE_BACK_KEY_BEHAVIOUR_ESCAPE));
+    public static final Map<String, String> MAP_BACK_KEY_BEHAVIOUR = mapOf(
+        entry(IVALUE_BACK_KEY_BEHAVIOUR_BACK, IVALUE_BACK_KEY_BEHAVIOUR_BACK),
+        entry(IVALUE_BACK_KEY_BEHAVIOUR_ESCAPE, IVALUE_BACK_KEY_BEHAVIOUR_ESCAPE));
 
 
 
@@ -335,10 +352,10 @@ public final class TermuxPropertyConstants {
     public static final String DEFAULT_IVALUE_NIGHT_MODE = IVALUE_NIGHT_MODE_SYSTEM;
 
     /** Defines the bidirectional map for {@link NightMode} values and their internal values */
-    public static final Map<String, String> MAP_NIGHT_MODE = SharedProperties.mapOf(
-        SharedProperties.entry(IVALUE_NIGHT_MODE_TRUE, IVALUE_NIGHT_MODE_TRUE),
-        SharedProperties.entry(IVALUE_NIGHT_MODE_FALSE, IVALUE_NIGHT_MODE_FALSE),
-        SharedProperties.entry(IVALUE_NIGHT_MODE_SYSTEM, IVALUE_NIGHT_MODE_SYSTEM));
+    public static final Map<String, String> MAP_NIGHT_MODE = mapOf(
+        entry(IVALUE_NIGHT_MODE_TRUE, IVALUE_NIGHT_MODE_TRUE),
+        entry(IVALUE_NIGHT_MODE_FALSE, IVALUE_NIGHT_MODE_FALSE),
+        entry(IVALUE_NIGHT_MODE_SYSTEM, IVALUE_NIGHT_MODE_SYSTEM));
 
 
 
@@ -350,9 +367,9 @@ public final class TermuxPropertyConstants {
     public static final String DEFAULT_IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR = IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_SHOW_HIDE;
 
     /** Defines the bidirectional map for toggle soft keyboard behaviour values and their internal values */
-    public static final Map<String, String> MAP_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR = SharedProperties.mapOf(
-        SharedProperties.entry(IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_SHOW_HIDE, IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_SHOW_HIDE),
-        SharedProperties.entry(IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_ENABLE_DISABLE, IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_ENABLE_DISABLE));
+    public static final Map<String, String> MAP_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR = mapOf(
+        entry(IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_SHOW_HIDE, IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_SHOW_HIDE),
+        entry(IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_ENABLE_DISABLE, IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_ENABLE_DISABLE));
 
 
 
@@ -364,16 +381,16 @@ public final class TermuxPropertyConstants {
     public static final String DEFAULT_IVALUE_VOLUME_KEYS_BEHAVIOUR = IVALUE_VOLUME_KEY_BEHAVIOUR_VIRTUAL;
 
     /** Defines the bidirectional map for volume keys behaviour values and their internal values */
-    public static final Map<String, String> MAP_VOLUME_KEYS_BEHAVIOUR = SharedProperties.mapOf(
-        SharedProperties.entry(IVALUE_VOLUME_KEY_BEHAVIOUR_VIRTUAL, IVALUE_VOLUME_KEY_BEHAVIOUR_VIRTUAL),
-        SharedProperties.entry(IVALUE_VOLUME_KEY_BEHAVIOUR_VOLUME, IVALUE_VOLUME_KEY_BEHAVIOUR_VOLUME));
+    public static final Map<String, String> MAP_VOLUME_KEYS_BEHAVIOUR = mapOf(
+        entry(IVALUE_VOLUME_KEY_BEHAVIOUR_VIRTUAL, IVALUE_VOLUME_KEY_BEHAVIOUR_VIRTUAL),
+        entry(IVALUE_VOLUME_KEY_BEHAVIOUR_VOLUME, IVALUE_VOLUME_KEY_BEHAVIOUR_VOLUME));
 
 
 
 
 
     /** Defines the set for keys loaded by termux
-     * Setting this to {@code null} will make {@link SharedProperties} throw an exception.
+     * Setting this to {@code null} will make {@link TermuxProperties} throw an exception.
      * */
     public static final Set<String> TERMUX_APP_PROPERTIES_LIST = new HashSet<>(Arrays.asList(
         /* boolean */
