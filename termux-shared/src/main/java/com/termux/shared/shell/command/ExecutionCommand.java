@@ -64,12 +64,6 @@ public class ExecutionCommand {
         /** Run command in {@link AppShell}. */
         APP_SHELL("app-shell");
 
-        ///** Run command in {@link AdbShell}. */
-        //ADB_SHELL("adb-shell"),
-
-        ///** Run command in {@link RootShell}. */
-        //ROOT_SHELL("root-shell");
-
         private final String name;
 
         Runner(final String name) {
