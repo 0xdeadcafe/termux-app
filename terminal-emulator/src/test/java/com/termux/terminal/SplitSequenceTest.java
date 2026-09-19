@@ -68,13 +68,16 @@ public class SplitSequenceTest extends TerminalTestCase {
     public void testSplitCursorUp() {
         withTerminalSized(10, 5);
         enterString("abc\r\ndef\r\nghi\r\nXXX\033[3AQ");
-        assertCursorAt(0, 1); // moved up 3 from row 3 → row 0, col advanced by Q
-        assertLineIs(0, "QbcXXX    ");
+        // XXX typed at row 3 col 0-2; cursor at (3,3) after XXX.
+        // \033[3A moves up 3 rows, col stays → cursor at (0,3).
+        // Q written at (0,3); row 0 becomes "abcQ      ", cursor advances to (0,4).
+        assertCursorAt(0, 4);
+        assertLineIs(0, "abcQ      ");
 
         withTerminalSized(10, 5);
         enterStringSplit("abc\r\ndef\r\nghi\r\nXXX\033[3AQ");
-        assertCursorAt(0, 1);
-        assertLineIs(0, "QbcXXX    ");
+        assertCursorAt(0, 4);
+        assertLineIs(0, "abcQ      ");
     }
 
     /** ESC [ 2 ; 5 H  →  CUP (cursor position) to row 2, col 5. */
