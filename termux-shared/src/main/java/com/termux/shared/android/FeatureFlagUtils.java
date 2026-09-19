@@ -87,7 +87,6 @@ public class FeatureFlagUtils {
      */
     @SuppressWarnings("unchecked")
     public static Map<String, String> getAllFeatureFlags() {
-        ReflectionUtils.bypassHiddenAPIReflectionRestrictions();
         try {
             @SuppressLint("PrivateApi") Class<?> clazz = Class.forName(FEATURE_FLAGS_CLASS);
             Method getAllFeatureFlagsMethod = ReflectionUtils.getDeclaredMethod(clazz, "getAllFeatureFlags");
@@ -149,7 +148,6 @@ public class FeatureFlagUtils {
      */
     @Nullable
     public static Boolean isFeatureEnabled(@NonNull Context context, @NonNull String feature) {
-        ReflectionUtils.bypassHiddenAPIReflectionRestrictions();
         try {
             @SuppressLint("PrivateApi") Class<?> clazz = Class.forName(FEATURE_FLAGS_CLASS);
             Method isFeatureEnabledMethod = ReflectionUtils.getDeclaredMethod(clazz, "isEnabled", Context.class, String.class);

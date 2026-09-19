@@ -24,7 +24,6 @@ public class SELinuxUtils {
      */
     @Nullable
     public static String getContext() {
-        ReflectionUtils.bypassHiddenAPIReflectionRestrictions();
         String methodName = "getContext";
         try {
             @SuppressLint("PrivateApi") Class<?> clazz = Class.forName(ANDROID_OS_SELINUX_CLASS);
@@ -50,7 +49,6 @@ public class SELinuxUtils {
      */
     @Nullable
     public static String getPidContext(int pid) {
-        ReflectionUtils.bypassHiddenAPIReflectionRestrictions();
         String methodName = "getPidContext";
         try {
             @SuppressLint("PrivateApi") Class<?> clazz = Class.forName(ANDROID_OS_SELINUX_CLASS);
@@ -76,7 +74,6 @@ public class SELinuxUtils {
      */
     @Nullable
     public static String getFileContext(@NonNull String path) {
-        ReflectionUtils.bypassHiddenAPIReflectionRestrictions();
         String methodName = "getFileContext";
         try {
             @SuppressLint("PrivateApi") Class<?> clazz = Class.forName(ANDROID_OS_SELINUX_CLASS);

@@ -185,7 +185,6 @@ public class PackageUtils {
      */
     @Nullable
     public static Integer getApplicationInfoPrivateFlagsForPackage(@NonNull final ApplicationInfo applicationInfo) {
-        ReflectionUtils.bypassHiddenAPIReflectionRestrictions();
         try {
             return (Integer) ReflectionUtils.invokeField(ApplicationInfo.class, "privateFlags", applicationInfo).value;
         } catch (Exception e) {
@@ -213,7 +212,6 @@ public class PackageUtils {
      */
     @Nullable
     public static String getApplicationInfoSeInfoForPackage(@NonNull final ApplicationInfo applicationInfo) {
-        ReflectionUtils.bypassHiddenAPIReflectionRestrictions();
         try {
             return (String) ReflectionUtils.invokeField(ApplicationInfo.class, "seInfo", applicationInfo).value;
         } catch (Exception e) {
@@ -233,7 +231,6 @@ public class PackageUtils {
      */
     @Nullable
     public static String getApplicationInfoSeInfoUserForPackage(@NonNull final ApplicationInfo applicationInfo) {
-        ReflectionUtils.bypassHiddenAPIReflectionRestrictions();
         try {
             return (String) ReflectionUtils.invokeField(ApplicationInfo.class, "seInfoUser", applicationInfo).value;
         } catch (Exception e) {
@@ -251,7 +248,6 @@ public class PackageUtils {
      */
     @Nullable
     public static Integer getApplicationInfoStaticIntFieldValue(@NonNull String fieldName) {
-        ReflectionUtils.bypassHiddenAPIReflectionRestrictions();
         try {
             return (Integer) ReflectionUtils.invokeField(ApplicationInfo.class, fieldName, null).value;
         } catch (Exception e) {
