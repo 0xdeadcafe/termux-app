@@ -93,12 +93,16 @@ Each item maps to a beads issue (internal tracker) and, where merged, to a commi
 | beads-47b | Replaced abandoned `Markwon` markdown library (last release 2021, archived) with `commonmark-java` + custom renderer |
 | beads-e6w | Removed `Guava 24.1-jre` (6-year-old, 3.5 MB dependency; all usages replaced with stdlib) |
 | beads-3xi | Bumped `desugar_jdk_libs` 1.1.5 → 2.1.5 (required for `compileSdk 35+`) |
+| beads-q55 | Removed `desugar_jdk_libs` entirely — `coreLibraryDesugaring` is a no-op with `minSdk=28`; all target Java 8+ APIs are natively available on the platform. ~300 KB APK reduction, faster incremental builds |
+| beads-5eh | Deleted 7-file Oracle-copyright POSIX filesystem backport (`FileAttributes`, `NativeDispatcher`, `UnixConstants`, `FileKey`, `FilePermission`, `FilePermissions`, `FileTime` — 1,111 lines) originally needed for Android < 8; replaced with 12 lines of direct `android.system.Os.lstat/stat` calls |
 
 ### Code Quality & Refactoring
 
 | Issue | Summary |
 |---|---|
 | beads-bgv | Migrated `NotificationUtils` from deprecated `android.app.Notification.Builder` to `NotificationCompat.Builder` |
+| beads-7j4 | Removed 9 dead `NOTIFICATION_MODE_*` constants and `setNotificationDefaults()` from `NotificationUtils`; all modes are no-ops on API 26+ (sound/vibrate/lights controlled by `NotificationChannel`); removed `notificationMode` param from 5 method signatures; fixed longstanding `geNotificationBuilder` → `getNotificationBuilder` typo |
+| beads-pbv | Audited `FullScreenWorkAround` vs `TermuxActivityRootView`: documented that they coexist in fullscreen mode via different mechanisms (height resize vs bottom margin) and are not interchangeable; proper `FLAG_FULLSCREEN` → `WindowInsetsController` modernisation tracked separately as beads-683 |
 | beads-1kf / beads-9rw | Errno-style return codes migrated to `TermuxException` / `OrThrow` pattern across `ResultSender`, `FunctionErrno`, `FileUtils`, socket layers |
 
 ### Tests Added
