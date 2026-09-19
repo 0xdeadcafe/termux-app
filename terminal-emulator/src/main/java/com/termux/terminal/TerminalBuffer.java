@@ -296,126 +296,331 @@ public final class TerminalBuffer {
             cursor[1] -= shiftDownOfTopRow;
             mScreenRows = newRows;
         } else {
-            // Copy away old state and update new:
-            TerminalRow[] oldLines = mLines;
-            mLines = new TerminalRow[newTotalRows];
-            for (int i = 0; i < newTotalRows; i++)
-                mLines[i] = new TerminalRow(newColumns, currentStyle);
-
-            final int oldActiveTranscriptRows = mActiveTranscriptRows;
-            final int oldScreenFirstRow = mScreenFirstRow;
-            final int oldScreenRows = mScreenRows;
-            final int oldTotalRows = mTotalRows;
-            mTotalRows = newTotalRows;
-            mScreenRows = newRows;
-            mActiveTranscriptRows = mScreenFirstRow = 0;
-            mColumns = newColumns;
-
-            int newCursorRow = -1;
-            int newCursorColumn = -1;
-            int oldCursorRow = cursor[1];
-            int oldCursorColumn = cursor[0];
-            boolean newCursorPlaced = false;
-
-            int currentOutputExternalRow = 0;
-            int currentOutputExternalColumn = 0;
-
-            // Loop over every character in the initial state.
-            // Blank lines should be skipped only if at end of transcript (just as is done in the "fast" resize), so we
-            // keep track how many blank lines we have skipped if we later on find a non-blank line.
-            int skippedBlankLines = 0;
-            for (int externalOldRow = -oldActiveTranscriptRows; externalOldRow < oldScreenRows; externalOldRow++) {
-                // Do what externalToInternalRow() does but for the old state:
-                int internalOldRow = oldScreenFirstRow + externalOldRow;
-                internalOldRow = (internalOldRow < 0) ? (oldTotalRows + internalOldRow) : (internalOldRow % oldTotalRows);
-
-                TerminalRow oldLine = oldLines[internalOldRow];
-                boolean cursorAtThisRow = externalOldRow == oldCursorRow;
-                // The cursor may only be on a non-null line, which we should not skip:
-                if (oldLine == null || (!(!newCursorPlaced && cursorAtThisRow)) && oldLine.isBlank()) {
-                    skippedBlankLines++;
-                    continue;
-                } else if (skippedBlankLines > 0) {
-                    // After skipping some blank lines we encounter a non-blank line. Insert the skipped blank lines.
-                    for (int i = 0; i < skippedBlankLines; i++) {
-                        if (currentOutputExternalRow == mScreenRows - 1) {
-                            scrollDownOneLine(0, mScreenRows, currentStyle);
-                        } else {
-                            currentOutputExternalRow++;
-                        }
-                        currentOutputExternalColumn = 0;
-                    }
-                    skippedBlankLines = 0;
-                }
-
-                int lastNonSpaceIndex = 0;
-                boolean justToCursor = false;
-                if (cursorAtThisRow || oldLine.mLineWrap) {
-                    // Take the whole line, either because of cursor on it, or if line wrapping.
-                    lastNonSpaceIndex = oldLine.getSpaceUsed();
-                    if (cursorAtThisRow) justToCursor = true;
-                } else {
-                    for (int i = 0; i < oldLine.getSpaceUsed(); i++)
-                        // NEWLY INTRODUCED BUG! Should not index oldLine.mStyle with char indices
-                        if (oldLine.mText[i] != ' '/* || oldLine.mStyle[i] != currentStyle */)
-                            lastNonSpaceIndex = i + 1;
-                }
-
-                int currentOldCol = 0;
-                long styleAtCol = 0;
-                for (int i = 0; i < lastNonSpaceIndex; i++) {
-                    // Note that looping over java character, not cells.
-                    char c = oldLine.mText[i];
-                    int codePoint = (Character.isHighSurrogate(c)) ? Character.toCodePoint(c, oldLine.mText[++i]) : c;
-                    int displayWidth = WcWidth.width(codePoint);
-                    // Use the last style if this is a zero-width character:
-                    if (displayWidth > 0) styleAtCol = oldLine.getStyle(currentOldCol);
-
-                    // Line wrap as necessary:
-                    if (currentOutputExternalColumn + displayWidth > mColumns) {
-                        setLineWrap(currentOutputExternalRow);
-                        if (currentOutputExternalRow == mScreenRows - 1) {
-                            if (newCursorPlaced) newCursorRow--;
-                            scrollDownOneLine(0, mScreenRows, currentStyle);
-                        } else {
-                            currentOutputExternalRow++;
-                        }
-                        currentOutputExternalColumn = 0;
-                    }
-
-                    int offsetDueToCombiningChar = ((displayWidth <= 0 && currentOutputExternalColumn > 0) ? 1 : 0);
-                    int outputColumn = currentOutputExternalColumn - offsetDueToCombiningChar;
-                    setChar(outputColumn, currentOutputExternalRow, codePoint, styleAtCol);
-
-                    if (displayWidth > 0) {
-                        if (oldCursorRow == externalOldRow && oldCursorColumn == currentOldCol) {
-                            newCursorColumn = currentOutputExternalColumn;
-                            newCursorRow = currentOutputExternalRow;
-                            newCursorPlaced = true;
-                        }
-                        currentOldCol += displayWidth;
-                        currentOutputExternalColumn += displayWidth;
-                        if (justToCursor && newCursorPlaced) break;
-                    }
-                }
-                // Old row has been copied. Check if we need to insert newline if old line was not wrapping:
-                if (externalOldRow != (oldScreenRows - 1) && !oldLine.mLineWrap) {
-                    if (currentOutputExternalRow == mScreenRows - 1) {
-                        if (newCursorPlaced) newCursorRow--;
-                        scrollDownOneLine(0, mScreenRows, currentStyle);
-                    } else {
-                        currentOutputExternalRow++;
-                    }
-                    currentOutputExternalColumn = 0;
-                }
-            }
-
-            cursor[0] = newCursorColumn;
-            cursor[1] = newCursorRow;
+            reflowResize(newColumns, newRows, newTotalRows, cursor, currentStyle, altScreen);
         }
 
         // Handle cursor scrolling off screen:
         if (cursor[0] < 0 || cursor[1] < 0) cursor[0] = cursor[1] = 0;
+    }
+
+    /**
+     * Reflow the buffer at a new column width, preserving scrollback history and correctly
+     * re-splitting/re-joining soft-wrapped logical lines instead of splicing physical rows.
+     *
+     * Algorithm:
+     * 1. Walk the old buffer and merge {@link TerminalRow#mLineWrap}-connected physical rows into
+     *    logical lines (a logical line ends at a row with mLineWrap == false, or at the cursor row).
+     * 2. Re-paginate each logical line's characters into a flat array of new-width rows.
+     * 3. Split the flat array into history + screen, keeping the cursor row on screen.
+     */
+    private void reflowResize(int newColumns, int newRows, int newTotalRows, int[] cursor, long currentStyle, boolean altScreen) {
+        TerminalRow[] oldLines = mLines;
+        final int oldActiveTranscriptRows = mActiveTranscriptRows;
+        final int oldScreenFirstRow = mScreenFirstRow;
+        final int oldScreenRows = mScreenRows;
+        final int oldTotalRows = mTotalRows;
+        final int oldColumns = mColumns;
+        final int oldCursorRow = cursor[1];
+        final int oldCursorCol = cursor[0];
+
+        // Merge mLineWrap-connected rows into logical lines.
+        java.util.ArrayList<LogicalLine> logicalLines = new java.util.ArrayList<>();
+        java.util.ArrayList<LogicalLine> blankLines = new java.util.ArrayList<>();
+        boolean inLogicalLine = false;
+
+        for (int externalOldRow = -oldActiveTranscriptRows; externalOldRow < oldScreenRows; externalOldRow++) {
+            int internalOldRow = oldScreenFirstRow + externalOldRow;
+            internalOldRow = (internalOldRow < 0) ? (oldTotalRows + internalOldRow) : (internalOldRow % oldTotalRows);
+            TerminalRow oldLine = oldLines[internalOldRow];
+            boolean cursorAtThisRow = (externalOldRow == oldCursorRow);
+            // A row is treated as blank (skippable, matching the old row-by-row resize()'s
+            // skippedBlankLines mechanism) if it is null or visually blank — unless the cursor sits
+            // on it, in which case it must always be processed as content so the cursor survives.
+            boolean isBlankRow = (oldLine == null) || (!cursorAtThisRow && oldLine.isBlank());
+            if (isBlankRow) {
+                if (inLogicalLine) {
+                    logicalLines.get(logicalLines.size() - 1).hardBreak = true;
+                    inLogicalLine = false;
+                }
+                LogicalLine blank = new LogicalLine();
+                blank.isBlank = true;
+                blank.blankLineHeight = 1;
+                blank.hardBreak = true;
+                blank.startExternalRow = externalOldRow;
+                blank.endExternalRow = externalOldRow;
+                blankLines.add(blank);
+                continue;
+            }
+            int displayWidth = (oldLine.mLineWrap || cursorAtThisRow) ? oldColumns : countDisplayWidth(oldLine, oldColumns, false);
+            if (!inLogicalLine) {
+                LogicalLine ll = new LogicalLine();
+                ll.startExternalRow = externalOldRow;
+                // FIX (bug 3): must initialise endExternalRow here, otherwise it defaults to 0 and
+                // the write-phase loop for a single-row logical line at a negative (history) row
+                // would incorrectly iterate from startExternalRow up to 0 instead of staying on
+                // just this one row.
+                ll.endExternalRow = externalOldRow;
+                ll.totalVisualCols = displayWidth;
+                logicalLines.add(ll);
+                inLogicalLine = true;
+            } else {
+                LogicalLine current = logicalLines.get(logicalLines.size() - 1);
+                current.totalVisualCols += displayWidth;
+                current.endExternalRow = externalOldRow;
+            }
+            if (!oldLine.mLineWrap) {
+                if (inLogicalLine) {
+                    logicalLines.get(logicalLines.size() - 1).hardBreak = true;
+                    inLogicalLine = false;
+                }
+            }
+        }
+        if (inLogicalLine && logicalLines.size() > 0)
+            logicalLines.get(logicalLines.size() - 1).hardBreak = true;
+
+        // Merge blank lines back into position order.
+        java.util.ArrayList<LogicalLine> allLines = new java.util.ArrayList<>();
+        int blankIdx = 0;
+        for (int li = 0; li < logicalLines.size(); li++) {
+            LogicalLine ll = logicalLines.get(li);
+            while (blankIdx < blankLines.size() && blankLines.get(blankIdx).startExternalRow < ll.startExternalRow)
+                allLines.add(blankLines.get(blankIdx++));
+            allLines.add(ll);
+        }
+        while (blankIdx < blankLines.size()) allLines.add(blankLines.get(blankIdx++));
+
+        // Blank lines with nothing non-blank after them for the rest of the list are purely
+        // trailing padding: discard them entirely (0 rows), matching how the old row-by-row
+        // resize() never reserved space for a skipped blank row unless a non-blank row followed
+        // it later. Interior/leading blank lines keep their natural 1-row reservation.
+        boolean trailingBlank = true;
+        for (int i = allLines.size() - 1; i >= 0; i--) {
+            LogicalLine ll = allLines.get(i);
+            if (ll.isBlank) {
+                if (trailingBlank) ll.blankLineHeight = 0;
+            } else {
+                trailingBlank = false;
+            }
+        }
+
+        // A leading/interior blank line represents scrollback that existed before or between real
+        // content; it should never be shown as a visible screen row competing with that content,
+        // so it is unconditionally counted towards history regardless of whether the overall total
+        // needs a split for capacity reasons. Trailing blanks contribute 0 here (already discarded
+        // above), so summing every blank line's reservation is equivalent to summing only the
+        // non-trailing ones.
+        int nonTrailingBlankRows = 0;
+        for (int i = 0; i < allLines.size(); i++) {
+            LogicalLine ll = allLines.get(i);
+            if (ll.isBlank) nonTrailingBlankRows += ll.blankLineHeight;
+        }
+
+        // Count how many rows we need at the new width. This is only a size hint for
+        // pre-allocating flatRows -- the actual history-split decision below uses the real flatIdx
+        // reached during the write phase, since a cursor row's actual written width can be less
+        // than this worst-case estimate (see the break-after-cursor-placed optimisation below).
+        int flatRowCount = 0;
+        for (int i = 0; i < allLines.size(); i++) {
+            LogicalLine ll = allLines.get(i);
+            if (ll.isBlank) {
+                flatRowCount += ll.blankLineHeight;
+            } else {
+                int rowsNeeded = Math.max(1, (ll.totalVisualCols + newColumns - 1) / newColumns);
+                flatRowCount += rowsNeeded;
+            }
+        }
+
+        int flatSize = Math.max(flatRowCount, newRows + 10);
+        TerminalRow[] flatRows = new TerminalRow[flatSize];
+        for (int i = 0; i < flatSize; i++)
+            flatRows[i] = new TerminalRow(newColumns, currentStyle);
+
+        // Walk old chars and write into new-width flat rows.
+        int flatIdx = 0;
+        int cursorNewRow = -1, cursorNewCol = -1;
+        boolean cursorPlaced = false;
+
+        for (int lineIdx = 0; lineIdx < allLines.size(); lineIdx++) {
+            LogicalLine ll = allLines.get(lineIdx);
+            if (ll.isBlank) {
+                flatIdx += ll.blankLineHeight;
+                continue;
+            }
+            int writeCol = 0;
+            int rowEndExternal = ll.endExternalRow;
+            for (int externalOldRow = ll.startExternalRow; externalOldRow <= rowEndExternal; externalOldRow++) {
+                int internalOldRow = oldScreenFirstRow + externalOldRow;
+                internalOldRow = (internalOldRow < 0) ? (oldTotalRows + internalOldRow) : (internalOldRow % oldTotalRows);
+                TerminalRow oldLine = oldLines[internalOldRow];
+                if (oldLine == null) continue;
+                boolean cursorAtThisRow = (externalOldRow == oldCursorRow);
+                boolean rowLineWrap = (externalOldRow < rowEndExternal);
+                // FIX: mSpaceUsed is essentially always oldColumns (TerminalRow.clear() sets it to
+                // mColumns and the ASCII fast path in setChar() never updates it), so it cannot be
+                // used as a proxy for "meaningful content width". A row that is mLineWrap is always
+                // fully populated (that's why it wrapped) so oldColumns is correct there. But a
+                // cursor row that did NOT wrap may have the cursor sitting right after its real
+                // content, with only blank padding to its right — walking the full oldColumns width
+                // in that case processes trailing blanks and can spuriously trigger an extra wrap.
+                // Bound it to real content width, or up to the cursor's column if that is further
+                // right (e.g. cursor moved into blank space, or the "about to wrap" position where
+                // oldCursorCol == oldColumns).
+                // A wrapped row is always fully populated (that's why it wrapped) so oldColumns is
+                // correct there. A cursor row also forces oldColumns since we cannot trust mSpaceUsed
+                // as a content-width proxy (TerminalRow.clear() sets it to mColumns and the ASCII fast
+                // path in setChar() never shrinks it) — instead correctness for cursor rows relies on
+                // breaking out of the loop right after the cursor is placed (below), discarding any
+                // trailing blank padding on that row, matching the pre-reflow resize() behaviour.
+                int widthToProcess = (rowLineWrap || cursorAtThisRow) ? oldColumns : countDisplayWidth(oldLine, oldColumns, false);
+                int oldCol = 0, charIdx = 0, spaceUsed = oldLine.getSpaceUsed(), colsWritten = 0;
+                // FIX: the widthToProcess bound must only stop REAL (non-combining) characters. A
+                // combining character (w<=0) trailing the last real column must still be processed
+                // and attached to that column even after colsWritten has reached widthToProcess,
+                // otherwise it is silently dropped (checked below, inside the loop, instead of in
+                // the loop condition itself).
+                while (charIdx < spaceUsed) {
+                    char c = oldLine.mText[charIdx];
+                    int codePoint, charsConsumed;
+                    if (Character.isHighSurrogate(c) && charIdx + 1 < spaceUsed) {
+                        codePoint = Character.toCodePoint(c, oldLine.mText[charIdx + 1]);
+                        charsConsumed = 2;
+                    } else {
+                        codePoint = c;
+                        charsConsumed = 1;
+                    }
+                    int w = WcWidth.width(codePoint);
+                    long style = (w > 0) ? oldLine.getStyle(oldCol) : 0;
+                    if (w <= 0) {
+                        // FIX: setChar() unconditionally overwrites mStyle[column], even when just
+                        // appending a combining character to existing content. Passing style=0 here
+                        // would clear the base character's colour/attributes. Preserve them instead.
+                        if (writeCol > 0) flatRows[flatIdx].setChar(writeCol - 1, codePoint, flatRows[flatIdx].getStyle(writeCol - 1));
+                        charIdx += charsConsumed;
+                        continue;
+                    }
+                    if (colsWritten >= widthToProcess || oldCol >= oldColumns) break;
+                    if (writeCol + w > newColumns && writeCol > 0) {
+                        // If content had to spill onto a new output row because it didn't fit, the
+                        // row being left always wraps into that new row by definition — no need to
+                        // hedge on rowLineWrap or colsWritten.
+                        flatRows[flatIdx].mLineWrap = true;
+                        flatIdx++;
+                        writeCol = 0;
+                    }
+                    if (writeCol + w > newColumns) {
+                        charIdx += charsConsumed;
+                        oldCol += w;
+                        continue;
+                    }
+                    flatRows[flatIdx].setChar(writeCol, codePoint, style);
+                    colsWritten += w;
+                    if (!cursorPlaced && cursorAtThisRow && oldCol <= oldCursorCol && oldCursorCol < oldCol + w) {
+                        cursorNewRow = flatIdx;
+                        cursorNewCol = writeCol;
+                        cursorPlaced = true;
+                        writeCol += w;
+                        oldCol += w;
+                        charIdx += charsConsumed;
+                        // FIX: stop copying this row right after placing the cursor — any content past
+                        // the cursor here is blank padding (mSpaceUsed cannot distinguish real content
+                        // from padding), and walking further can spuriously overflow into a new output
+                        // row that should not exist. Matches the old resize() code's justToCursor+break.
+                        break;
+                    }
+                    writeCol += w;
+                    oldCol += w;
+                    charIdx += charsConsumed;
+                }
+                // FIX (bug 1): if the cursor sits on this row but was never placed by the char loop
+                // above (which happens when the cursor is exactly one past the last written column,
+                // i.e. the "about to wrap" position where oldCursorCol == oldColumns), place it at
+                // the current write position now, at the end of processing this old row.
+                if (!cursorPlaced && cursorAtThisRow) {
+                    cursorNewRow = flatIdx;
+                    cursorNewCol = writeCol;
+                    cursorPlaced = true;
+                }
+            }
+            // FIX (bug 2): only clear the wrap flag on the row we are about to advance past if that
+            // row is truly the last physical row of this logical line. The mid-line wrap flag is
+            // already set correctly above when a character overflows into a new row; forcing it to
+            // false here again is a no-op for the true last row (which never had it set) but must
+            // not run for a row that exactly filled newColumns and needs the wrap flag preserved.
+            if (flatIdx < flatRows.length) flatRows[flatIdx].mLineWrap = false;
+            flatIdx++;
+        }
+
+        // FIX (buffer re-init): the write phase above operated purely on the local flatRows array
+        // and never touched mLines/mTotalRows/mScreenRows/mColumns, so re-initialise them now,
+        // right before splitting flatRows into history + screen.
+        mLines = new TerminalRow[newTotalRows];
+        for (int i = 0; i < newTotalRows; i++)
+            mLines[i] = new TerminalRow(newColumns, currentStyle);
+        mTotalRows = newTotalRows;
+        mScreenRows = newRows;
+        mColumns = newColumns;
+
+        // Split into history + screen, keeping the cursor visible. effectiveContentRows here is
+        // the REAL usage reached during the write phase (not the upfront rowsNeeded estimate),
+        // which correctly reflects optimisations like breaking early right after the cursor is
+        // placed. historyRows is the larger of: the leading/interior blank reservations (always
+        // moved to history, since a blank line that has real content elsewhere in the buffer
+        // should never visually compete with that content for a screen row), or the plain
+        // tail-window overflow amount if real content alone exceeds newRows.
+        int effectiveContentRows = flatIdx;
+        int historyRows = Math.max(nonTrailingBlankRows, Math.max(0, effectiveContentRows - newRows));
+        historyRows = Math.min(historyRows, Math.max(0, effectiveContentRows - 1));
+        historyRows = Math.min(historyRows, newTotalRows - newRows);
+        if (altScreen) historyRows = 0;
+
+        mActiveTranscriptRows = historyRows;
+        mScreenFirstRow = historyRows;
+
+        for (int i = 0; i < historyRows; i++) mLines[i % newTotalRows] = flatRows[i];
+        for (int i = 0; i < newRows && (historyRows + i) < flatRows.length; i++)
+            mLines[(historyRows + i) % newTotalRows] = flatRows[historyRows + i];
+
+        if (cursorPlaced) cursorNewRow -= historyRows;
+
+        if (cursorPlaced) { cursor[0] = cursorNewCol; cursor[1] = cursorNewRow; }
+        if (cursor[0] < 0 || cursor[1] < 0) cursor[0] = cursor[1] = 0;
+        if (cursor[1] >= mScreenRows) {
+            cursor[1] = mScreenRows - 1;
+            if (cursor[0] >= newColumns) cursor[0] = newColumns - 1;
+        }
+    }
+
+    /** Count the display width of a row, up to the last non-space character, in the row's own column width. */
+    private static int countDisplayWidth(TerminalRow row, int columns, boolean includeTrailingSpaces) {
+        if (row == null) return 0;
+        if (includeTrailingSpaces) return columns;
+        int cols = 0, charIdx = 0, spaceUsed = row.getSpaceUsed(), lastNonSpaceCol = -1;
+        while (charIdx < spaceUsed && cols < columns) {
+            char c = row.mText[charIdx];
+            int codePoint;
+            if (Character.isHighSurrogate(c) && charIdx + 1 < spaceUsed) {
+                codePoint = Character.toCodePoint(c, row.mText[charIdx + 1]);
+                charIdx += 2;
+            } else {
+                codePoint = c;
+                charIdx++;
+            }
+            int w = WcWidth.width(codePoint);
+            if (w > 0) {
+                cols += w;
+                if (codePoint != ' ') lastNonSpaceCol = cols;
+            }
+        }
+        return (lastNonSpaceCol >= 0) ? lastNonSpaceCol : 0;
+    }
+
+    /** A run of mLineWrap-connected physical rows (or a single blank row) from the old buffer, used by {@link #reflowResize}. */
+    private static final class LogicalLine {
+        int startExternalRow, endExternalRow;
+        int totalVisualCols;
+        boolean hardBreak, isBlank;
+        int blankLineHeight = 1;
+        LogicalLine() {}
     }
 
     /**
