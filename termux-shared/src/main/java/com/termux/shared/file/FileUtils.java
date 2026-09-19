@@ -205,29 +205,14 @@ public class FileUtils {
 
 
     /**
-     * Validate that directory is empty or contains only files in {@code ignoredSubFilePaths}.
-     *
-     * If parent path of an ignored file exists, but ignored file itself does not exist, then directory
-     * is not considered empty.
-     *
-     * @param label The optional label for directory to check. This can optionally be {@code null}.
-     * @param filePath The {@code path} for directory to check.
-     * @param ignoredSubFilePaths The list of absolute file paths under {@code filePath} dir.
-     *                            Validation is done for the paths.
-     * @param ignoreNonExistentFile The {@code boolean} that decides if it should be considered an
-     *                              error if file to be checked doesn't exist.
-     * @return Returns {@code null} if directory is empty or contains only files in {@code ignoredSubFilePaths}.
-     * Returns {@code FileUtilsErrno#ERRNO_NON_EMPTY_DIRECTORY_FILE} if a file was found that did not
-     * exist in the {@code ignoredSubFilePaths}, otherwise returns an appropriate {@code error} if
-     * checking was not successful.
-     * @deprecated Use {@link #validateDirectoryFileEmptyOrOnlyContainsSpecificFilesOrThrow(String, String, List, boolean)} instead.
+     * Exception-throwing sibling of {@link #validateDirectoryFileEmptyOrOnlyContainsSpecificFiles(String, String, List, boolean)}.
+     * @throws TermuxException If directory is not empty or contains files not in {@code ignoredSubFilePaths}, or checking failed.
      */
-    @Deprecated
-    public static Error validateDirectoryFileEmptyOrOnlyContainsSpecificFiles(String label, String filePath,
-                                                                              final List<String> ignoredSubFilePaths,
-                                                                              final boolean ignoreNonExistentFile) {
+    public static void validateDirectoryFileEmptyOrOnlyContainsSpecificFilesOrThrow(String label, String filePath,
+                                                                                     final List<String> ignoredSubFilePaths,
+                                                                                     final boolean ignoreNonExistentFile) throws TermuxException {
         label = (label == null || label.isEmpty() ? "" : label + " ");
-        if (filePath == null || filePath.isEmpty()) return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "isDirectoryFileEmptyOrOnlyContainsSpecificFiles");
+        if (filePath == null || filePath.isEmpty()) throw new TermuxException(FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "isDirectoryFileEmptyOrOnlyContainsSpecificFiles"));
 
         try {
             File file = new File(filePath);
@@ -235,49 +220,38 @@ public class FileUtils {
 
             // If file exists but not a directory file
             if (fileType != FileType.NO_EXIST && fileType != FileType.DIRECTORY) {
-                return FileUtilsErrno.ERRNO_NON_DIRECTORY_FILE_FOUND.getError(label + "directory", filePath).setLabel(label + "directory");
+                throw new TermuxException(FileUtilsErrno.ERRNO_NON_DIRECTORY_FILE_FOUND.getError(label + "directory", filePath).setLabel(label + "directory"));
             }
 
             // If file does not exist
             if (fileType == FileType.NO_EXIST) {
                 // If checking is to be ignored if file does not exist
                 if (ignoreNonExistentFile)
-                    return null;
+                    return;
                 else {
                     label += "directory to check if is empty or only contains specific files";
-                    return FileUtilsErrno.ERRNO_FILE_NOT_FOUND_AT_PATH.getError(label, filePath).setLabel(label);
+                    throw new TermuxException(FileUtilsErrno.ERRNO_FILE_NOT_FOUND_AT_PATH.getError(label, filePath).setLabel(label));
                 }
             }
 
             File[] subFiles = file.listFiles();
             if (subFiles == null || subFiles.length == 0)
-                return null;
+                return;
 
             // If sub files exists but no file should be ignored
             if (ignoredSubFilePaths == null || ignoredSubFilePaths.size() == 0)
-                return FileUtilsErrno.ERRNO_NON_EMPTY_DIRECTORY_FILE.getError(label, filePath);
+                throw new TermuxException(FileUtilsErrno.ERRNO_NON_EMPTY_DIRECTORY_FILE.getError(label, filePath));
 
             // If a sub file does not exist in ignored file path
             if (nonIgnoredSubFileExists(subFiles, ignoredSubFilePaths)) {
-                return FileUtilsErrno.ERRNO_NON_EMPTY_DIRECTORY_FILE.getError(label, filePath);
+                throw new TermuxException(FileUtilsErrno.ERRNO_NON_EMPTY_DIRECTORY_FILE.getError(label, filePath));
             }
 
+        } catch (TermuxException e) {
+            throw e;
         } catch (Exception e) {
-            return FileUtilsErrno.ERRNO_VALIDATE_DIRECTORY_EMPTY_OR_ONLY_CONTAINS_SPECIFIC_FILES_FAILED_WITH_EXCEPTION.getError(e, label + "directory", filePath, e.getMessage());
+            throw new TermuxException(FileUtilsErrno.ERRNO_VALIDATE_DIRECTORY_EMPTY_OR_ONLY_CONTAINS_SPECIFIC_FILES_FAILED_WITH_EXCEPTION.getError(e, label + "directory", filePath, e.getMessage()));
         }
-
-        return null;
-    }
-
-    /**
-     * Exception-throwing sibling of {@link #validateDirectoryFileEmptyOrOnlyContainsSpecificFiles(String, String, List, boolean)}.
-     * @throws TermuxException If directory is not empty or contains files not in {@code ignoredSubFilePaths}, or checking failed.
-     */
-    @SuppressWarnings("deprecation")
-    public static void validateDirectoryFileEmptyOrOnlyContainsSpecificFilesOrThrow(String label, String filePath,
-                                                                                     final List<String> ignoredSubFilePaths,
-                                                                                     final boolean ignoreNonExistentFile) throws TermuxException {
-        TermuxException.throwIfFailed(validateDirectoryFileEmptyOrOnlyContainsSpecificFiles(label, filePath, ignoredSubFilePaths, ignoreNonExistentFile));
     }
 
     /**
@@ -413,40 +387,21 @@ public class FileUtils {
 
 
     /**
-     * Validate the existence and permissions of regular file at path.
-     *
-     * If the {@code parentDirPath} is not {@code null}, then setting of missing permissions will
-     * only be done if {@code path} is under {@code parentDirPath}.
-     *
-     * @param label The optional label for the regular file. This can optionally be {@code null}.
-     * @param filePath The {@code path} for file to validate. Symlinks will not be followed.
-     * @param parentDirPath The optional {@code parent directory path} to restrict operations to.
-     *                      This can optionally be {@code null}. It is not canonicalized and only normalized.
-     * @param permissionsToCheck The 3 character string that contains the "r", "w", "x" or "-" in-order.
-     * @param setPermissions The {@code boolean} that decides if permissions are to be
-     *                              automatically set defined by {@code permissionsToCheck}.
-     * @param setMissingPermissionsOnly The {@code boolean} that decides if only missing permissions
-     *                                  are to be set or if they should be overridden.
-     * @param ignoreErrorsIfPathIsUnderParentDirPath The {@code boolean} that decides if permission
-     *                                               errors are to be ignored if path is under
-     *                                               {@code parentDirPath}.
-     * @return Returns the {@code error} if path is not a regular file, or validating permissions
-     * failed, otherwise {@code null}.
-     * @deprecated Use {@link #validateRegularFileExistenceAndPermissionsOrThrow(String, String, String, String, boolean, boolean, boolean)} instead.
+     * Exception-throwing sibling of {@link #validateRegularFileExistenceAndPermissions(String, String, String, String, boolean, boolean, boolean)}.
+     * @throws TermuxException If path is not a regular file, or validating permissions failed.
      */
-    @Deprecated
-    public static Error validateRegularFileExistenceAndPermissions(String label, final String filePath, final String parentDirPath,
-                                                                   final String permissionsToCheck, final boolean setPermissions, final boolean setMissingPermissionsOnly,
-                                                                   final boolean ignoreErrorsIfPathIsUnderParentDirPath) {
+    public static void validateRegularFileExistenceAndPermissionsOrThrow(String label, final String filePath, final String parentDirPath,
+                                                                          final String permissionsToCheck, final boolean setPermissions, final boolean setMissingPermissionsOnly,
+                                                                          final boolean ignoreErrorsIfPathIsUnderParentDirPath) throws TermuxException {
         label = (label == null || label.isEmpty() ? "" : label + " ");
-        if (filePath == null || filePath.isEmpty()) return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "regular file path", "validateRegularFileExistenceAndPermissions");
+        if (filePath == null || filePath.isEmpty()) throw new TermuxException(FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "regular file path", "validateRegularFileExistenceAndPermissions"));
 
         try {
             FileType fileType = getFileType(filePath, false);
 
             // If file exists but not a regular file
             if (fileType != FileType.NO_EXIST && fileType != FileType.REGULAR) {
-                return FileUtilsErrno.ERRNO_NON_REGULAR_FILE_FOUND.getError(label + "file", filePath).setLabel(label + "file");
+                throw new TermuxException(FileUtilsErrno.ERRNO_NON_REGULAR_FILE_FOUND.getError(label + "file", filePath).setLabel(label + "file"));
             }
 
             boolean isPathUnderParentDirPath = false;
@@ -470,7 +425,7 @@ public class FileUtils {
             // Regular files cannot be automatically created so we do not ignore if missing
             if (fileType != FileType.REGULAR) {
                 label += "regular file";
-                return FileUtilsErrno.ERRNO_FILE_NOT_FOUND_AT_PATH.getError(label, filePath).setLabel(label);
+                throw new TermuxException(FileUtilsErrno.ERRNO_FILE_NOT_FOUND_AT_PATH.getError(label, filePath).setLabel(label));
             }
 
             // If there is not parentDirPath restriction or path is not under parentDirPath or
@@ -478,63 +433,25 @@ public class FileUtils {
             if (parentDirPath == null || !isPathUnderParentDirPath || !ignoreErrorsIfPathIsUnderParentDirPath) {
                 if (permissionsToCheck != null) {
                     // Check if permissions are missing
-                    return checkMissingFilePermissions(label + "regular", filePath, permissionsToCheck, false);
+                    checkMissingFilePermissionsOrThrow(label + "regular", filePath, permissionsToCheck, false);
                 }
             }
+        } catch (TermuxException e) {
+            throw e;
         } catch (Exception e) {
-            return FileUtilsErrno.ERRNO_VALIDATE_FILE_EXISTENCE_AND_PERMISSIONS_FAILED_WITH_EXCEPTION.getError(e, label + "file", filePath, e.getMessage());
+            throw new TermuxException(FileUtilsErrno.ERRNO_VALIDATE_FILE_EXISTENCE_AND_PERMISSIONS_FAILED_WITH_EXCEPTION.getError(e, label + "file", filePath, e.getMessage()));
         }
-
-        return null;
-
     }
 
     /**
-     * Exception-throwing sibling of {@link #validateRegularFileExistenceAndPermissions(String, String, String, String, boolean, boolean, boolean)}.
-     * @throws TermuxException If path is not a regular file, or validating permissions failed.
+     * Exception-throwing sibling of {@link #validateDirectoryFileExistenceAndPermissions(String, String, String, boolean, String, boolean, boolean, boolean, boolean)}.
+     * @throws TermuxException If path is not a directory file, failed to create it, or validating permissions failed.
      */
-    @SuppressWarnings("deprecation")
-    public static void validateRegularFileExistenceAndPermissionsOrThrow(String label, final String filePath, final String parentDirPath,
-                                                                          final String permissionsToCheck, final boolean setPermissions, final boolean setMissingPermissionsOnly,
-                                                                          final boolean ignoreErrorsIfPathIsUnderParentDirPath) throws TermuxException {
-        TermuxException.throwIfFailed(validateRegularFileExistenceAndPermissions(label, filePath, parentDirPath,
-            permissionsToCheck, setPermissions, setMissingPermissionsOnly, ignoreErrorsIfPathIsUnderParentDirPath));
-    }
-
-    /**
-     * Validate the existence and permissions of directory file at path.
-     *
-     * If the {@code parentDirPath} is not {@code null}, then creation of missing directory and
-     * setting of missing permissions will only be done if {@code path} is under
-     * {@code parentDirPath} or equals {@code parentDirPath}.
-     *
-     * @param label The optional label for the directory file. This can optionally be {@code null}.
-     * @param filePath The {@code path} for file to validate or create. Symlinks will not be followed.
-     * @param parentDirPath The optional {@code parent directory path} to restrict operations to.
-     *                      This can optionally be {@code null}. It is not canonicalized and only normalized.
-     * @param createDirectoryIfMissing The {@code boolean} that decides if directory file
-     *                                 should be created if its missing.
-     * @param permissionsToCheck The 3 character string that contains the "r", "w", "x" or "-" in-order.
-     * @param setPermissions The {@code boolean} that decides if permissions are to be
-     *                              automatically set defined by {@code permissionsToCheck}.
-     * @param setMissingPermissionsOnly The {@code boolean} that decides if only missing permissions
-     *                                  are to be set or if they should be overridden.
-     * @param ignoreErrorsIfPathIsInParentDirPath The {@code boolean} that decides if existence
-     *                                  and permission errors are to be ignored if path is
-     *                                  in {@code parentDirPath}.
-     * @param ignoreIfNotExecutable The {@code boolean} that decides if missing executable permission
-     *                              error is to be ignored. This allows making an attempt to set
-     *                              executable permissions, but ignoring if it fails.
-     * @return Returns the {@code error} if path is not a directory file, failed to create it,
-     * or validating permissions failed, otherwise {@code null}.
-     * @deprecated Use {@link #validateDirectoryFileExistenceAndPermissionsOrThrow(String, String, String, boolean, String, boolean, boolean, boolean, boolean)} instead.
-     */
-    @Deprecated
-    public static Error validateDirectoryFileExistenceAndPermissions(String label, final String filePath, final String parentDirPath, final boolean createDirectoryIfMissing,
-                                                                     final String permissionsToCheck, final boolean setPermissions, final boolean setMissingPermissionsOnly,
-                                                                     final boolean ignoreErrorsIfPathIsInParentDirPath, final boolean ignoreIfNotExecutable) {
+    public static void validateDirectoryFileExistenceAndPermissionsOrThrow(String label, final String filePath, final String parentDirPath, final boolean createDirectoryIfMissing,
+                                                                            final String permissionsToCheck, final boolean setPermissions, final boolean setMissingPermissionsOnly,
+                                                                            final boolean ignoreErrorsIfPathIsInParentDirPath, final boolean ignoreIfNotExecutable) throws TermuxException {
         label = (label == null || label.isEmpty() ? "" : label + " ");
-        if (filePath == null || filePath.isEmpty()) return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "directory file path", "validateDirectoryExistenceAndPermissions");
+        if (filePath == null || filePath.isEmpty()) throw new TermuxException(FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "directory file path", "validateDirectoryExistenceAndPermissions"));
 
         try {
             File file = new File(filePath);
@@ -542,7 +459,7 @@ public class FileUtils {
 
             // If file exists but not a directory file
             if (fileType != FileType.NO_EXIST && fileType != FileType.DIRECTORY) {
-                return FileUtilsErrno.ERRNO_NON_DIRECTORY_FILE_FOUND.getError(label + "directory", filePath).setLabel(label + "directory");
+                throw new TermuxException(FileUtilsErrno.ERRNO_NON_DIRECTORY_FILE_FOUND.getError(label + "directory", filePath).setLabel(label + "directory"));
             }
 
             boolean isPathInParentDirPath = false;
@@ -562,7 +479,7 @@ public class FileUtils {
                         boolean result = file.mkdirs();
                         fileType = getFileType(filePath, false);
                         if (!result && fileType != FileType.DIRECTORY)
-                            return FileUtilsErrno.ERRNO_CREATING_FILE_FAILED.getError(label + "directory file", filePath);
+                            throw new TermuxException(FileUtilsErrno.ERRNO_CREATING_FILE_FAILED.getError(label + "directory file", filePath));
                     }
 
                     // If setPermissions is enabled and path is a directory
@@ -582,190 +499,95 @@ public class FileUtils {
                 // Directories can be automatically created so we can ignore if missing with above check
                 if (fileType != FileType.DIRECTORY) {
                     label += "directory";
-                    return FileUtilsErrno.ERRNO_FILE_NOT_FOUND_AT_PATH.getError(label, filePath).setLabel(label);
+                    throw new TermuxException(FileUtilsErrno.ERRNO_FILE_NOT_FOUND_AT_PATH.getError(label, filePath).setLabel(label));
                 }
 
                 if (permissionsToCheck != null) {
                     // Check if permissions are missing
-                    return checkMissingFilePermissions(label + "directory", filePath, permissionsToCheck, ignoreIfNotExecutable);
+                    checkMissingFilePermissionsOrThrow(label + "directory", filePath, permissionsToCheck, ignoreIfNotExecutable);
                 }
             }
+        } catch (TermuxException e) {
+            throw e;
         } catch (Exception e) {
-            return FileUtilsErrno.ERRNO_VALIDATE_DIRECTORY_EXISTENCE_AND_PERMISSIONS_FAILED_WITH_EXCEPTION.getError(e, label + "directory file", filePath, e.getMessage());
+            throw new TermuxException(FileUtilsErrno.ERRNO_VALIDATE_DIRECTORY_EXISTENCE_AND_PERMISSIONS_FAILED_WITH_EXCEPTION.getError(e, label + "directory file", filePath, e.getMessage()));
         }
-
-        return null;
-    }
-
-    /**
-     * Exception-throwing sibling of {@link #validateDirectoryFileExistenceAndPermissions(String, String, String, boolean, String, boolean, boolean, boolean, boolean)}.
-     * @throws TermuxException If path is not a directory file, failed to create it, or validating permissions failed.
-     */
-    @SuppressWarnings("deprecation")
-    public static void validateDirectoryFileExistenceAndPermissionsOrThrow(String label, final String filePath, final String parentDirPath, final boolean createDirectoryIfMissing,
-                                                                            final String permissionsToCheck, final boolean setPermissions, final boolean setMissingPermissionsOnly,
-                                                                            final boolean ignoreErrorsIfPathIsInParentDirPath, final boolean ignoreIfNotExecutable) throws TermuxException {
-        TermuxException.throwIfFailed(validateDirectoryFileExistenceAndPermissions(label, filePath, parentDirPath, createDirectoryIfMissing,
-            permissionsToCheck, setPermissions, setMissingPermissionsOnly, ignoreErrorsIfPathIsInParentDirPath, ignoreIfNotExecutable));
     }
 
 
-
-    /**
-     * Create a regular file at path.
-     *
-     * This function is a wrapper for
-     * {@link #validateDirectoryFileExistenceAndPermissions(String, String, String, boolean, String, boolean, boolean, boolean, boolean)}.
-     *
-     * @param filePath The {@code path} for regular file to create.
-     * @return Returns the {@code error} if path is not a regular file or failed to create it,
-     * otherwise {@code null}.
-     * @deprecated Use {@link #createRegularFileOrThrow(String)} instead.
-     */
-    @Deprecated
-    public static Error createRegularFile(final String filePath) {
-        return createRegularFile(null, filePath);
-    }
 
     /**
      * Exception-throwing sibling of {@link #createRegularFile(String)}.
      * @throws TermuxException If path is not a regular file or failed to create it.
      */
-    @SuppressWarnings("deprecation")
     public static void createRegularFileOrThrow(final String filePath) throws TermuxException {
-        TermuxException.throwIfFailed(createRegularFile(filePath));
-    }
-
-    /**
-     * Create a regular file at path.
-     *
-     * This function is a wrapper for
-     * {@link #validateDirectoryFileExistenceAndPermissions(String, String, String, boolean, String, boolean, boolean, boolean, boolean)}.
-     *
-     * @param label The optional label for the regular file. This can optionally be {@code null}.
-     * @param filePath The {@code path} for regular file to create.
-     * @return Returns the {@code error} if path is not a regular file or failed to create it,
-     * otherwise {@code null}.
-     * @deprecated Use {@link #createRegularFileOrThrow(String, String)} instead.
-     */
-    @Deprecated
-    public static Error createRegularFile(final String label, final String filePath) {
-        return createRegularFile(label, filePath,
-            null, false, false);
+        createRegularFileOrThrow(null, filePath);
     }
 
     /**
      * Exception-throwing sibling of {@link #createRegularFile(String, String)}.
      * @throws TermuxException If path is not a regular file or failed to create it.
      */
-    @SuppressWarnings("deprecation")
     public static void createRegularFileOrThrow(final String label, final String filePath) throws TermuxException {
-        TermuxException.throwIfFailed(createRegularFile(label, filePath));
-    }
-
-    /**
-     * Create a regular file at path.
-     *
-     * This function is a wrapper for
-     * {@link #validateRegularFileExistenceAndPermissions(String, String, String, String, boolean, boolean, boolean)}.
-     *
-     * @param label The optional label for the regular file. This can optionally be {@code null}.
-     * @param filePath The {@code path} for regular file to create.
-     * @param permissionsToCheck The 3 character string that contains the "r", "w", "x" or "-" in-order.
-     * @param setPermissions The {@code boolean} that decides if permissions are to be
-     *                              automatically set defined by {@code permissionsToCheck}.
-     * @param setMissingPermissionsOnly The {@code boolean} that decides if only missing permissions
-     *                                  are to be set or if they should be overridden.
-     * @return Returns the {@code error} if path is not a regular file, failed to create it,
-     * or validating permissions failed, otherwise {@code null}.
-     * @deprecated Use {@link #createRegularFileOrThrow(String, String, String, boolean, boolean)} instead.
-     */
-    @Deprecated
-    public static Error createRegularFile(String label, final String filePath,
-                                          final String permissionsToCheck, final boolean setPermissions, final boolean setMissingPermissionsOnly) {
-        label = (label == null || label.isEmpty() ? "" : label + " ");
-        if (filePath == null || filePath.isEmpty()) return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "createRegularFile");
-
-        Error error;
-
-        File file = new File(filePath);
-        FileType fileType = getFileType(filePath, false);
-
-        // If file exists but not a regular file
-        if (fileType != FileType.NO_EXIST && fileType != FileType.REGULAR) {
-            return FileUtilsErrno.ERRNO_NON_REGULAR_FILE_FOUND.getError(label + "file", filePath).setLabel(label + "file");
-        }
-
-        // If regular file already exists
-        if (fileType == FileType.REGULAR) {
-            return null;
-        }
-
-        // Create the file parent directory
-        error = createParentDirectoryFile(label + "regular file parent", filePath);
-        if (error != null)
-            return error;
-
-        try {
-            Logger.logVerbose(LOG_TAG, "Creating " + label + "regular file at path \"" + filePath + "\"");
-
-            if (!file.createNewFile())
-                return FileUtilsErrno.ERRNO_CREATING_FILE_FAILED.getError(label + "regular file", filePath);
-        } catch (Exception e) {
-            return FileUtilsErrno.ERRNO_CREATING_FILE_FAILED_WITH_EXCEPTION.getError(e, label + "regular file", filePath, e.getMessage());
-        }
-
-        return validateRegularFileExistenceAndPermissions(label, filePath,
-            null,
-            permissionsToCheck, setPermissions, setMissingPermissionsOnly,
-            false);
+        createRegularFileOrThrow(label, filePath, null, false, false);
     }
 
     /**
      * Exception-throwing sibling of {@link #createRegularFile(String, String, String, boolean, boolean)}.
      * @throws TermuxException If path is not a regular file, failed to create it, or validating permissions failed.
      */
-    @SuppressWarnings("deprecation")
     public static void createRegularFileOrThrow(String label, final String filePath,
                                                  final String permissionsToCheck, final boolean setPermissions, final boolean setMissingPermissionsOnly) throws TermuxException {
-        TermuxException.throwIfFailed(createRegularFile(label, filePath, permissionsToCheck, setPermissions, setMissingPermissionsOnly));
-    }
-
-
-
-    /**
-     * Create parent directory of file at path.
-     *
-     * This function is a wrapper for
-     * {@link #validateDirectoryFileExistenceAndPermissions(String, String, String, boolean, String, boolean, boolean, boolean, boolean)}.
-     *
-     * @param label The optional label for the parent directory file. This can optionally be {@code null}.
-     * @param filePath The {@code path} for file whose parent needs to be created.
-     * @return Returns the {@code error} if parent path is not a directory file or failed to create it,
-     * otherwise {@code null}.
-     * @deprecated Use {@link #createParentDirectoryFileOrThrow(String, String)} instead.
-     */
-    @Deprecated
-    public static Error createParentDirectoryFile(final String label, final String filePath) {
-        if (filePath == null || filePath.isEmpty()) return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "createParentDirectoryFile");
+        label = (label == null || label.isEmpty() ? "" : label + " ");
+        if (filePath == null || filePath.isEmpty()) throw new TermuxException(FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "createRegularFile"));
 
         File file = new File(filePath);
-        String fileParentPath = file.getParent();
+        FileType fileType = getFileType(filePath, false);
 
-        if (fileParentPath != null)
-            return createDirectoryFile(label, fileParentPath,
-                null, false, false);
-        else
-            return null;
+        // If file exists but not a regular file
+        if (fileType != FileType.NO_EXIST && fileType != FileType.REGULAR) {
+            throw new TermuxException(FileUtilsErrno.ERRNO_NON_REGULAR_FILE_FOUND.getError(label + "file", filePath).setLabel(label + "file"));
+        }
+
+        // If regular file already exists
+        if (fileType == FileType.REGULAR) {
+            return;
+        }
+
+        // Create the file parent directory
+        createParentDirectoryFileOrThrow(label + "regular file parent", filePath);
+
+        try {
+            Logger.logVerbose(LOG_TAG, "Creating " + label + "regular file at path \"" + filePath + "\"");
+
+            if (!file.createNewFile())
+                throw new TermuxException(FileUtilsErrno.ERRNO_CREATING_FILE_FAILED.getError(label + "regular file", filePath));
+        } catch (TermuxException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new TermuxException(FileUtilsErrno.ERRNO_CREATING_FILE_FAILED_WITH_EXCEPTION.getError(e, label + "regular file", filePath, e.getMessage()));
+        }
+
+        validateRegularFileExistenceAndPermissionsOrThrow(label, filePath,
+            null,
+            permissionsToCheck, setPermissions, setMissingPermissionsOnly,
+            false);
     }
+
+
 
     /**
      * Exception-throwing sibling of {@link #createParentDirectoryFile(String, String)}.
      * @throws TermuxException If parent path is not a directory file or failed to create it.
      */
-    @SuppressWarnings("deprecation")
     public static void createParentDirectoryFileOrThrow(final String label, final String filePath) throws TermuxException {
-        TermuxException.throwIfFailed(createParentDirectoryFile(label, filePath));
+        if (filePath == null || filePath.isEmpty()) throw new TermuxException(FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "createParentDirectoryFile"));
+
+        File file = new File(filePath);
+        String fileParentPath = file.getParent();
+
+        if (fileParentPath != null)
+            createDirectoryFileOrThrow(label, fileParentPath, null, false, false);
     }
 
     /**
@@ -778,170 +600,57 @@ public class FileUtils {
      * @return Returns the {@code error} if path is not a directory file or failed to create it,
      * otherwise {@code null}.
      */
-    public static Error createDirectoryFile(final String filePath) {
-        return createDirectoryFile(null, filePath);
-    }
-
-    /**
-     * Exception-throwing sibling of {@link #createDirectoryFile(String)}.
-     * @throws TermuxException If path is not a directory file or failed to create it.
-     */
-    @SuppressWarnings("deprecation")
     public static void createDirectoryFileOrThrow(final String filePath) throws TermuxException {
-        TermuxException.throwIfFailed(createDirectoryFile(filePath));
-    }
-
-    /**
-     * Create a directory file at path.
-     *
-     * This function is a wrapper for
-     * {@link #validateDirectoryFileExistenceAndPermissions(String, String, String, boolean, String, boolean, boolean, boolean, boolean)}.
-     *
-     * @param label The optional label for the directory file. This can optionally be {@code null}.
-     * @param filePath The {@code path} for directory file to create.
-     * @return Returns the {@code error} if path is not a directory file or failed to create it,
-     * otherwise {@code null}.
-     * @deprecated Use {@link #createDirectoryFileOrThrow(String, String)} instead.
-     */
-    @Deprecated
-    public static Error createDirectoryFile(final String label, final String filePath) {
-        return createDirectoryFile(label, filePath,
-            null, false, false);
+        createDirectoryFileOrThrow(null, filePath);
     }
 
     /**
      * Exception-throwing sibling of {@link #createDirectoryFile(String, String)}.
      * @throws TermuxException If path is not a directory file or failed to create it.
      */
-    @SuppressWarnings("deprecation")
     public static void createDirectoryFileOrThrow(final String label, final String filePath) throws TermuxException {
-        TermuxException.throwIfFailed(createDirectoryFile(label, filePath));
-    }
-
-    /**
-     * Create a directory file at path.
-     *
-     * This function is a wrapper for
-     * {@link #validateDirectoryFileExistenceAndPermissions(String, String, String, boolean, String, boolean, boolean, boolean, boolean)}.
-     *
-     * @param label The optional label for the directory file. This can optionally be {@code null}.
-     * @param filePath The {@code path} for directory file to create.
-     * @param permissionsToCheck The 3 character string that contains the "r", "w", "x" or "-" in-order.
-     * @param setPermissions The {@code boolean} that decides if permissions are to be
-     *                              automatically set defined by {@code permissionsToCheck}.
-     * @param setMissingPermissionsOnly The {@code boolean} that decides if only missing permissions
-     *                                  are to be set or if they should be overridden.
-     * @return Returns the {@code error} if path is not a directory file, failed to create it,
-     * or validating permissions failed, otherwise {@code null}.
-     * @deprecated Use {@link #createDirectoryFileOrThrow(String, String, String, boolean, boolean)} instead.
-     */
-    @Deprecated
-    public static Error createDirectoryFile(final String label, final String filePath,
-                                            final String permissionsToCheck, final boolean setPermissions, final boolean setMissingPermissionsOnly) {
-        return validateDirectoryFileExistenceAndPermissions(label, filePath,
-            null, true,
-            permissionsToCheck, setPermissions, setMissingPermissionsOnly,
-            false, false);
+        createDirectoryFileOrThrow(label, filePath, null, false, false);
     }
 
     /**
      * Exception-throwing sibling of {@link #createDirectoryFile(String, String, String, boolean, boolean)}.
      * @throws TermuxException If path is not a directory file, failed to create it, or validating permissions failed.
      */
-    @SuppressWarnings("deprecation")
     public static void createDirectoryFileOrThrow(final String label, final String filePath,
                                                    final String permissionsToCheck, final boolean setPermissions, final boolean setMissingPermissionsOnly) throws TermuxException {
-        TermuxException.throwIfFailed(createDirectoryFile(label, filePath, permissionsToCheck, setPermissions, setMissingPermissionsOnly));
+        validateDirectoryFileExistenceAndPermissionsOrThrow(label, filePath,
+            null, true,
+            permissionsToCheck, setPermissions, setMissingPermissionsOnly,
+            false, false);
     }
 
 
-
-    /**
-     * Create a symlink file at path.
-     *
-     * This function is a wrapper for
-     * {@link #createSymlinkFile(String, String, String, boolean, boolean, boolean)}.
-     *
-     * Dangling symlinks will be allowed.
-     * Symlink destination will be overwritten if it already exists but only if its a symlink.
-     *
-     * @param targetFilePath The {@code path} TO which the symlink file will be created.
-     * @param destFilePath The {@code path} AT which the symlink file will be created.
-     * @return Returns the {@code error} if path is not a symlink file, failed to create it,
-     * otherwise {@code null}.
-     * @deprecated Use {@link #createSymlinkFileOrThrow(String, String)} instead.
-     */
-    @Deprecated
-    public static Error createSymlinkFile(final String targetFilePath, final String destFilePath) {
-        return createSymlinkFile(null, targetFilePath, destFilePath,
-            true, true, true);
-    }
 
     /**
      * Exception-throwing sibling of {@link #createSymlinkFile(String, String)}.
      * @throws TermuxException If path is not a symlink file or failed to create it.
      */
-    @SuppressWarnings("deprecation")
     public static void createSymlinkFileOrThrow(final String targetFilePath, final String destFilePath) throws TermuxException {
-        TermuxException.throwIfFailed(createSymlinkFile(targetFilePath, destFilePath));
-    }
-
-    /**
-     * Create a symlink file at path.
-     *
-     * This function is a wrapper for
-     * {@link #createSymlinkFile(String, String, String, boolean, boolean, boolean)}.
-     *
-     * Dangling symlinks will be allowed.
-     * Symlink destination will be overwritten if it already exists but only if its a symlink.
-     *
-     * @param label The optional label for the symlink file. This can optionally be {@code null}.
-     * @param targetFilePath The {@code path} TO which the symlink file will be created.
-     * @param destFilePath The {@code path} AT which the symlink file will be created.
-     * @return Returns the {@code error} if path is not a symlink file, failed to create it,
-     * otherwise {@code null}.
-     * @deprecated Use {@link #createSymlinkFileOrThrow(String, String, String)} instead.
-     */
-    @Deprecated
-    public static Error createSymlinkFile(String label, final String targetFilePath, final String destFilePath) {
-        return createSymlinkFile(label, targetFilePath, destFilePath,
-            true, true, true);
+        createSymlinkFileOrThrow(null, targetFilePath, destFilePath, true, true, true);
     }
 
     /**
      * Exception-throwing sibling of {@link #createSymlinkFile(String, String, String)}.
      * @throws TermuxException If path is not a symlink file or failed to create it.
      */
-    @SuppressWarnings("deprecation")
     public static void createSymlinkFileOrThrow(String label, final String targetFilePath, final String destFilePath) throws TermuxException {
-        TermuxException.throwIfFailed(createSymlinkFile(label, targetFilePath, destFilePath));
+        createSymlinkFileOrThrow(label, targetFilePath, destFilePath, true, true, true);
     }
 
     /**
-     * Create a symlink file at path.
-     *
-     * @param label The optional label for the symlink file. This can optionally be {@code null}.
-     * @param targetFilePath The {@code path} TO which the symlink file will be created.
-     * @param destFilePath The {@code path} AT which the symlink file will be created.
-     * @param allowDangling The {@code boolean} that decides if it should be considered an
-     *                              error if source file doesn't exist.
-     * @param overwrite The {@code boolean} that decides if destination file should be overwritten if
-     *                  it already exists. If set to {@code true}, then destination file will be
-     *                  deleted before symlink is created.
-     * @param overwriteOnlyIfDestIsASymlink The {@code boolean} that decides if overwrite should
-     *                                         only be done if destination file is also a symlink.
-     * @return Returns the {@code error} if path is not a symlink file, failed to create it,
-     * or validating permissions failed, otherwise {@code null}.
-     * @deprecated Use {@link #createSymlinkFileOrThrow(String, String, String, boolean, boolean, boolean)} instead.
+     * Exception-throwing sibling of {@link #createSymlinkFile(String, String, String, boolean, boolean, boolean)}.
+     * @throws TermuxException If path is not a symlink file, failed to create it, or validating permissions failed.
      */
-    @Deprecated
-    public static Error createSymlinkFile(String label, final String targetFilePath, final String destFilePath,
-                                          final boolean allowDangling, final boolean overwrite, final boolean overwriteOnlyIfDestIsASymlink) {
+    public static void createSymlinkFileOrThrow(String label, final String targetFilePath, final String destFilePath,
+                                                 final boolean allowDangling, final boolean overwrite, final boolean overwriteOnlyIfDestIsASymlink) throws TermuxException {
         label = (label == null || label.isEmpty() ? "" : label + " ");
-        if (targetFilePath == null || targetFilePath.isEmpty()) return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "target file path", "createSymlinkFile");
-        if (destFilePath == null || destFilePath.isEmpty()) return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "destination file path", "createSymlinkFile");
-
-        Error error;
+        if (targetFilePath == null || targetFilePath.isEmpty()) throw new TermuxException(FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "target file path", "createSymlinkFile"));
+        if (destFilePath == null || destFilePath.isEmpty()) throw new TermuxException(FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "destination file path", "createSymlinkFile"));
 
         try {
             File destFile = new File(destFilePath);
@@ -962,7 +671,7 @@ public class FileUtils {
                 // If dangling symlink should not be allowed, then return with error
                 if (!allowDangling) {
                     label += "symlink target file";
-                    return FileUtilsErrno.ERRNO_FILE_NOT_FOUND_AT_PATH.getError(label, targetFileAbsolutePath).setLabel(label);
+                    throw new TermuxException(FileUtilsErrno.ERRNO_FILE_NOT_FOUND_AT_PATH.getError(label, targetFileAbsolutePath).setLabel(label));
                 }
             }
 
@@ -970,354 +679,109 @@ public class FileUtils {
             if (destFileType != FileType.NO_EXIST) {
                 // If destination must not be overwritten
                 if (!overwrite) {
-                    return null;
+                    return;
                 }
 
                 // If overwriteOnlyIfDestIsASymlink is enabled but destination file is not a symlink
                 if (overwriteOnlyIfDestIsASymlink && destFileType != FileType.SYMLINK)
-                    return FileUtilsErrno.ERRNO_CANNOT_OVERWRITE_A_NON_SYMLINK_FILE_TYPE.getError(label + " file", destFilePath, targetFilePath, destFileType.getName());
+                    throw new TermuxException(FileUtilsErrno.ERRNO_CANNOT_OVERWRITE_A_NON_SYMLINK_FILE_TYPE.getError(label + " file", destFilePath, targetFilePath, destFileType.getName()));
 
                 // Delete the destination file
-                error = deleteFile(label + "symlink destination", destFilePath, true);
-                if (error != null)
-                    return error;
+                deleteFileOrThrow(label + "symlink destination", destFilePath, true);
             } else {
                 // Create the destination file parent directory
-                error = createParentDirectoryFile(label + "symlink destination file parent", destFilePath);
-                if (error != null)
-                    return error;
+                createParentDirectoryFileOrThrow(label + "symlink destination file parent", destFilePath);
             }
 
             // create a symlink at destFilePath to targetFilePath
             Logger.logVerbose(LOG_TAG, "Creating " + label + "symlink file at path \"" + destFilePath + "\" to \"" + targetFilePath + "\"");
             Os.symlink(targetFilePath, destFilePath);
+        } catch (TermuxException e) {
+            throw e;
         } catch (Exception e) {
-            return FileUtilsErrno.ERRNO_CREATING_SYMLINK_FILE_FAILED_WITH_EXCEPTION.getError(e, label + "symlink file", destFilePath, targetFilePath, e.getMessage());
+            throw new TermuxException(FileUtilsErrno.ERRNO_CREATING_SYMLINK_FILE_FAILED_WITH_EXCEPTION.getError(e, label + "symlink file", destFilePath, targetFilePath, e.getMessage()));
         }
-
-        return null;
-    }
-
-    /**
-     * Exception-throwing sibling of {@link #createSymlinkFile(String, String, String, boolean, boolean, boolean)}.
-     * @throws TermuxException If path is not a symlink file, failed to create it, or validating permissions failed.
-     */
-    @SuppressWarnings("deprecation")
-    public static void createSymlinkFileOrThrow(String label, final String targetFilePath, final String destFilePath,
-                                                 final boolean allowDangling, final boolean overwrite, final boolean overwriteOnlyIfDestIsASymlink) throws TermuxException {
-        TermuxException.throwIfFailed(createSymlinkFile(label, targetFilePath, destFilePath, allowDangling, overwrite, overwriteOnlyIfDestIsASymlink));
     }
 
 
-
-    /**
-     * Copy a regular file from {@code sourceFilePath} to {@code destFilePath}.
-     *
-     * This function is a wrapper for
-     * {@link #copyOrMoveFile(String, String, String, boolean, boolean, int, boolean, boolean)}.
-     *
-     * If destination file already exists, then it will be overwritten, but only if its a regular
-     * file, otherwise an error will be returned.
-     *
-     * @param label The optional label for file to copy. This can optionally be {@code null}.
-     * @param srcFilePath The {@code source path} for file to copy.
-     * @param destFilePath The {@code destination path} for file to copy.
-     * @param ignoreNonExistentSrcFile The {@code boolean} that decides if it should be considered an
-     *                              error if source file to copied doesn't exist.
-     * @return Returns the {@code error} if copy was not successful, otherwise {@code null}.
-     * @deprecated Use {@link #copyRegularFileOrThrow(String, String, String, boolean)} instead.
-     */
-    @Deprecated
-    public static Error copyRegularFile(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) {
-        return copyOrMoveFile(label, srcFilePath, destFilePath,
-            false, ignoreNonExistentSrcFile, FileType.REGULAR.getValue(),
-            true, true);
-    }
 
     /**
      * Exception-throwing sibling of {@link #copyRegularFile(String, String, String, boolean)}.
      * @throws TermuxException If copy was not successful.
      */
-    @SuppressWarnings("deprecation")
     public static void copyRegularFileOrThrow(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) throws TermuxException {
-        TermuxException.throwIfFailed(copyRegularFile(label, srcFilePath, destFilePath, ignoreNonExistentSrcFile));
-    }
-
-    /**
-     * Move a regular file from {@code sourceFilePath} to {@code destFilePath}.
-     *
-     * This function is a wrapper for
-     * {@link #copyOrMoveFile(String, String, String, boolean, boolean, int, boolean, boolean)}.
-     *
-     * If destination file already exists, then it will be overwritten, but only if its a regular
-     * file, otherwise an error will be returned.
-     *
-     * @param label The optional label for file to move. This can optionally be {@code null}.
-     * @param srcFilePath The {@code source path} for file to move.
-     * @param destFilePath The {@code destination path} for file to move.
-     * @param ignoreNonExistentSrcFile The {@code boolean} that decides if it should be considered an
-     *                              error if source file to moved doesn't exist.
-     * @return Returns the {@code error} if move was not successful, otherwise {@code null}.
-     * @deprecated Use {@link #moveRegularFileOrThrow(String, String, String, boolean)} instead.
-     */
-    @Deprecated
-    public static Error moveRegularFile(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) {
-        return copyOrMoveFile(label, srcFilePath, destFilePath,
-            true, ignoreNonExistentSrcFile, FileType.REGULAR.getValue(),
-            true, true);
+        copyOrMoveFileOrThrow(label, srcFilePath, destFilePath, false, ignoreNonExistentSrcFile, FileType.REGULAR.getValue(), true, true);
     }
 
     /**
      * Exception-throwing sibling of {@link #moveRegularFile(String, String, String, boolean)}.
      * @throws TermuxException If move was not successful.
      */
-    @SuppressWarnings("deprecation")
     public static void moveRegularFileOrThrow(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) throws TermuxException {
-        TermuxException.throwIfFailed(moveRegularFile(label, srcFilePath, destFilePath, ignoreNonExistentSrcFile));
-    }
-
-    /**
-     * Copy a directory file from {@code sourceFilePath} to {@code destFilePath}.
-     *
-     * This function is a wrapper for
-     * {@link #copyOrMoveFile(String, String, String, boolean, boolean, int, boolean, boolean)}.
-     *
-     * If destination file already exists, then it will be overwritten, but only if its a directory
-     * file, otherwise an error will be returned.
-     *
-     * @param label The optional label for file to copy. This can optionally be {@code null}.
-     * @param srcFilePath The {@code source path} for file to copy.
-     * @param destFilePath The {@code destination path} for file to copy.
-     * @param ignoreNonExistentSrcFile The {@code boolean} that decides if it should be considered an
-     *                              error if source file to copied doesn't exist.
-     * @return Returns the {@code error} if copy was not successful, otherwise {@code null}.
-     * @deprecated Use {@link #copyDirectoryFileOrThrow(String, String, String, boolean)} instead.
-     */
-    @Deprecated
-    public static Error copyDirectoryFile(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) {
-        return copyOrMoveFile(label, srcFilePath, destFilePath,
-            false, ignoreNonExistentSrcFile, FileType.DIRECTORY.getValue(),
-            true, true);
+        copyOrMoveFileOrThrow(label, srcFilePath, destFilePath, true, ignoreNonExistentSrcFile, FileType.REGULAR.getValue(), true, true);
     }
 
     /**
      * Exception-throwing sibling of {@link #copyDirectoryFile(String, String, String, boolean)}.
      * @throws TermuxException If copy was not successful.
      */
-    @SuppressWarnings("deprecation")
     public static void copyDirectoryFileOrThrow(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) throws TermuxException {
-        TermuxException.throwIfFailed(copyDirectoryFile(label, srcFilePath, destFilePath, ignoreNonExistentSrcFile));
-    }
-
-    /**
-     * Move a directory file from {@code sourceFilePath} to {@code destFilePath}.
-     *
-     * This function is a wrapper for
-     * {@link #copyOrMoveFile(String, String, String, boolean, boolean, int, boolean, boolean)}.
-     *
-     * If destination file already exists, then it will be overwritten, but only if its a directory
-     * file, otherwise an error will be returned.
-     *
-     * @param label The optional label for file to move. This can optionally be {@code null}.
-     * @param srcFilePath The {@code source path} for file to move.
-     * @param destFilePath The {@code destination path} for file to move.
-     * @param ignoreNonExistentSrcFile The {@code boolean} that decides if it should be considered an
-     *                              error if source file to moved doesn't exist.
-     * @return Returns the {@code error} if move was not successful, otherwise {@code null}.
-     * @deprecated Use {@link #moveDirectoryFileOrThrow(String, String, String, boolean)} instead.
-     */
-    @Deprecated
-    public static Error moveDirectoryFile(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) {
-        return copyOrMoveFile(label, srcFilePath, destFilePath,
-            true, ignoreNonExistentSrcFile, FileType.DIRECTORY.getValue(),
-            true, true);
+        copyOrMoveFileOrThrow(label, srcFilePath, destFilePath, false, ignoreNonExistentSrcFile, FileType.DIRECTORY.getValue(), true, true);
     }
 
     /**
      * Exception-throwing sibling of {@link #moveDirectoryFile(String, String, String, boolean)}.
      * @throws TermuxException If move was not successful.
      */
-    @SuppressWarnings("deprecation")
     public static void moveDirectoryFileOrThrow(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) throws TermuxException {
-        TermuxException.throwIfFailed(moveDirectoryFile(label, srcFilePath, destFilePath, ignoreNonExistentSrcFile));
-    }
-
-    /**
-     * Copy a symlink file from {@code sourceFilePath} to {@code destFilePath}.
-     *
-     * This function is a wrapper for
-     * {@link #copyOrMoveFile(String, String, String, boolean, boolean, int, boolean, boolean)}.
-     *
-     * If destination file already exists, then it will be overwritten, but only if its a symlink
-     * file, otherwise an error will be returned.
-     *
-     * @param label The optional label for file to copy. This can optionally be {@code null}.
-     * @param srcFilePath The {@code source path} for file to copy.
-     * @param destFilePath The {@code destination path} for file to copy.
-     * @param ignoreNonExistentSrcFile The {@code boolean} that decides if it should be considered an
-     *                              error if source file to copied doesn't exist.
-     * @return Returns the {@code error} if copy was not successful, otherwise {@code null}.
-     * @deprecated Use {@link #copySymlinkFileOrThrow(String, String, String, boolean)} instead.
-     */
-    @Deprecated
-    public static Error copySymlinkFile(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) {
-        return copyOrMoveFile(label, srcFilePath, destFilePath,
-            false, ignoreNonExistentSrcFile, FileType.SYMLINK.getValue(),
-            true, true);
+        copyOrMoveFileOrThrow(label, srcFilePath, destFilePath, true, ignoreNonExistentSrcFile, FileType.DIRECTORY.getValue(), true, true);
     }
 
     /**
      * Exception-throwing sibling of {@link #copySymlinkFile(String, String, String, boolean)}.
      * @throws TermuxException If copy was not successful.
      */
-    @SuppressWarnings("deprecation")
     public static void copySymlinkFileOrThrow(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) throws TermuxException {
-        TermuxException.throwIfFailed(copySymlinkFile(label, srcFilePath, destFilePath, ignoreNonExistentSrcFile));
-    }
-
-    /**
-     * Move a symlink file from {@code sourceFilePath} to {@code destFilePath}.
-     *
-     * This function is a wrapper for
-     * {@link #copyOrMoveFile(String, String, String, boolean, boolean, int, boolean, boolean)}.
-     *
-     * If destination file already exists, then it will be overwritten, but only if its a symlink
-     * file, otherwise an error will be returned.
-     *
-     * @param label The optional label for file to move. This can optionally be {@code null}.
-     * @param srcFilePath The {@code source path} for file to move.
-     * @param destFilePath The {@code destination path} for file to move.
-     * @param ignoreNonExistentSrcFile The {@code boolean} that decides if it should be considered an
-     *                              error if source file to moved doesn't exist.
-     * @return Returns the {@code error} if move was not successful, otherwise {@code null}.
-     * @deprecated Use {@link #moveSymlinkFileOrThrow(String, String, String, boolean)} instead.
-     */
-    @Deprecated
-    public static Error moveSymlinkFile(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) {
-        return copyOrMoveFile(label, srcFilePath, destFilePath,
-            true, ignoreNonExistentSrcFile, FileType.SYMLINK.getValue(),
-            true, true);
+        copyOrMoveFileOrThrow(label, srcFilePath, destFilePath, false, ignoreNonExistentSrcFile, FileType.SYMLINK.getValue(), true, true);
     }
 
     /**
      * Exception-throwing sibling of {@link #moveSymlinkFile(String, String, String, boolean)}.
      * @throws TermuxException If move was not successful.
      */
-    @SuppressWarnings("deprecation")
     public static void moveSymlinkFileOrThrow(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) throws TermuxException {
-        TermuxException.throwIfFailed(moveSymlinkFile(label, srcFilePath, destFilePath, ignoreNonExistentSrcFile));
-    }
-
-    /**
-     * Copy a file from {@code sourceFilePath} to {@code destFilePath}.
-     *
-     * This function is a wrapper for
-     * {@link #copyOrMoveFile(String, String, String, boolean, boolean, int, boolean, boolean)}.
-     *
-     * If destination file already exists, then it will be overwritten, but only if its the same file
-     * type as the source, otherwise an error will be returned.
-     *
-     * @param label The optional label for file to copy. This can optionally be {@code null}.
-     * @param srcFilePath The {@code source path} for file to copy.
-     * @param destFilePath The {@code destination path} for file to copy.
-     * @param ignoreNonExistentSrcFile The {@code boolean} that decides if it should be considered an
-     *                              error if source file to copied doesn't exist.
-     * @return Returns the {@code error} if copy was not successful, otherwise {@code null}.
-     * @deprecated Use {@link #copyFileOrThrow(String, String, String, boolean)} instead.
-     */
-    @Deprecated
-    public static Error copyFile(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) {
-        return copyOrMoveFile(label, srcFilePath, destFilePath,
-            false, ignoreNonExistentSrcFile, FileTypes.FILE_TYPE_NORMAL_FLAGS,
-            true, true);
+        copyOrMoveFileOrThrow(label, srcFilePath, destFilePath, true, ignoreNonExistentSrcFile, FileType.SYMLINK.getValue(), true, true);
     }
 
     /**
      * Exception-throwing sibling of {@link #copyFile(String, String, String, boolean)}.
      * @throws TermuxException If copy was not successful.
      */
-    @SuppressWarnings("deprecation")
     public static void copyFileOrThrow(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) throws TermuxException {
-        TermuxException.throwIfFailed(copyFile(label, srcFilePath, destFilePath, ignoreNonExistentSrcFile));
-    }
-
-    /**
-     * Move a file from {@code sourceFilePath} to {@code destFilePath}.
-     *
-     * This function is a wrapper for
-     * {@link #copyOrMoveFile(String, String, String, boolean, boolean, int, boolean, boolean)}.
-     *
-     * If destination file already exists, then it will be overwritten, but only if its the same file
-     * type as the source, otherwise an error will be returned.
-     *
-     * @param label The optional label for file to move. This can optionally be {@code null}.
-     * @param srcFilePath The {@code source path} for file to move.
-     * @param destFilePath The {@code destination path} for file to move.
-     * @param ignoreNonExistentSrcFile The {@code boolean} that decides if it should be considered an
-     *                              error if source file to moved doesn't exist.
-     * @return Returns the {@code error} if move was not successful, otherwise {@code null}.
-     * @deprecated Use {@link #moveFileOrThrow(String, String, String, boolean)} instead.
-     */
-    @Deprecated
-    public static Error moveFile(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) {
-        return copyOrMoveFile(label, srcFilePath, destFilePath,
-            true, ignoreNonExistentSrcFile, FileTypes.FILE_TYPE_NORMAL_FLAGS,
-            true, true);
+        copyOrMoveFileOrThrow(label, srcFilePath, destFilePath, false, ignoreNonExistentSrcFile, FileTypes.FILE_TYPE_NORMAL_FLAGS, true, true);
     }
 
     /**
      * Exception-throwing sibling of {@link #moveFile(String, String, String, boolean)}.
      * @throws TermuxException If move was not successful.
      */
-    @SuppressWarnings("deprecation")
     public static void moveFileOrThrow(final String label, final String srcFilePath, final String destFilePath, final boolean ignoreNonExistentSrcFile) throws TermuxException {
-        TermuxException.throwIfFailed(moveFile(label, srcFilePath, destFilePath, ignoreNonExistentSrcFile));
+        copyOrMoveFileOrThrow(label, srcFilePath, destFilePath, true, ignoreNonExistentSrcFile, FileTypes.FILE_TYPE_NORMAL_FLAGS, true, true);
     }
 
     /**
-     * Copy or move a file from {@code sourceFilePath} to {@code destFilePath}.
-     *
-     * The {@code sourceFilePath} and {@code destFilePath} must be the canonical path to the source
-     * and destination since symlinks will not be followed.
-     *
-     * If the {@code sourceFilePath} or {@code destFilePath} is a canonical path to a directory,
-     * then any symlink files found under the directory will be deleted, but not their targets when
-     * deleting source after move and deleting destination before copy/move.
-     *
-     * @param label The optional label for file to copy or move. This can optionally be {@code null}.
-     * @param srcFilePath The {@code source path} for file to copy or move.
-     * @param destFilePath The {@code destination path} for file to copy or move.
-     * @param moveFile The {@code boolean} that decides if source file needs to be copied or moved.
-     *                 If set to {@code true}, then source file will be moved, otherwise it will be
-     *                 copied.
-     * @param ignoreNonExistentSrcFile The {@code boolean} that decides if it should be considered an
-     *                              error if source file to copied or moved doesn't exist.
-     * @param allowedFileTypeFlags The flags that are matched against the source file's {@link FileType}
-     *                             to see if it should be copied/moved or not. This is a safety measure
-     *                             to prevent accidental copy/move/delete of the wrong type of file,
-     *                             like a directory instead of a regular file. You can pass
-     *                             {@link FileTypes#FILE_TYPE_ANY_FLAGS} to allow copy/move of any file type.
-     * @param overwrite The {@code boolean} that decides if destination file should be overwritten if
-     *                  it already exists. If set to {@code true}, then destination file will be
-     *                  deleted before source is copied or moved.
-     * @param overwriteOnlyIfDestSameFileTypeAsSrc The {@code boolean} that decides if overwrite should
-     *                                         only be done if destination file is also the same file
-     *                                          type as the source file.
-     * @return Returns the {@code error} if copy or move was not successful, otherwise {@code null}.
-     * @deprecated Use {@link #copyOrMoveFileOrThrow(String, String, String, boolean, boolean, int, boolean, boolean)} instead.
+     * Exception-throwing sibling of {@link #copyOrMoveFile(String, String, String, boolean, boolean, int, boolean, boolean)}.
+     * @throws TermuxException If copy or move was not successful.
      */
-    @Deprecated
-    public static Error copyOrMoveFile(String label, final String srcFilePath, final String destFilePath,
-                                       final boolean moveFile, final boolean ignoreNonExistentSrcFile, int allowedFileTypeFlags,
-                                       final boolean overwrite, final boolean overwriteOnlyIfDestSameFileTypeAsSrc) {
+    public static void copyOrMoveFileOrThrow(String label, final String srcFilePath, final String destFilePath,
+                                              final boolean moveFile, final boolean ignoreNonExistentSrcFile, int allowedFileTypeFlags,
+                                              final boolean overwrite, final boolean overwriteOnlyIfDestSameFileTypeAsSrc) throws TermuxException {
         label = (label == null || label.isEmpty() ? "" : label + " ");
-        if (srcFilePath == null || srcFilePath.isEmpty()) return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "source file path", "copyOrMoveFile");
-        if (destFilePath == null || destFilePath.isEmpty()) return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "destination file path", "copyOrMoveFile");
+        if (srcFilePath == null || srcFilePath.isEmpty()) throw new TermuxException(FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "source file path", "copyOrMoveFile"));
+        if (destFilePath == null || destFilePath.isEmpty()) throw new TermuxException(FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "destination file path", "copyOrMoveFile"));
 
         String mode = (moveFile ? "Moving" : "Copying");
         String modePast = (moveFile ? "moved" : "copied");
-
-        Error error;
 
         try {
             Logger.logVerbose(LOG_TAG, mode + " " + label + "source file from \"" + srcFilePath + "\" to destination \"" + destFilePath + "\"");
@@ -1335,37 +799,35 @@ public class FileUtils {
             if (srcFileType == FileType.NO_EXIST) {
                 // If copy or move is to be ignored if source file is not found
                 if (ignoreNonExistentSrcFile)
-                    return null;
+                    return;
                     // Else return with error
                 else {
                     label += "source file";
-                    return FileUtilsErrno.ERRNO_FILE_NOT_FOUND_AT_PATH.getError(label, srcFilePath).setLabel(label);
+                    throw new TermuxException(FileUtilsErrno.ERRNO_FILE_NOT_FOUND_AT_PATH.getError(label, srcFilePath).setLabel(label));
                 }
             }
 
             // If the file type of the source file does not exist in the allowedFileTypeFlags, then return with error
             if ((allowedFileTypeFlags & srcFileType.getValue()) <= 0)
-                return FileUtilsErrno.ERRNO_FILE_NOT_AN_ALLOWED_FILE_TYPE.getError(label + "source file meant to be " + modePast, srcFilePath, FileTypes.convertFileTypeFlagsToNamesString(allowedFileTypeFlags));
+                throw new TermuxException(FileUtilsErrno.ERRNO_FILE_NOT_AN_ALLOWED_FILE_TYPE.getError(label + "source file meant to be " + modePast, srcFilePath, FileTypes.convertFileTypeFlagsToNamesString(allowedFileTypeFlags)));
 
             // If source and destination file path are the same
             if (srcFileCanonicalPath.equals(destFileCanonicalPath))
-                return FileUtilsErrno.ERRNO_COPYING_OR_MOVING_FILE_TO_SAME_PATH.getError(mode + " " + label + "source file", srcFilePath, destFilePath);
+                throw new TermuxException(FileUtilsErrno.ERRNO_COPYING_OR_MOVING_FILE_TO_SAME_PATH.getError(mode + " " + label + "source file", srcFilePath, destFilePath));
 
             // If destination exists
             if (destFileType != FileType.NO_EXIST) {
                 // If destination must not be overwritten
                 if (!overwrite) {
-                    return null;
+                    return;
                 }
 
                 // If overwriteOnlyIfDestSameFileTypeAsSrc is enabled but destination file does not match source file type
                 if (overwriteOnlyIfDestSameFileTypeAsSrc && destFileType != srcFileType)
-                    return FileUtilsErrno.ERRNO_CANNOT_OVERWRITE_A_DIFFERENT_FILE_TYPE.getError(label + "source file", mode.toLowerCase(), srcFilePath, destFilePath, destFileType.getName(), srcFileType.getName());
+                    throw new TermuxException(FileUtilsErrno.ERRNO_CANNOT_OVERWRITE_A_DIFFERENT_FILE_TYPE.getError(label + "source file", mode.toLowerCase(), srcFilePath, destFilePath, destFileType.getName(), srcFileType.getName()));
 
                 // Delete the destination file
-                error = deleteFile(label + "destination", destFilePath, true);
-                if (error != null)
-                    return error;
+                deleteFileOrThrow(label + "destination", destFilePath, true);
             }
 
 
@@ -1384,7 +846,7 @@ public class FileUtils {
                     // If destination directory is a subdirectory of the source directory
                     // Copying is still allowed by copyDirectory() by excluding destination directory files
                     if (srcFileType == FileType.DIRECTORY && destFileCanonicalPath.startsWith(srcFileCanonicalPath + File.separator))
-                        return FileUtilsErrno.ERRNO_CANNOT_MOVE_DIRECTORY_TO_SUB_DIRECTORY_OF_ITSELF.getError(label + "source directory", srcFilePath, destFilePath);
+                        throw new TermuxException(FileUtilsErrno.ERRNO_CANNOT_MOVE_DIRECTORY_TO_SUB_DIRECTORY_OF_ITSELF.getError(label + "source directory", srcFilePath, destFilePath));
 
                     // If rename failed, then we copy
                     Logger.logVerbose(LOG_TAG, "Renaming " + label + "source file to destination failed, attempting to copy.");
@@ -1397,9 +859,7 @@ public class FileUtils {
                 Logger.logVerbose(LOG_TAG, "Attempting to copy source to destination.");
 
                 // Create the dest file parent directory
-                error = createParentDirectoryFile(label + "dest file parent", destFilePath);
-                if (error != null)
-                    return error;
+                createParentDirectoryFileOrThrow(label + "dest file parent", destFilePath);
 
                 if (srcFileType == FileType.DIRECTORY) {
                     // Will give runtime exceptions on android < 8 due to missing classes like java.nio.file.Path if org.apache.commons.io version > 2.5
@@ -1414,161 +874,57 @@ public class FileUtils {
             // If source file had to be moved
             if (moveFile) {
                 // Delete the source file since copying would have succeeded
-                error = deleteFile(label + "source", srcFilePath, true);
-                if (error != null)
-                    return error;
+                deleteFileOrThrow(label + "source", srcFilePath, true);
             }
 
             Logger.logVerbose(LOG_TAG, mode + " successful.");
+        } catch (TermuxException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new TermuxException(FileUtilsErrno.ERRNO_COPYING_OR_MOVING_FILE_FAILED_WITH_EXCEPTION.getError(e, mode + " " + label + "file", srcFilePath, destFilePath, e.getMessage()));
         }
-        catch (Exception e) {
-            return FileUtilsErrno.ERRNO_COPYING_OR_MOVING_FILE_FAILED_WITH_EXCEPTION.getError(e, mode + " " + label + "file", srcFilePath, destFilePath, e.getMessage());
-        }
-
-        return null;
-    }
-
-    /**
-     * Exception-throwing sibling of {@link #copyOrMoveFile(String, String, String, boolean, boolean, int, boolean, boolean)}.
-     * @throws TermuxException If copy or move was not successful.
-     */
-    @SuppressWarnings("deprecation")
-    public static void copyOrMoveFileOrThrow(String label, final String srcFilePath, final String destFilePath,
-                                              final boolean moveFile, final boolean ignoreNonExistentSrcFile, int allowedFileTypeFlags,
-                                              final boolean overwrite, final boolean overwriteOnlyIfDestSameFileTypeAsSrc) throws TermuxException {
-        TermuxException.throwIfFailed(copyOrMoveFile(label, srcFilePath, destFilePath, moveFile, ignoreNonExistentSrcFile, allowedFileTypeFlags, overwrite, overwriteOnlyIfDestSameFileTypeAsSrc));
     }
 
 
-
-    /**
-     * Delete regular file at path.
-     *
-     * This function is a wrapper for {@link #deleteFile(String, String, boolean, boolean, int)}.
-     *
-     * @param label The optional label for file to delete. This can optionally be {@code null}.
-     * @param filePath The {@code path} for file to delete.
-     * @param ignoreNonExistentFile The {@code boolean} that decides if it should be considered an
-     *                              error if file to deleted doesn't exist.
-     * @return Returns the {@code error} if deletion was not successful, otherwise {@code null}.
-     * @deprecated Use {@link #deleteRegularFileOrThrow(String, String, boolean)} instead.
-     */
-    @Deprecated
-    public static Error deleteRegularFile(String label, final String filePath, final boolean ignoreNonExistentFile) {
-        return deleteFile(label, filePath, ignoreNonExistentFile, false, FileType.REGULAR.getValue());
-    }
 
     /**
      * Exception-throwing sibling of {@link #deleteRegularFile(String, String, boolean)}.
      * @throws TermuxException If deletion was not successful.
      */
-    @SuppressWarnings("deprecation")
     public static void deleteRegularFileOrThrow(String label, final String filePath, final boolean ignoreNonExistentFile) throws TermuxException {
-        TermuxException.throwIfFailed(deleteRegularFile(label, filePath, ignoreNonExistentFile));
-    }
-
-    /**
-     * Delete directory file at path.
-     *
-     * This function is a wrapper for {@link #deleteFile(String, String, boolean, boolean, int)}.
-     *
-     * @param label The optional label for file to delete. This can optionally be {@code null}.
-     * @param filePath The {@code path} for file to delete.
-     * @param ignoreNonExistentFile The {@code boolean} that decides if it should be considered an
-     *                              error if file to deleted doesn't exist.
-     * @return Returns the {@code error} if deletion was not successful, otherwise {@code null}.
-     * @deprecated Use {@link #deleteDirectoryFileOrThrow(String, String, boolean)} instead.
-     */
-    @Deprecated
-    public static Error deleteDirectoryFile(String label, final String filePath, final boolean ignoreNonExistentFile) {
-        return deleteFile(label, filePath, ignoreNonExistentFile, false, FileType.DIRECTORY.getValue());
+        deleteFileOrThrow(label, filePath, ignoreNonExistentFile, false, FileType.REGULAR.getValue());
     }
 
     /**
      * Exception-throwing sibling of {@link #deleteDirectoryFile(String, String, boolean)}.
      * @throws TermuxException If deletion was not successful.
      */
-    @SuppressWarnings("deprecation")
     public static void deleteDirectoryFileOrThrow(String label, final String filePath, final boolean ignoreNonExistentFile) throws TermuxException {
-        TermuxException.throwIfFailed(deleteDirectoryFile(label, filePath, ignoreNonExistentFile));
-    }
-
-    /**
-     * Delete symlink file at path.
-     *
-     * This function is a wrapper for {@link #deleteFile(String, String, boolean, boolean, int)}.
-     *
-     * @param label The optional label for file to delete. This can optionally be {@code null}.
-     * @param filePath The {@code path} for file to delete.
-     * @param ignoreNonExistentFile The {@code boolean} that decides if it should be considered an
-     *                              error if file to deleted doesn't exist.
-     * @return Returns the {@code error} if deletion was not successful, otherwise {@code null}.
-     * @deprecated Use {@link #deleteSymlinkFileOrThrow(String, String, boolean)} instead.
-     */
-    @Deprecated
-    public static Error deleteSymlinkFile(String label, final String filePath, final boolean ignoreNonExistentFile) {
-        return deleteFile(label, filePath, ignoreNonExistentFile, false, FileType.SYMLINK.getValue());
+        deleteFileOrThrow(label, filePath, ignoreNonExistentFile, false, FileType.DIRECTORY.getValue());
     }
 
     /**
      * Exception-throwing sibling of {@link #deleteSymlinkFile(String, String, boolean)}.
      * @throws TermuxException If deletion was not successful.
      */
-    @SuppressWarnings("deprecation")
     public static void deleteSymlinkFileOrThrow(String label, final String filePath, final boolean ignoreNonExistentFile) throws TermuxException {
-        TermuxException.throwIfFailed(deleteSymlinkFile(label, filePath, ignoreNonExistentFile));
-    }
-
-    /**
-     * Delete socket file at path.
-     *
-     * This function is a wrapper for {@link #deleteFile(String, String, boolean, boolean, int)}.
-     *
-     * @param label The optional label for file to delete. This can optionally be {@code null}.
-     * @param filePath The {@code path} for file to delete.
-     * @param ignoreNonExistentFile The {@code boolean} that decides if it should be considered an
-     *                              error if file to deleted doesn't exist.
-     * @return Returns the {@code error} if deletion was not successful, otherwise {@code null}.
-     * @deprecated Use {@link #deleteSocketFileOrThrow(String, String, boolean)} instead.
-     */
-    @Deprecated
-    public static Error deleteSocketFile(String label, final String filePath, final boolean ignoreNonExistentFile) {
-        return deleteFile(label, filePath, ignoreNonExistentFile, false, FileType.SOCKET.getValue());
+        deleteFileOrThrow(label, filePath, ignoreNonExistentFile, false, FileType.SYMLINK.getValue());
     }
 
     /**
      * Exception-throwing sibling of {@link #deleteSocketFile(String, String, boolean)}.
      * @throws TermuxException If deletion was not successful.
      */
-    @SuppressWarnings("deprecation")
     public static void deleteSocketFileOrThrow(String label, final String filePath, final boolean ignoreNonExistentFile) throws TermuxException {
-        TermuxException.throwIfFailed(deleteSocketFile(label, filePath, ignoreNonExistentFile));
-    }
-
-    /**
-     * Delete regular, directory or symlink file at path.
-     *
-     * This function is a wrapper for {@link #deleteFile(String, String, boolean, boolean, int)}.
-     *
-     * @param label The optional label for file to delete. This can optionally be {@code null}.
-     * @param filePath The {@code path} for file to delete.
-     * @param ignoreNonExistentFile The {@code boolean} that decides if it should be considered an
-     *                              error if file to deleted doesn't exist.
-     * @return Returns the {@code error} if deletion was not successful, otherwise {@code null}.
-     * @deprecated Use {@link #deleteFileOrThrow(String, String, boolean)} instead.
-     */
-    @Deprecated
-    public static Error deleteFile(String label, final String filePath, final boolean ignoreNonExistentFile) {
-        return deleteFile(label, filePath, ignoreNonExistentFile, false, FileTypes.FILE_TYPE_NORMAL_FLAGS);
+        deleteFileOrThrow(label, filePath, ignoreNonExistentFile, false, FileType.SOCKET.getValue());
     }
 
     /**
      * Exception-throwing sibling of {@link #deleteFile(String, String, boolean)}.
      * @throws TermuxException If deletion was not successful.
      */
-    @SuppressWarnings("deprecation")
     public static void deleteFileOrThrow(String label, final String filePath, final boolean ignoreNonExistentFile) throws TermuxException {
-        TermuxException.throwIfFailed(deleteFile(label, filePath, ignoreNonExistentFile));
+        deleteFileOrThrow(label, filePath, ignoreNonExistentFile, false, FileTypes.FILE_TYPE_NORMAL_FLAGS);
     }
 
     /**
@@ -1619,31 +975,12 @@ public class FileUtils {
     }
 
     /**
-     * Delete file at path.
-     *
-     * The {@code filePath} must be the canonical path to the file to be deleted since symlinks will
-     * not be followed.
-     * If the {@code filePath} is a canonical path to a directory, then any symlink files found under
-     * the directory will be deleted, but not their targets.
-     *
-     * @param label The optional label for file to delete. This can optionally be {@code null}.
-     * @param filePath The {@code path} for file to delete.
-     * @param ignoreNonExistentFile The {@code boolean} that decides if it should be considered an
-     *                              error if file to deleted doesn't exist.
-     * @param ignoreWrongFileType The {@code boolean} that decides if it should be considered an
-     *                              error if file type is not one from {@code allowedFileTypeFlags}.
-     * @param allowedFileTypeFlags The flags that are matched against the file's {@link FileType} to
-     *                             see if it should be deleted or not. This is a safety measure to
-     *                             prevent accidental deletion of the wrong type of file, like a
-     *                             directory instead of a regular file. You can pass
-     *                             {@link FileTypes#FILE_TYPE_ANY_FLAGS} to allow deletion of any file type.
-     * @return Returns the {@code error} if deletion was not successful, otherwise {@code null}.
-     * @deprecated Use {@link #deleteFileOrThrow(String, String, boolean, boolean, int)} instead.
+     * Exception-throwing sibling of {@link #deleteFile(String, String, boolean, boolean, int)}.
+     * @throws TermuxException If deletion was not successful.
      */
-    @Deprecated
-    public static Error deleteFile(String label, final String filePath, final boolean ignoreNonExistentFile, final boolean ignoreWrongFileType, int allowedFileTypeFlags) {
+    public static void deleteFileOrThrow(String label, final String filePath, final boolean ignoreNonExistentFile, final boolean ignoreWrongFileType, int allowedFileTypeFlags) throws TermuxException {
         label = (label == null || label.isEmpty() ? "" : label + " ");
-        if (filePath == null || filePath.isEmpty()) return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "deleteFile");
+        if (filePath == null || filePath.isEmpty()) throw new TermuxException(FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "deleteFile"));
 
         try {
             File file = new File(filePath);
@@ -1655,11 +992,11 @@ public class FileUtils {
             if (fileType == FileType.NO_EXIST) {
                 // If delete is to be ignored if file does not exist
                 if (ignoreNonExistentFile)
-                    return null;
+                    return;
                     // Else return with error
                 else {
                     label += "file meant to be deleted";
-                    return FileUtilsErrno.ERRNO_FILE_NOT_FOUND_AT_PATH.getError(label, filePath).setLabel(label);
+                    throw new TermuxException(FileUtilsErrno.ERRNO_FILE_NOT_FOUND_AT_PATH.getError(label, filePath).setLabel(label));
                 }
             }
 
@@ -1668,11 +1005,11 @@ public class FileUtils {
                 // If wrong file type is to be ignored
                 if (ignoreWrongFileType) {
                     Logger.logVerbose(LOG_TAG, "Ignoring deletion of " + label + "file at path \"" + filePath + "\" of type \"" + fileType.getName() + "\" not matching allowed file types: " + FileTypes.convertFileTypeFlagsToNamesString(allowedFileTypeFlags));
-                    return null;
+                    return;
                 }
 
                 // Else return with error
-                return FileUtilsErrno.ERRNO_FILE_NOT_AN_ALLOWED_FILE_TYPE.getError(label + "file meant to be deleted", filePath, fileType.getName(), FileTypes.convertFileTypeFlagsToNamesString(allowedFileTypeFlags));
+                throw new TermuxException(FileUtilsErrno.ERRNO_FILE_NOT_AN_ALLOWED_FILE_TYPE.getError(label + "file meant to be deleted", filePath, fileType.getName(), FileTypes.convertFileTypeFlagsToNamesString(allowedFileTypeFlags)));
             }
 
             Logger.logVerbose(LOG_TAG, "Deleting " + label + "file at path \"" + filePath + "\"");
@@ -1685,69 +1022,31 @@ public class FileUtils {
             // If file still exists after deleting it
             fileType = getFileType(filePath, false);
             if (fileType != FileType.NO_EXIST)
-                return FileUtilsErrno.ERRNO_FILE_STILL_EXISTS_AFTER_DELETING.getError(label + "file meant to be deleted", filePath);
+                throw new TermuxException(FileUtilsErrno.ERRNO_FILE_STILL_EXISTS_AFTER_DELETING.getError(label + "file meant to be deleted", filePath));
+        } catch (TermuxException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new TermuxException(FileUtilsErrno.ERRNO_DELETING_FILE_FAILED_WITH_EXCEPTION.getError(e, label + "file", filePath, e.getMessage()));
         }
-        catch (Exception e) {
-            return FileUtilsErrno.ERRNO_DELETING_FILE_FAILED_WITH_EXCEPTION.getError(e, label + "file", filePath, e.getMessage());
-        }
-
-        return null;
-    }
-
-    /**
-     * Exception-throwing sibling of {@link #deleteFile(String, String, boolean, boolean, int)}.
-     * @throws TermuxException If deletion was not successful.
-     */
-    @SuppressWarnings("deprecation")
-    public static void deleteFileOrThrow(String label, final String filePath, final boolean ignoreNonExistentFile, final boolean ignoreWrongFileType, int allowedFileTypeFlags) throws TermuxException {
-        TermuxException.throwIfFailed(deleteFile(label, filePath, ignoreNonExistentFile, ignoreWrongFileType, allowedFileTypeFlags));
     }
 
 
-
-    /**
-     * Clear contents of directory at path without deleting the directory. If directory does not exist
-     * it will be created automatically.
-     *
-     * This function is a wrapper for
-     * {@link #clearDirectory(String, String)}.
-     *
-     * @param filePath The {@code path} for directory to clear.
-     * @return Returns the {@code error} if clearing was not successful, otherwise {@code null}.
-     * @deprecated Use {@link #clearDirectoryOrThrow(String)} instead.
-     */
-    @Deprecated
-    public static Error clearDirectory(String filePath) {
-        return clearDirectory(null, filePath);
-    }
 
     /**
      * Exception-throwing sibling of {@link #clearDirectory(String)}.
      * @throws TermuxException If clearing was not successful.
      */
-    @SuppressWarnings("deprecation")
     public static void clearDirectoryOrThrow(String filePath) throws TermuxException {
-        TermuxException.throwIfFailed(clearDirectory(filePath));
+        clearDirectoryOrThrow(null, filePath);
     }
 
     /**
-     * Clear contents of directory at path without deleting the directory. If directory does not exist
-     * it will be created automatically.
-     *
-     * The {@code filePath} must be the canonical path to a directory since symlinks will not be followed.
-     * Any symlink files found under the directory will be deleted, but not their targets.
-     *
-     * @param label The optional label for directory to clear. This can optionally be {@code null}.
-     * @param filePath The {@code path} for directory to clear.
-     * @return Returns the {@code error} if clearing was not successful, otherwise {@code null}.
-     * @deprecated Use {@link #clearDirectoryOrThrow(String, String)} instead.
+     * Exception-throwing sibling of {@link #clearDirectory(String, String)}.
+     * @throws TermuxException If clearing was not successful.
      */
-    @Deprecated
-    public static Error clearDirectory(String label, final String filePath) {
+    public static void clearDirectoryOrThrow(String label, final String filePath) throws TermuxException {
         label = (label == null || label.isEmpty() ? "" : label + " ");
-        if (filePath == null || filePath.isEmpty()) return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "clearDirectory");
-
-        Error error;
+        if (filePath == null || filePath.isEmpty()) throw new TermuxException(FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "clearDirectory"));
 
         try {
             Logger.logVerbose(LOG_TAG, "Clearing " + label + "directory at path \"" + filePath + "\"");
@@ -1757,7 +1056,7 @@ public class FileUtils {
 
             // If file exists but not a directory file
             if (fileType != FileType.NO_EXIST && fileType != FileType.DIRECTORY) {
-                return FileUtilsErrno.ERRNO_NON_DIRECTORY_FILE_FOUND.getError(label + "directory", filePath).setLabel(label + "directory");
+                throw new TermuxException(FileUtilsErrno.ERRNO_NON_DIRECTORY_FILE_FOUND.getError(label + "directory", filePath).setLabel(label + "directory"));
             }
 
             // If directory exists, clear its contents
@@ -1766,55 +1065,23 @@ public class FileUtils {
             }
             // Else create it
             else {
-                error = createDirectoryFile(label, filePath);
-                if (error != null)
-                    return error;
+                createDirectoryFileOrThrow(label, filePath);
             }
+        } catch (TermuxException e) {
+            throw e;
         } catch (Exception e) {
-            return FileUtilsErrno.ERRNO_CLEARING_DIRECTORY_FAILED_WITH_EXCEPTION.getError(e, label + "directory", filePath, e.getMessage());
+            throw new TermuxException(FileUtilsErrno.ERRNO_CLEARING_DIRECTORY_FAILED_WITH_EXCEPTION.getError(e, label + "directory", filePath, e.getMessage()));
         }
-
-        return null;
     }
 
     /**
-     * Exception-throwing sibling of {@link #clearDirectory(String, String)}.
-     * @throws TermuxException If clearing was not successful.
+     * Exception-throwing sibling of {@link #deleteFilesOlderThanXDays(String, String, IOFileFilter, int, boolean, int)}.
+     * @throws TermuxException If deleting was not successful.
      */
-    @SuppressWarnings("deprecation")
-    public static void clearDirectoryOrThrow(String label, final String filePath) throws TermuxException {
-        TermuxException.throwIfFailed(clearDirectory(label, filePath));
-    }
-
-    /**
-     * Delete files under a directory older than x days.
-     *
-     * The {@code filePath} must be the canonical path to a directory since symlinks will not be followed.
-     * Any symlink files found under the directory will be deleted, but not their targets.
-     *
-     * @param label The optional label for directory to clear. This can optionally be {@code null}.
-     * @param filePath The {@code path} for directory to clear.
-     * @param dirFilter  The optional filter to apply when finding subdirectories.
-     *                   If this parameter is {@code null}, subdirectories will not be included in the
-     *                   search. Use TrueFileFilter.INSTANCE to match all directories.
-     * @param days The x amount of days before which files should be deleted. This must be `>=0`.
-     * @param ignoreNonExistentFile The {@code boolean} that decides if it should be considered an
-     *                              error if file to deleted doesn't exist.
-     * @param allowedFileTypeFlags The flags that are matched against the file's {@link FileType} to
-     *                             see if it should be deleted or not. This is a safety measure to
-     *                             prevent accidental deletion of the wrong type of file, like a
-     *                             directory instead of a regular file. You can pass
-     *                             {@link FileTypes#FILE_TYPE_ANY_FLAGS} to allow deletion of any file type.
-     * @return Returns the {@code error} if deleting was not successful, otherwise {@code null}.
-     * @deprecated Use {@link #deleteFilesOlderThanXDaysOrThrow(String, String, IOFileFilter, int, boolean, int)} instead.
-     */
-    @Deprecated
-    public static Error deleteFilesOlderThanXDays(String label, final String filePath, final IOFileFilter dirFilter, int days, final boolean ignoreNonExistentFile, int allowedFileTypeFlags) {
+    public static void deleteFilesOlderThanXDaysOrThrow(String label, final String filePath, final IOFileFilter dirFilter, int days, final boolean ignoreNonExistentFile, int allowedFileTypeFlags) throws TermuxException {
         label = (label == null || label.isEmpty() ? "" : label + " ");
-        if (filePath == null || filePath.isEmpty()) return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "deleteFilesOlderThanXDays");
-        if (days < 0) return FunctionErrno.ERRNO_INVALID_PARAMETER.getError(label + "days", "deleteFilesOlderThanXDays", " It must be >= 0.");
-
-        Error error;
+        if (filePath == null || filePath.isEmpty()) throw new TermuxException(FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "deleteFilesOlderThanXDays"));
+        if (days < 0) throw new TermuxException(FunctionErrno.ERRNO_INVALID_PARAMETER.getError(label + "days", "deleteFilesOlderThanXDays", " It must be >= 0."));
 
         try {
             Logger.logVerbose(LOG_TAG, "Deleting files under " + label + "directory at path \"" + filePath + "\" older than " + days + " days");
@@ -1824,18 +1091,18 @@ public class FileUtils {
 
             // If file exists but not a directory file
             if (fileType != FileType.NO_EXIST && fileType != FileType.DIRECTORY) {
-                return FileUtilsErrno.ERRNO_NON_DIRECTORY_FILE_FOUND.getError(label + "directory", filePath).setLabel(label + "directory");
+                throw new TermuxException(FileUtilsErrno.ERRNO_NON_DIRECTORY_FILE_FOUND.getError(label + "directory", filePath).setLabel(label + "directory"));
             }
 
             // If file does not exist
             if (fileType == FileType.NO_EXIST) {
                 // If delete is to be ignored if file does not exist
                 if (ignoreNonExistentFile)
-                    return null;
+                    return;
                     // Else return with error
                 else {
                     label += "directory under which files had to be deleted";
-                    return FileUtilsErrno.ERRNO_FILE_NOT_FOUND_AT_PATH.getError(label, filePath).setLabel(label);
+                    throw new TermuxException(FileUtilsErrno.ERRNO_FILE_NOT_FOUND_AT_PATH.getError(label, filePath).setLabel(label));
                 }
             }
 
@@ -1851,81 +1118,59 @@ public class FileUtils {
                 org.apache.commons.io.FileUtils.iterateFiles(file, new AgeFileFilter(calendar.getTime()), dirFilter);
             while (filesToDelete.hasNext()) {
                 File subFile = filesToDelete.next();
-                error = deleteFile(label + " directory sub", subFile.getAbsolutePath(), true, true, allowedFileTypeFlags);
-                if (error != null)
-                    return error;
+                deleteFileOrThrow(label + " directory sub", subFile.getAbsolutePath(), true, true, allowedFileTypeFlags);
             }
+        } catch (TermuxException e) {
+            throw e;
         } catch (Exception e) {
-            return FileUtilsErrno.ERRNO_DELETING_FILES_OLDER_THAN_X_DAYS_FAILED_WITH_EXCEPTION.getError(e, label + "directory", filePath, days, e.getMessage());
+            throw new TermuxException(FileUtilsErrno.ERRNO_DELETING_FILES_OLDER_THAN_X_DAYS_FAILED_WITH_EXCEPTION.getError(e, label + "directory", filePath, days, e.getMessage()));
         }
-
-        return null;
-
-    }
-
-    /**
-     * Exception-throwing sibling of {@link #deleteFilesOlderThanXDays(String, String, IOFileFilter, int, boolean, int)}.
-     * @throws TermuxException If deleting was not successful.
-     */
-    @SuppressWarnings("deprecation")
-    public static void deleteFilesOlderThanXDaysOrThrow(String label, final String filePath, final IOFileFilter dirFilter, int days, final boolean ignoreNonExistentFile, int allowedFileTypeFlags) throws TermuxException {
-        TermuxException.throwIfFailed(deleteFilesOlderThanXDays(label, filePath, dirFilter, days, ignoreNonExistentFile, allowedFileTypeFlags));
     }
 
 
-
-
-
     /**
-     * Read a text {@link String} from file at path with a specific {@link Charset} into {@code dataString}.
+     * Exception-throwing sibling of {@link #readTextFromFile(String, String, Charset, StringBuilder, boolean)}.
+     * Reads a text {@link String} from file at path with a specific {@link Charset}.
      *
      * @param label The optional label for file to read. This can optionally be {@code null}.
      * @param filePath The {@code path} for file to read.
      * @param charset The {@link Charset} of the file. If this is {@code null},
      *                then default {@link Charset} will be used.
-     * @param dataStringBuilder The {@code StringBuilder} to read data into.
      * @param ignoreNonExistentFile The {@code boolean} that decides if it should be considered an
      *                              error if file to read doesn't exist.
-     * @return Returns the {@code error} if reading was not successful, otherwise {@code null}.
-     * @deprecated Use {@link #readTextFromFileOrThrow(String, String, Charset, boolean)} instead,
-     *             which throws a {@link com.termux.shared.errors.TermuxException} instead of
-     *             returning a nullable {@link Error}. See {@code beads-xs0}.
+     * @return Returns the file content, or an empty {@link String} if the file did not exist and
+     *         {@code ignoreNonExistentFile} was {@code true}.
+     * @throws TermuxException If reading was not successful.
      */
-    @Deprecated
-    public static Error readTextFromFile(String label, final String filePath, Charset charset, @NonNull final StringBuilder dataStringBuilder, final boolean ignoreNonExistentFile) {
+    public static String readTextFromFileOrThrow(String label, final String filePath, Charset charset, final boolean ignoreNonExistentFile) throws TermuxException {
         label = (label == null || label.isEmpty() ? "" : label + " ");
-        if (filePath == null || filePath.isEmpty()) return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "readStringFromFile");
+        if (filePath == null || filePath.isEmpty()) throw new TermuxException(FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "readStringFromFile"));
 
         Logger.logVerbose(LOG_TAG, "Reading text from " + label + "file at path \"" + filePath + "\"");
-
-        Error error;
 
         FileType fileType = getFileType(filePath, false);
 
         // If file exists but not a regular file
         if (fileType != FileType.NO_EXIST && fileType != FileType.REGULAR) {
-            return FileUtilsErrno.ERRNO_NON_REGULAR_FILE_FOUND.getError(label + "file", filePath).setLabel(label + "file");
+            throw new TermuxException(FileUtilsErrno.ERRNO_NON_REGULAR_FILE_FOUND.getError(label + "file", filePath).setLabel(label + "file"));
         }
 
         // If file does not exist
         if (fileType == FileType.NO_EXIST) {
-            // If reading is to be ignored if file does not exist
             if (ignoreNonExistentFile)
-                return null;
-                // Else return with error
+                return "";
             else {
                 label += "file meant to be read";
-                return FileUtilsErrno.ERRNO_FILE_NOT_FOUND_AT_PATH.getError(label, filePath).setLabel(label);
+                throw new TermuxException(FileUtilsErrno.ERRNO_FILE_NOT_FOUND_AT_PATH.getError(label, filePath).setLabel(label));
             }
         }
 
         if (charset == null) charset = Charset.defaultCharset();
 
         // Check if charset is supported
-        error = isCharsetSupported(charset);
-        if (error != null)
-            return error;
+        isCharsetSupportedOrThrow(charset);
 
+        StringBuilder dataStringBuilder = new StringBuilder();
         FileInputStream fileInputStream = null;
         BufferedReader bufferedReader = null;
         try {
@@ -1943,36 +1188,12 @@ public class FileUtils {
 
             Logger.logVerbose(LOG_TAG, Logger.getMultiLineLogStringEntry("String", DataUtils.getTruncatedCommandOutput(dataStringBuilder.toString(), Logger.LOGGER_ENTRY_MAX_SAFE_PAYLOAD, true, false, true), "-"));
         } catch (Exception e) {
-            return FileUtilsErrno.ERRNO_READING_TEXT_FROM_FILE_FAILED_WITH_EXCEPTION.getError(e, label + "file", filePath, e.getMessage());
+            throw new TermuxException(FileUtilsErrno.ERRNO_READING_TEXT_FROM_FILE_FAILED_WITH_EXCEPTION.getError(e, label + "file", filePath, e.getMessage()));
         } finally {
             closeCloseable(fileInputStream);
             closeCloseable(bufferedReader);
         }
 
-        return null;
-    }
-
-    /**
-     * Exception-throwing sibling of {@link #readTextFromFile(String, String, Charset, StringBuilder, boolean)}.
-     * Reads a text {@link String} from file at path with a specific {@link Charset}.
-     *
-     * @param label The optional label for file to read. This can optionally be {@code null}.
-     * @param filePath The {@code path} for file to read.
-     * @param charset The {@link Charset} of the file. If this is {@code null},
-     *                then default {@link Charset} will be used.
-     * @param ignoreNonExistentFile The {@code boolean} that decides if it should be considered an
-     *                              error if file to read doesn't exist.
-     * @return Returns the file content, or an empty {@link String} if the file did not exist and
-     *         {@code ignoreNonExistentFile} was {@code true}.
-     * @throws TermuxException If reading was not successful.
-     */
-    @SuppressWarnings("deprecation")
-    public static String readTextFromFileOrThrow(String label, final String filePath, Charset charset, final boolean ignoreNonExistentFile) throws TermuxException {
-        String labelPrefix = (label == null || label.isEmpty() ? "" : label + " ");
-        FunctionException.throwIfNullOrEmpty(filePath, labelPrefix + "file path", "readTextFromFileOrThrow");
-
-        StringBuilder dataStringBuilder = new StringBuilder();
-        TermuxException.throwIfFailed(readTextFromFile(label, filePath, charset, dataStringBuilder, ignoreNonExistentFile));
         return dataStringBuilder.toString();
     }
 
@@ -1987,81 +1208,48 @@ public class FileUtils {
     }
 
     /**
-     * Read a {@link Serializable} object from file at path.
-     *
-     * @param label The optional label for file to read. This can optionally be {@code null}.
-     * @param filePath The {@code path} for file to read.
-     * @param readObjectType The {@link Class} of the object.
-     * @param ignoreNonExistentFile The {@code boolean} that decides if it should be considered an
-     *                              error if file to read doesn't exist.
-     * @return Returns the {@code error} if reading was not successful, otherwise {@code null}.
-     * @deprecated Use {@link #readSerializableObjectFromFileOrThrow(String, String, Class, boolean)} instead.
-     */
-    @NonNull
-    @Deprecated
-    public static <T extends Serializable> ReadSerializableObjectResult readSerializableObjectFromFile(String label, final String filePath, Class<T> readObjectType, final boolean ignoreNonExistentFile) {
-        label = (label == null || label.isEmpty() ? "" : label + " ");
-        if (filePath == null || filePath.isEmpty()) return new ReadSerializableObjectResult(FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "readSerializableObjectFromFile"), null);
-
-        Logger.logVerbose(LOG_TAG, "Reading serializable object from " + label + "file at path \"" + filePath + "\"");
-
-        T serializableObject;
-
-        FileType fileType = getFileType(filePath, false);
-
-        // If file exists but not a regular file
-        if (fileType != FileType.NO_EXIST && fileType != FileType.REGULAR) {
-            return new ReadSerializableObjectResult(FileUtilsErrno.ERRNO_NON_REGULAR_FILE_FOUND.getError(label + "file", filePath).setLabel(label + "file"), null);
-        }
-
-        // If file does not exist
-        if (fileType == FileType.NO_EXIST) {
-            // If reading is to be ignored if file does not exist
-            if (ignoreNonExistentFile)
-                return new ReadSerializableObjectResult(null, null);
-                // Else return with error
-            else {
-                label += "file meant to be read";
-                return new ReadSerializableObjectResult(FileUtilsErrno.ERRNO_FILE_NOT_FOUND_AT_PATH.getError(label, filePath).setLabel(label), null);
-            }
-        }
-
-        FileInputStream fileInputStream = null;
-        ObjectInputStream objectInputStream = null;
-        try {
-            // Read serializable object from file
-            fileInputStream = new FileInputStream(filePath);
-            // Use a hardened ObjectInputStream that only allows resolving readObjectType (and a
-            // small set of always-safe JDK value types) to protect against deserialization
-            // gadget-chain attacks (CWE-502) if this file is ever attacker-controlled. See
-            // beads-h94 and AllowListingObjectInputStream's javadoc.
-            objectInputStream = new AllowListingObjectInputStream(fileInputStream, readObjectType);
-            //serializableObject = (T) objectInputStream.readObject();
-            serializableObject = readObjectType.cast(objectInputStream.readObject());
-
-            //Logger.logVerbose(LOG_TAG, Logger.getMultiLineLogStringEntry("String", DataUtils.getTruncatedCommandOutput(dataStringBuilder.toString(), Logger.LOGGER_ENTRY_MAX_SAFE_PAYLOAD, true, false, true), "-"));
-        } catch (Exception e) {
-            return new ReadSerializableObjectResult(FileUtilsErrno.ERRNO_READING_SERIALIZABLE_OBJECT_TO_FILE_FAILED_WITH_EXCEPTION.getError(e, label + "file", filePath, e.getMessage()), null);
-        } finally {
-            closeCloseable(fileInputStream);
-            closeCloseable(objectInputStream);
-        }
-
-        return new ReadSerializableObjectResult(null, serializableObject);
-    }
-
-    /**
      * Exception-throwing sibling of {@link #readSerializableObjectFromFile(String, String, Class, boolean)}.
      *
      * @return Returns the deserialized object, or {@code null} if the file did not exist and
      *         {@code ignoreNonExistentFile} was {@code true}.
      * @throws TermuxException If reading was not successful.
      */
-    @SuppressWarnings("deprecation")
     public static <T extends Serializable> T readSerializableObjectFromFileOrThrow(String label, final String filePath, Class<T> readObjectType, final boolean ignoreNonExistentFile) throws TermuxException {
-        ReadSerializableObjectResult result = readSerializableObjectFromFile(label, filePath, readObjectType, ignoreNonExistentFile);
-        TermuxException.throwIfFailed(result.error);
-        return readObjectType.cast(result.serializableObject);
+        label = (label == null || label.isEmpty() ? "" : label + " ");
+        if (filePath == null || filePath.isEmpty()) throw new TermuxException(FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "readSerializableObjectFromFile"));
+
+        Logger.logVerbose(LOG_TAG, "Reading serializable object from " + label + "file at path \"" + filePath + "\"");
+
+        FileType fileType = getFileType(filePath, false);
+
+        // If file exists but not a regular file
+        if (fileType != FileType.NO_EXIST && fileType != FileType.REGULAR) {
+            throw new TermuxException(FileUtilsErrno.ERRNO_NON_REGULAR_FILE_FOUND.getError(label + "file", filePath).setLabel(label + "file"));
+        }
+
+        // If file does not exist
+        if (fileType == FileType.NO_EXIST) {
+            if (ignoreNonExistentFile)
+                return null;
+            else {
+                label += "file meant to be read";
+                throw new TermuxException(FileUtilsErrno.ERRNO_FILE_NOT_FOUND_AT_PATH.getError(label, filePath).setLabel(label));
+            }
+        }
+
+        FileInputStream fileInputStream = null;
+        ObjectInputStream objectInputStream = null;
+        try {
+            fileInputStream = new FileInputStream(filePath);
+            objectInputStream = new AllowListingObjectInputStream(fileInputStream, readObjectType);
+            T serializableObject = readObjectType.cast(objectInputStream.readObject());
+            return serializableObject;
+        } catch (Exception e) {
+            throw new TermuxException(FileUtilsErrno.ERRNO_READING_SERIALIZABLE_OBJECT_TO_FILE_FAILED_WITH_EXCEPTION.getError(e, label + "file", filePath, e.getMessage()));
+        } finally {
+            closeCloseable(fileInputStream);
+            closeCloseable(objectInputStream);
+        }
     }
 
     /**
@@ -2145,36 +1333,21 @@ public class FileUtils {
     }
 
     /**
-     * Write text {@code dataString} with a specific {@link Charset} to file at path.
-     *
-     * @param label The optional label for file to write. This can optionally be {@code null}.
-     * @param filePath The {@code path} for file to write.
-     * @param charset The {@link Charset} of the {@code dataString}. If this is {@code null},
-     *                then default {@link Charset} will be used.
-     * @param dataString The data to write to file.
-     * @param append The {@code boolean} that decides if file should be appended to or not.
-     * @return Returns the {@code error} if writing was not successful, otherwise {@code null}.
-     * @deprecated Use {@link #writeTextToFileOrThrow(String, String, Charset, String, boolean)} instead.
+     * Exception-throwing sibling of {@link #writeTextToFile(String, String, Charset, String, boolean)}.
+     * @throws TermuxException If writing was not successful.
      */
-    @Deprecated
-    public static Error writeTextToFile(String label, final String filePath, Charset charset, final String dataString, final boolean append) {
+    public static void writeTextToFileOrThrow(String label, final String filePath, Charset charset, final String dataString, final boolean append) throws TermuxException {
         label = (label == null || label.isEmpty() ? "" : label + " ");
-        if (filePath == null || filePath.isEmpty()) return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "writeStringToFile");
+        if (filePath == null || filePath.isEmpty()) throw new TermuxException(FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "writeStringToFile"));
 
         Logger.logVerbose(LOG_TAG, Logger.getMultiLineLogStringEntry("Writing text to " + label + "file at path \"" + filePath + "\"", DataUtils.getTruncatedCommandOutput(dataString, Logger.LOGGER_ENTRY_MAX_SAFE_PAYLOAD, true, false, true), "-"));
 
-        Error error;
-
-        error = preWriteToFile(label, filePath);
-        if (error != null)
-            return error;
+        preWriteToFile(label, filePath);
 
         if (charset == null) charset = Charset.defaultCharset();
 
         // Check if charset is supported
-        error = isCharsetSupported(charset);
-        if (error != null)
-            return error;
+        isCharsetSupportedOrThrow(charset);
 
         FileOutputStream fileOutputStream = null;
         BufferedWriter bufferedWriter = null;
@@ -2186,45 +1359,24 @@ public class FileUtils {
             bufferedWriter.write(dataString);
             bufferedWriter.flush();
         } catch (Exception e) {
-            return FileUtilsErrno.ERRNO_WRITING_TEXT_TO_FILE_FAILED_WITH_EXCEPTION.getError(e, label + "file", filePath, e.getMessage());
+            throw new TermuxException(FileUtilsErrno.ERRNO_WRITING_TEXT_TO_FILE_FAILED_WITH_EXCEPTION.getError(e, label + "file", filePath, e.getMessage()));
         } finally {
             closeCloseable(fileOutputStream);
             closeCloseable(bufferedWriter);
         }
-
-        return null;
     }
 
     /**
-     * Exception-throwing sibling of {@link #writeTextToFile(String, String, Charset, String, boolean)}.
+     * Exception-throwing sibling of {@link #writeSerializableObjectToFile(String, String, Serializable)}.
      * @throws TermuxException If writing was not successful.
      */
-    @SuppressWarnings("deprecation")
-    public static void writeTextToFileOrThrow(String label, final String filePath, Charset charset, final String dataString, final boolean append) throws TermuxException {
-        TermuxException.throwIfFailed(writeTextToFile(label, filePath, charset, dataString, append));
-    }
-
-    /**
-     * Write the {@link Serializable} {@code serializableObject} to file at path.
-     *
-     * @param label The optional label for file to write. This can optionally be {@code null}.
-     * @param filePath The {@code path} for file to write.
-     * @param serializableObject The object to write to file.
-     * @return Returns the {@code error} if writing was not successful, otherwise {@code null}.
-     * @deprecated Use {@link #writeSerializableObjectToFileOrThrow(String, String, Serializable)} instead.
-     */
-    @Deprecated
-    public static <T extends Serializable> Error writeSerializableObjectToFile(String label, final String filePath, final T serializableObject) {
+    public static <T extends Serializable> void writeSerializableObjectToFileOrThrow(String label, final String filePath, final T serializableObject) throws TermuxException {
         label = (label == null || label.isEmpty() ? "" : label + " ");
-        if (filePath == null || filePath.isEmpty()) return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "writeSerializableObjectToFile");
+        if (filePath == null || filePath.isEmpty()) throw new TermuxException(FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "writeSerializableObjectToFile"));
 
         Logger.logVerbose(LOG_TAG, "Writing serializable object to " + label + "file at path \"" + filePath + "\"");
 
-        Error error;
-
-        error = preWriteToFile(label, filePath);
-        if (error != null)
-            return error;
+        preWriteToFile(label, filePath);
 
         FileOutputStream fileOutputStream = null;
         ObjectOutputStream objectOutputStream = null;
@@ -2236,73 +1388,43 @@ public class FileUtils {
             objectOutputStream.writeObject(serializableObject);
             objectOutputStream.flush();
         } catch (Exception e) {
-            return FileUtilsErrno.ERRNO_WRITING_SERIALIZABLE_OBJECT_TO_FILE_FAILED_WITH_EXCEPTION.getError(e, label + "file", filePath, e.getMessage());
+            throw new TermuxException(FileUtilsErrno.ERRNO_WRITING_SERIALIZABLE_OBJECT_TO_FILE_FAILED_WITH_EXCEPTION.getError(e, label + "file", filePath, e.getMessage()));
         } finally {
             closeCloseable(fileOutputStream);
             closeCloseable(objectOutputStream);
         }
-
-        return null;
     }
 
-    /**
-     * Exception-throwing sibling of {@link #writeSerializableObjectToFile(String, String, Serializable)}.
-     * @throws TermuxException If writing was not successful.
-     */
-    @SuppressWarnings("deprecation")
-    public static <T extends Serializable> void writeSerializableObjectToFileOrThrow(String label, final String filePath, final T serializableObject) throws TermuxException {
-        TermuxException.throwIfFailed(writeSerializableObjectToFile(label, filePath, serializableObject));
-    }
-
-    private static Error preWriteToFile(String label, String filePath) {
-        Error error;
-
+    private static void preWriteToFile(String label, String filePath) throws TermuxException {
         FileType fileType = getFileType(filePath, false);
 
         // If file exists but not a regular file
         if (fileType != FileType.NO_EXIST && fileType != FileType.REGULAR) {
-            return FileUtilsErrno.ERRNO_NON_REGULAR_FILE_FOUND.getError(label + "file", filePath).setLabel(label + "file");
+            throw new TermuxException(FileUtilsErrno.ERRNO_NON_REGULAR_FILE_FOUND.getError(label + "file", filePath).setLabel(label + "file"));
         }
 
         // Create the file parent directory
-        error = createParentDirectoryFile(label + "file parent", filePath);
-        if (error != null)
-            return error;
-
-        return null;
+        createParentDirectoryFileOrThrow(label + "file parent", filePath);
     }
 
 
-
-    /**
-     * Check if a specific {@link Charset} is supported.
-     *
-     * @param charset The {@link Charset} to check.
-     * @return Returns the {@code error} if charset is not supported or failed to check it, otherwise {@code null}.
-     * @deprecated Use {@link #isCharsetSupportedOrThrow(Charset)} instead.
-     */
-    @Deprecated
-    public static Error isCharsetSupported(final Charset charset) {
-        if (charset == null) return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError("charset", "isCharsetSupported");
-
-        try {
-            if (!Charset.isSupported(charset.name())) {
-                return FileUtilsErrno.ERRNO_UNSUPPORTED_CHARSET.getError(charset.name());
-            }
-        } catch (Exception e) {
-            return FileUtilsErrno.ERRNO_CHECKING_IF_CHARSET_SUPPORTED_FAILED.getError(e, charset.name(), e.getMessage());
-        }
-
-        return null;
-    }
 
     /**
      * Exception-throwing sibling of {@link #isCharsetSupported(Charset)}.
      * @throws TermuxException If charset is not supported or failed to check it.
      */
-    @SuppressWarnings("deprecation")
     public static void isCharsetSupportedOrThrow(final Charset charset) throws TermuxException {
-        TermuxException.throwIfFailed(isCharsetSupported(charset));
+        if (charset == null) throw new TermuxException(FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError("charset", "isCharsetSupported"));
+
+        try {
+            if (!Charset.isSupported(charset.name())) {
+                throw new TermuxException(FileUtilsErrno.ERRNO_UNSUPPORTED_CHARSET.getError(charset.name()));
+            }
+        } catch (TermuxException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new TermuxException(FileUtilsErrno.ERRNO_CHECKING_IF_CHARSET_SUPPORTED_FAILED.getError(e, charset.name(), e.getMessage()));
+        }
     }
 
 
@@ -2445,77 +1567,42 @@ public class FileUtils {
 
 
     /**
-     * Checking missing permissions for file at path.
-     *
-     * @param filePath The {@code path} for file to check permissions for.
-     * @param permissionsToCheck The 3 character string that contains the "r", "w", "x" or "-" in-order.
-     * @param ignoreIfNotExecutable The {@code boolean} that decides if missing executable permission
-     *                              error is to be ignored.
-     * @return Returns the {@code error} if validating permissions failed, otherwise {@code null}.
-     * @deprecated Use {@link #checkMissingFilePermissionsOrThrow(String, String, boolean)} instead.
-     */
-    @Deprecated
-    public static Error checkMissingFilePermissions(final String filePath, final String permissionsToCheck, final boolean ignoreIfNotExecutable) {
-        return checkMissingFilePermissions(null, filePath, permissionsToCheck, ignoreIfNotExecutable);
-    }
-
-    /**
      * Exception-throwing sibling of {@link #checkMissingFilePermissions(String, String, boolean)}.
      * @throws TermuxException If validating permissions failed.
      */
-    @SuppressWarnings("deprecation")
     public static void checkMissingFilePermissionsOrThrow(final String filePath, final String permissionsToCheck, final boolean ignoreIfNotExecutable) throws TermuxException {
-        TermuxException.throwIfFailed(checkMissingFilePermissions(filePath, permissionsToCheck, ignoreIfNotExecutable));
-    }
-
-    /**
-     * Checking missing permissions for file at path.
-     *
-     * @param label The optional label for the file. This can optionally be {@code null}.
-     * @param filePath The {@code path} for file to check permissions for.
-     * @param permissionsToCheck The 3 character string that contains the "r", "w", "x" or "-" in-order.
-     * @param ignoreIfNotExecutable The {@code boolean} that decides if missing executable permission
-     *                              error is to be ignored.
-     * @return Returns the {@code error} if validating permissions failed, otherwise {@code null}.
-     * @deprecated Use {@link #checkMissingFilePermissionsOrThrow(String, String, String, boolean)} instead.
-     */
-    @Deprecated
-    public static Error checkMissingFilePermissions(String label, final String filePath, final String permissionsToCheck, final boolean ignoreIfNotExecutable) {
-        label = (label == null || label.isEmpty() ? "" : label + " ");
-        if (filePath == null || filePath.isEmpty()) return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "checkMissingFilePermissions");
-
-        if (!isValidPermissionString(permissionsToCheck)) {
-            Logger.logError(LOG_TAG, "Invalid permissionsToCheck passed to checkMissingFilePermissions: \"" + permissionsToCheck + "\"");
-            return FileUtilsErrno.ERRNO_INVALID_FILE_PERMISSIONS_STRING_TO_CHECK.getError();
-        }
-
-        File file = new File(filePath);
-
-        // If file is not readable
-        if (permissionsToCheck.contains("r") && !file.canRead()) {
-            return FileUtilsErrno.ERRNO_FILE_NOT_READABLE.getError(label + "file", filePath).setLabel(label + "file");
-        }
-
-        // If file is not writable
-        if (permissionsToCheck.contains("w") && !file.canWrite()) {
-            return FileUtilsErrno.ERRNO_FILE_NOT_WRITABLE.getError(label + "file", filePath).setLabel(label + "file");
-        }
-        // If file is not executable
-        // This canExecute() will give "avc: granted { execute }" warnings for target sdk 29
-        else if (permissionsToCheck.contains("x") && !file.canExecute() && !ignoreIfNotExecutable) {
-            return FileUtilsErrno.ERRNO_FILE_NOT_EXECUTABLE.getError(label + "file", filePath).setLabel(label + "file");
-        }
-
-        return null;
+        checkMissingFilePermissionsOrThrow(null, filePath, permissionsToCheck, ignoreIfNotExecutable);
     }
 
     /**
      * Exception-throwing sibling of {@link #checkMissingFilePermissions(String, String, String, boolean)}.
      * @throws TermuxException If validating permissions failed.
      */
-    @SuppressWarnings("deprecation")
     public static void checkMissingFilePermissionsOrThrow(String label, final String filePath, final String permissionsToCheck, final boolean ignoreIfNotExecutable) throws TermuxException {
-        TermuxException.throwIfFailed(checkMissingFilePermissions(label, filePath, permissionsToCheck, ignoreIfNotExecutable));
+        label = (label == null || label.isEmpty() ? "" : label + " ");
+        if (filePath == null || filePath.isEmpty()) throw new TermuxException(FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "checkMissingFilePermissions"));
+
+        if (!isValidPermissionString(permissionsToCheck)) {
+            Logger.logError(LOG_TAG, "Invalid permissionsToCheck passed to checkMissingFilePermissions: \"" + permissionsToCheck + "\"");
+            throw new TermuxException(FileUtilsErrno.ERRNO_INVALID_FILE_PERMISSIONS_STRING_TO_CHECK.getError());
+        }
+
+        File file = new File(filePath);
+
+        // If file is not readable
+        if (permissionsToCheck.contains("r") && !file.canRead()) {
+            throw new TermuxException(FileUtilsErrno.ERRNO_FILE_NOT_READABLE.getError(label + "file", filePath).setLabel(label + "file"));
+        }
+
+        // If file is not writable
+        if (permissionsToCheck.contains("w") && !file.canWrite()) {
+            throw new TermuxException(FileUtilsErrno.ERRNO_FILE_NOT_WRITABLE.getError(label + "file", filePath).setLabel(label + "file"));
+        }
+        // If file is not executable
+        // This canExecute() will give "avc: granted { execute }" warnings for target sdk 29
+        else if (permissionsToCheck.contains("x") && !file.canExecute() && !ignoreIfNotExecutable) {
+            throw new TermuxException(FileUtilsErrno.ERRNO_FILE_NOT_EXECUTABLE.getError(label + "file", filePath).setLabel(label + "file"));
+        }
     }
 
 

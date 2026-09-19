@@ -1,12 +1,11 @@
 package com.termux.shared.file;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-import com.termux.shared.errors.Error;
+import com.termux.shared.errors.TermuxException;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -20,11 +19,10 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 
 /**
- * Unit tests for {@link FileUtils#readSerializableObjectFromFile(String, String, Class, boolean)},
+ * Unit tests for {@link FileUtils#readSerializableObjectFromFileOrThrow(String, String, Class, boolean)},
  * specifically the {@code AllowListingObjectInputStream} hardening added for beads-h94.
  */
 @RunWith(RobolectricTestRunner.class)
-@SuppressWarnings("deprecation") // readSerializableObjectFromFile() deprecated by beads-km2 in favor of readSerializableObjectFromFileOrThrow()
 public class FileUtilsReadSerializableObjectFromFileTest {
 
     @Rule
@@ -53,16 +51,14 @@ public class FileUtilsReadSerializableObjectFromFileTest {
         // new path and reject the write. Not an issue on real Android, only under this test runner.
         assertTrue(file.createNewFile());
 
-        Error writeError = FileUtils.writeSerializableObjectToFile(
+        FileUtils.writeSerializableObjectToFileOrThrow(
             "test", file.getAbsolutePath(), new AllowedPayload("hello"));
-        assertNull(writeError);
 
-        FileUtils.ReadSerializableObjectResult result = FileUtils.readSerializableObjectFromFile(
+        AllowedPayload result = FileUtils.readSerializableObjectFromFileOrThrow(
             "test", file.getAbsolutePath(), AllowedPayload.class, false);
 
-        assertNull(result.error);
-        assertNotNull(result.serializableObject);
-        assertEquals("hello", ((AllowedPayload) result.serializableObject).value);
+        assertNotNull(result);
+        assertEquals("hello", result.value);
     }
 
     @Test
@@ -74,12 +70,13 @@ public class FileUtilsReadSerializableObjectFromFileTest {
             out.writeObject(new DisallowedPayload("malicious"));
         }
 
-        FileUtils.ReadSerializableObjectResult result = FileUtils.readSerializableObjectFromFile(
-            "test", file.getAbsolutePath(), AllowedPayload.class, false);
-
-        assertNotNull("Expected an error when deserializing a non-allow-listed class", result.error);
-        assertNull(result.serializableObject);
-        assertFalse(result.error.getMessage() == null);
+        try {
+            FileUtils.readSerializableObjectFromFileOrThrow(
+                "test", file.getAbsolutePath(), AllowedPayload.class, false);
+            throw new AssertionError("Expected TermuxException when deserializing a non-allow-listed class");
+        } catch (TermuxException e) {
+            assertNotNull("Expected a non-null error", e.getError());
+        }
     }
 
     @Test
@@ -91,11 +88,13 @@ public class FileUtilsReadSerializableObjectFromFileTest {
             out.writeObject(new AllowedPayloadSubclass("hi"));
         }
 
-        FileUtils.ReadSerializableObjectResult result = FileUtils.readSerializableObjectFromFile(
-            "test", file.getAbsolutePath(), AllowedPayload.class, false);
-
-        assertNotNull(result.error);
-        assertNull(result.serializableObject);
+        try {
+            FileUtils.readSerializableObjectFromFileOrThrow(
+                "test", file.getAbsolutePath(), AllowedPayload.class, false);
+            throw new AssertionError("Expected TermuxException for subclass of requested type");
+        } catch (TermuxException e) {
+            assertNotNull(e.getError());
+        }
     }
 
     public static class AllowedPayloadSubclass extends AllowedPayload {

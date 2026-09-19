@@ -121,15 +121,13 @@ public class ReportActivity extends AppCompatActivity {
             Logger.logVerbose(LOG_TAG, ReportInfo.class.getSimpleName() + " serialized object will be read from file at path \"" + mReportInfoFilePath + "\"");
             if (mReportInfoFilePath != null) {
                 try {
-                    FileUtils.ReadSerializableObjectResult result = FileUtils.readSerializableObjectFromFile(ReportInfo.class.getSimpleName(), mReportInfoFilePath, ReportInfo.class, false);
-                    if (result.error != null) {
-                        Logger.logErrorExtended(LOG_TAG, result.error.toString());
-                        Logger.showToast(this, Error.getMinimalErrorString(result.error), true);
-                        finish(); return;
-                    } else {
-                        if (result.serializableObject != null)
-                            mReportInfo = (ReportInfo) result.serializableObject;
-                    }
+                    ReportInfo loaded = FileUtils.readSerializableObjectFromFileOrThrow(ReportInfo.class.getSimpleName(), mReportInfoFilePath, ReportInfo.class, false);
+                    if (loaded != null)
+                        mReportInfo = loaded;
+                } catch (TermuxException e) {
+                    Logger.logErrorExtended(LOG_TAG, e.getError().toString());
+                    Logger.showToast(this, Error.getMinimalErrorString(e.getError()), true);
+                    finish(); return;
                 } catch (Exception e) {
                     Logger.logErrorAndShowToast(this, LOG_TAG, e.getMessage());
                     Logger.logStackTraceWithMessage(LOG_TAG, "Failure while getting " + ReportInfo.class.getSimpleName() + " serialized object from file at path \"" + mReportInfoFilePath + "\"", e);
@@ -330,10 +328,11 @@ public class ReportActivity extends AppCompatActivity {
             String reportInfoDirectoryPath = getReportInfoDirectoryPath(context);
             String reportInfoFilePath = reportInfoDirectoryPath + "/" + CACHE_FILE_BASENAME_PREFIX + reportInfo.reportTimestamp;
             Logger.logVerbose(LOG_TAG, reportInfo.reportTitle + " " + ReportInfo.class.getSimpleName() + " serialized object size " + size + " is greater than " + DataUtils.TRANSACTION_SIZE_LIMIT_IN_BYTES + " and it will be written to file at path \"" + reportInfoFilePath + "\"");
-            Error error = FileUtils.writeSerializableObjectToFile(ReportInfo.class.getSimpleName(), reportInfoFilePath, reportInfo);
-            if (error != null) {
-                Logger.logErrorExtended(LOG_TAG, error.toString());
-                Logger.showToast(context, Error.getMinimalErrorString(error), true);
+            try {
+                FileUtils.writeSerializableObjectToFileOrThrow(ReportInfo.class.getSimpleName(), reportInfoFilePath, reportInfo);
+            } catch (TermuxException e) {
+                Logger.logErrorExtended(LOG_TAG, e.getError().toString());
+                Logger.showToast(context, Error.getMinimalErrorString(e.getError()), true);
                 return new NewInstanceResult(null, null);
             }
 

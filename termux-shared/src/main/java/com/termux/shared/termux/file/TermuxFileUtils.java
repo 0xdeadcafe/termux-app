@@ -271,8 +271,13 @@ public class TermuxFileUtils {
             FileUtils.setMissingFilePermissions("termux files directory", TermuxConstants.TERMUX_FILES_DIR_PATH,
                 FileUtils.APP_WORKING_DIRECTORY_PERMISSIONS);
 
-        return FileUtils.checkMissingFilePermissions("termux files directory", TermuxConstants.TERMUX_FILES_DIR_PATH,
-            FileUtils.APP_WORKING_DIRECTORY_PERMISSIONS, false);
+        try {
+            FileUtils.checkMissingFilePermissionsOrThrow("termux files directory", TermuxConstants.TERMUX_FILES_DIR_PATH,
+                FileUtils.APP_WORKING_DIRECTORY_PERMISSIONS, false);
+            return null;
+        } catch (TermuxException e) {
+            return e.getError();
+        }
     }
 
     /**
@@ -353,14 +358,15 @@ public class TermuxFileUtils {
      * files in {@link TermuxConstants#TERMUX_PREFIX_DIR_IGNORED_SUB_FILES_PATHS_TO_CONSIDER_AS_EMPTY}.
      */
     public static boolean isTermuxPrefixDirectoryEmpty() {
-        Error error = FileUtils.validateDirectoryFileEmptyOrOnlyContainsSpecificFiles("termux prefix",
-            TERMUX_PREFIX_DIR_PATH, TermuxConstants.TERMUX_PREFIX_DIR_IGNORED_SUB_FILES_PATHS_TO_CONSIDER_AS_EMPTY, true);
-        if (error == null)
+        try {
+            FileUtils.validateDirectoryFileEmptyOrOnlyContainsSpecificFilesOrThrow("termux prefix",
+                TERMUX_PREFIX_DIR_PATH, TermuxConstants.TERMUX_PREFIX_DIR_IGNORED_SUB_FILES_PATHS_TO_CONSIDER_AS_EMPTY, true);
             return true;
-
-        if (!FileUtilsErrno.ERRNO_NON_EMPTY_DIRECTORY_FILE.equalsErrorTypeAndCode(error))
-            Logger.logErrorExtended(LOG_TAG, "Failed to check if termux prefix directory is empty:\n" + error.getErrorLogString());
-        return false;
+        } catch (TermuxException e) {
+            if (!FileUtilsErrno.ERRNO_NON_EMPTY_DIRECTORY_FILE.equalsErrorTypeAndCode(e.getError()))
+                Logger.logErrorExtended(LOG_TAG, "Failed to check if termux prefix directory is empty:\n" + e.getError().getErrorLogString());
+            return false;
+        }
     }
 
     /**

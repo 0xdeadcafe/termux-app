@@ -216,10 +216,14 @@ public class LocalServerSocket implements Closeable {
      * running server to stop.
      */
     private Error deleteServerSocketFile() {
-        if (!mLocalSocketRunConfig.isAbstractNamespaceSocket())
-            return FileUtils.deleteSocketFile(mLocalSocketRunConfig.getTitle() + " server socket file", mLocalSocketRunConfig.getPath(), true);
-        else
-            return null;
+        if (!mLocalSocketRunConfig.isAbstractNamespaceSocket()) {
+            try {
+                FileUtils.deleteSocketFileOrThrow(mLocalSocketRunConfig.getTitle() + " server socket file", mLocalSocketRunConfig.getPath(), true);
+            } catch (com.termux.shared.errors.TermuxException e) {
+                return e.getError();
+            }
+        }
+        return null;
     }
 
     /** Listen and accept new {@link LocalClientSocket}. */

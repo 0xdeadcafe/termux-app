@@ -22,6 +22,7 @@ import com.termux.shared.termux.TermuxConstants;
 import com.termux.shared.termux.TermuxConstants.TERMUX_APP.RUN_COMMAND_SERVICE;
 import com.termux.shared.termux.TermuxConstants.TERMUX_APP.TERMUX_SERVICE;
 import com.termux.shared.file.FileUtils;
+import com.termux.shared.errors.TermuxException;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.notification.NotificationUtils;
 import com.termux.shared.shell.command.CommandMetadata;
@@ -189,10 +190,11 @@ public class RunCommandService extends Service {
 
         executable = TermuxFileUtils.getCanonicalPath(executable, null, true);
 
-        error = FileUtils.validateRegularFileExistenceAndPermissions("executable", executable, null,
-            FileUtils.APP_EXECUTABLE_FILE_PERMISSIONS, true, true, false);
-        if (error != null) {
-            executionCommand.setStateFailed(error);
+        try {
+            FileUtils.validateRegularFileExistenceAndPermissionsOrThrow("executable", executable, null,
+                FileUtils.APP_EXECUTABLE_FILE_PERMISSIONS, true, true, false);
+        } catch (TermuxException e) {
+            executionCommand.setStateFailed(e.getError());
             TermuxPluginUtils.processPluginExecutionCommandError(this, LOG_TAG, executionCommand, false);
             stopService(); return;
         }
