@@ -6,6 +6,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.termux.shared.errors.Error;
+import com.termux.shared.errors.TermuxException;
 import com.termux.shared.file.FileUtils;
 import com.termux.shared.logger.Logger;
 
@@ -170,9 +171,10 @@ public class ShellEnvironmentUtils {
     public static void createHomeDir(@NonNull HashMap<String, String> environment) {
         String homeDirectory = environment.get(ENV_HOME);
         if (homeDirectory != null && !homeDirectory.isEmpty()) {
-            Error error = FileUtils.createDirectoryFile("shell home", homeDirectory);
-            if (error != null) {
-                Logger.logErrorExtended(LOG_TAG, "Failed to create shell home directory\n" + error.toString());
+            try {
+                FileUtils.createDirectoryFileOrThrow("shell home", homeDirectory);
+            } catch (TermuxException e) {
+                Logger.logErrorExtended(LOG_TAG, "Failed to create shell home directory\n" + e);
             }
         }
     }

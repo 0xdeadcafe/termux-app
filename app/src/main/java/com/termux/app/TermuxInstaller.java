@@ -17,6 +17,7 @@ import com.termux.shared.interact.MessageDialogUtils;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.markdown.MarkdownUtils;
 import com.termux.shared.errors.Error;
+import com.termux.shared.errors.TermuxException;
 import com.termux.shared.android.PackageUtils;
 import com.termux.shared.termux.TermuxConstants;
 import com.termux.shared.termux.TermuxUtils;
@@ -147,16 +148,18 @@ final class TermuxInstaller {
                     Error error;
 
                     // Delete prefix staging directory or any file at its destination
-                    error = FileUtils.deleteFile("termux prefix staging directory", TERMUX_STAGING_PREFIX_DIR_PATH, true);
-                    if (error != null) {
-                        showBootstrapErrorDialog(activity, whenDone, Error.getErrorMarkdownString(error));
+                    try {
+                        FileUtils.deleteFileOrThrow("termux prefix staging directory", TERMUX_STAGING_PREFIX_DIR_PATH, true);
+                    } catch (TermuxException e) {
+                        showBootstrapErrorDialog(activity, whenDone, Error.getErrorMarkdownString(e.getError()));
                         return;
                     }
 
                     // Delete prefix directory or any file at its destination
-                    error = FileUtils.deleteFile("termux prefix directory", TERMUX_PREFIX_DIR_PATH, true);
-                    if (error != null) {
-                        showBootstrapErrorDialog(activity, whenDone, Error.getErrorMarkdownString(error));
+                    try {
+                        FileUtils.deleteFileOrThrow("termux prefix directory", TERMUX_PREFIX_DIR_PATH, true);
+                    } catch (TermuxException e) {
+                        showBootstrapErrorDialog(activity, whenDone, Error.getErrorMarkdownString(e.getError()));
                         return;
                     }
 
@@ -284,7 +287,7 @@ final class TermuxInstaller {
                     })
                     .setPositiveButton(R.string.bootstrap_error_try_again, (dialog, which) -> {
                         dialog.dismiss();
-                        FileUtils.deleteFile("termux prefix directory", TERMUX_PREFIX_DIR_PATH, true);
+                        try { FileUtils.deleteFileOrThrow("termux prefix directory", TERMUX_PREFIX_DIR_PATH, true); } catch (TermuxException ignored) {}
                         TermuxInstaller.setupBootstrapIfNeeded(activity, whenDone);
                     }).show();
             } catch (WindowManager.BadTokenException e1) {
@@ -313,15 +316,15 @@ final class TermuxInstaller {
         new Thread() {
             public void run() {
                 try {
-                    Error error;
                     File storageDir = TermuxConstants.TERMUX_STORAGE_HOME_DIR;
 
-                    error = FileUtils.clearDirectory("~/storage", storageDir.getAbsolutePath());
-                    if (error != null) {
-                        Logger.logErrorAndShowToast(context, LOG_TAG, error.getMessage());
-                        Logger.logErrorExtended(LOG_TAG, "Setup Storage Error\n" + error.toString());
+                    try {
+                        FileUtils.clearDirectoryOrThrow("~/storage", storageDir.getAbsolutePath());
+                    } catch (TermuxException e) {
+                        Logger.logErrorAndShowToast(context, LOG_TAG, e.getError().getMessage());
+                        Logger.logErrorExtended(LOG_TAG, "Setup Storage Error\n" + e);
                         TermuxCrashUtils.sendCrashReportNotification(context, LOG_TAG, title, null,
-                            "## " + title + "\n\n" + Error.getErrorMarkdownString(error),
+                            "## " + title + "\n\n" + Error.getErrorMarkdownString(e.getError()),
                             true, false, TermuxUtils.AppInfoMode.TERMUX_PACKAGE, true);
                         return;
                     }
@@ -402,7 +405,12 @@ final class TermuxInstaller {
     }
 
     private static Error ensureDirectoryExists(File directory) {
-        return FileUtils.createDirectoryFile(directory.getAbsolutePath());
+        try {
+            FileUtils.createDirectoryFileOrThrow(directory.getAbsolutePath());
+            return null;
+        } catch (TermuxException e) {
+            return e.getError();
+        }
     }
 
     public static byte[] loadZipBytes() {

@@ -5,6 +5,7 @@ import android.content.Context;
 import androidx.annotation.NonNull;
 
 import com.termux.shared.errors.Error;
+import com.termux.shared.errors.TermuxException;
 import com.termux.shared.file.FileUtils;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.shell.command.ExecutionCommand;
@@ -46,16 +47,12 @@ public class TermuxShellEnvironment extends AndroidShellEnvironment {
 
         // Write environment string to temp file and then move to final location since otherwise
         // writing may happen while file is being sourced/read
-        Error error = FileUtils.writeTextToFile("termux.env.tmp", TermuxConstants.TERMUX_ENV_TEMP_FILE_PATH,
-            Charset.defaultCharset(), environmentString, false);
-        if (error != null) {
-            Logger.logErrorExtended(LOG_TAG, error.toString());
-            return;
-        }
-
-        error = FileUtils.moveRegularFile("termux.env.tmp", TermuxConstants.TERMUX_ENV_TEMP_FILE_PATH, TermuxConstants.TERMUX_ENV_FILE_PATH, true);
-        if (error != null) {
-            Logger.logErrorExtended(LOG_TAG, error.toString());
+        try {
+            FileUtils.writeTextToFileOrThrow("termux.env.tmp", TermuxConstants.TERMUX_ENV_TEMP_FILE_PATH,
+                Charset.defaultCharset(), environmentString, false);
+            FileUtils.moveRegularFileOrThrow("termux.env.tmp", TermuxConstants.TERMUX_ENV_TEMP_FILE_PATH, TermuxConstants.TERMUX_ENV_FILE_PATH, true);
+        } catch (TermuxException e) {
+            Logger.logErrorExtended(LOG_TAG, e.toString());
         }
     }
 

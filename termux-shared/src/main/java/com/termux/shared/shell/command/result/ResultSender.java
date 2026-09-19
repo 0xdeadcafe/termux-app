@@ -171,6 +171,24 @@ public class ResultSender {
      * Send result stored in {@link ResultConfig} to command caller by writing it to files in
      * {@link ResultConfig#resultDirectoryPath}.
      *
+     * @return Returns the {@link Error} if failed to send the result, otherwise {@code null}.
+     * @deprecated Use {@link #sendCommandResultDataToDirectoryOrThrow(Context, String, String, ResultConfig, ResultData, boolean)} instead.
+     */
+    @Deprecated
+    @SuppressWarnings("deprecation")
+    public static Error sendCommandResultDataToDirectory(Context context, String logTag, String label, ResultConfig resultConfig, ResultData resultData, boolean logStdoutAndStderr) {
+        try {
+            sendCommandResultDataToDirectoryOrThrow(context, logTag, label, resultConfig, resultData, logStdoutAndStderr);
+            return null;
+        } catch (TermuxException e) {
+            return e.getError();
+        }
+    }
+
+    /**
+     * Send result stored in {@link ResultConfig} to command caller by writing it to files in
+     * {@link ResultConfig#resultDirectoryPath}.
+     *
      * @param context The {@link Context} for operations.
      * @param logTag The log tag to use for logging.
      * @param label The label for the command.
@@ -178,17 +196,13 @@ public class ResultSender {
      * @param resultData The {@link ResultData} object containing result data.
      * @param logStdoutAndStderr Set to {@code true} if {@link ResultData#stdout} and {@link ResultData#stderr}
      *                           should be logged.
-     * @return Returns the {@link Error} if failed to send the result, otherwise {@code null}.
-     * @deprecated Use {@link #sendCommandResultDataToDirectoryOrThrow(Context, String, String, ResultConfig, ResultData, boolean)} instead.
+     * @throws TermuxException If failed to send the result.
      */
-    @Deprecated
-    public static Error sendCommandResultDataToDirectory(Context context, String logTag, String label, ResultConfig resultConfig, ResultData resultData, boolean logStdoutAndStderr) {
+    public static void sendCommandResultDataToDirectoryOrThrow(Context context, String logTag, String label, ResultConfig resultConfig, ResultData resultData, boolean logStdoutAndStderr) throws TermuxException {
         if (context == null || resultConfig == null || resultData == null || DataUtils.isNullOrEmpty(resultConfig.resultDirectoryPath))
-            return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError("context, resultConfig, resultData or resultConfig.resultDirectoryPath", "sendCommandResultDataToDirectory");
+            throw new TermuxException(FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError("context, resultConfig, resultData or resultConfig.resultDirectoryPath", "sendCommandResultDataToDirectoryOrThrow"));
 
         logTag = DataUtils.getDefaultIfNull(logTag, LOG_TAG);
-
-        Error error;
 
         String resultDataStdout = resultData.stdout.toString();
         String resultDataStderr = resultData.stderr.toString();
@@ -207,27 +221,20 @@ public class ResultSender {
 
         Logger.logDebugExtended(logTag, "Writing result for command \"" + label + "\":\n" + resultConfig.toString() + "\n" + ResultData.getResultDataLogString(resultData, logStdoutAndStderr));
 
-        // If resultDirectoryPath is not a directory, or is not readable or writable, then just return
-        // Creation of missing directory and setting of read, write and execute permissions are
-        // only done if resultDirectoryPath is under resultDirectoryAllowedParentPath.
-        // We try to set execute permissions, but ignore if they are missing, since only read and write
-        // permissions are required for working directories.
-        error = FileUtils.validateDirectoryFileExistenceAndPermissions("result", resultConfig.resultDirectoryPath,
-            resultConfig.resultDirectoryAllowedParentPath, true,
-            FileUtils.APP_WORKING_DIRECTORY_PERMISSIONS, true, true,
-            true, true);
-        if (error != null) {
-            error.appendMessage("\n" + context.getString(R.string.msg_directory_absolute_path, "Result", resultConfig.resultDirectoryPath));
-            return error;
+        try {
+            FileUtils.validateDirectoryFileExistenceAndPermissionsOrThrow("result", resultConfig.resultDirectoryPath,
+                resultConfig.resultDirectoryAllowedParentPath, true,
+                FileUtils.APP_WORKING_DIRECTORY_PERMISSIONS, true, true,
+                true, true);
+        } catch (TermuxException e) {
+            e.getError().appendMessage("\n" + context.getString(R.string.msg_directory_absolute_path, "Result", resultConfig.resultDirectoryPath));
+            throw e;
         }
 
         if (resultConfig.resultSingleFile) {
-            // If resultFileBasename is null, empty or contains forward slashes "/"
             if (DataUtils.isNullOrEmpty(resultConfig.resultFileBasename) ||
-                    resultConfig.resultFileBasename.contains("/")) {
-                error = ResultSenderErrno.ERROR_RESULT_FILE_BASENAME_NULL_OR_INVALID.getError(resultConfig.resultFileBasename);
-                return error;
-            }
+                    resultConfig.resultFileBasename.contains("/"))
+                throw new TermuxException(ResultSenderErrno.ERROR_RESULT_FILE_BASENAME_NULL_OR_INVALID.getError(resultConfig.resultFileBasename));
 
             String error_or_output;
 
@@ -245,8 +252,7 @@ public class ResultSender {
                             resultData.getErrCode(), resultDataErrmsg, resultDataStdout, resultDataStderr, resultDataExitCode);
                     }
                 } catch (Exception e) {
-                    error = ResultSenderErrno.ERROR_FORMAT_RESULT_ERROR_FAILED_WITH_EXCEPTION.getError(e.getMessage());
-                    return error;
+                    throw new TermuxException(ResultSenderErrno.ERROR_FORMAT_RESULT_ERROR_FAILED_WITH_EXCEPTION.getError(e.getMessage()));
                 }
             } else {
                 try {
@@ -267,117 +273,58 @@ public class ResultSender {
                             resultDataStdout, resultDataStderr, resultDataExitCode);
                     }
                 } catch (Exception e) {
-                    error = ResultSenderErrno.ERROR_FORMAT_RESULT_OUTPUT_FAILED_WITH_EXCEPTION.getError(e.getMessage());
-                    return error;
+                    throw new TermuxException(ResultSenderErrno.ERROR_FORMAT_RESULT_OUTPUT_FAILED_WITH_EXCEPTION.getError(e.getMessage()));
                 }
             }
 
-            // Write error or output to temp file
-            // Check errCode file creation below for explanation for why temp file is used
             String temp_filename = resultConfig.resultFileBasename + "-" + AndroidUtils.getCurrentMilliSecondLocalTimeStamp();
-            error = FileUtils.writeTextToFile(temp_filename, resultConfig.resultDirectoryPath + "/" + temp_filename,
+            FileUtils.writeTextToFileOrThrow(temp_filename, resultConfig.resultDirectoryPath + "/" + temp_filename,
                 null, error_or_output, false);
-            if (error != null) {
-                return error;
-            }
-
-            // Move error or output temp file to final destination
-            error = FileUtils.moveRegularFile("error or output temp file", resultConfig.resultDirectoryPath + "/" + temp_filename,
+            FileUtils.moveRegularFileOrThrow("error or output temp file", resultConfig.resultDirectoryPath + "/" + temp_filename,
                 resultConfig.resultDirectoryPath + "/" + resultConfig.resultFileBasename, false);
-            if (error != null) {
-                return error;
-            }
         } else {
             String filename;
 
-            // Default to no suffix, useful if user expects result in an empty directory, like created with mktemp
             if (resultConfig.resultFilesSuffix == null)
                 resultConfig.resultFilesSuffix = "";
 
-            // If resultFilesSuffix contains forward slashes "/"
-            if (resultConfig.resultFilesSuffix.contains("/")) {
-                error = ResultSenderErrno.ERROR_RESULT_FILES_SUFFIX_INVALID.getError(resultConfig.resultFilesSuffix);
-                return error;
-            }
+            if (resultConfig.resultFilesSuffix.contains("/"))
+                throw new TermuxException(ResultSenderErrno.ERROR_RESULT_FILES_SUFFIX_INVALID.getError(resultConfig.resultFilesSuffix));
 
-            // Write result to result files under resultDirectoryPath
-
-            // Write stdout to file
             if (!resultDataStdout.isEmpty()) {
                 filename = RESULT_SENDER.RESULT_FILE_STDOUT_PREFIX + resultConfig.resultFilesSuffix;
-                error = FileUtils.writeTextToFile(filename, resultConfig.resultDirectoryPath + "/" + filename,
+                FileUtils.writeTextToFileOrThrow(filename, resultConfig.resultDirectoryPath + "/" + filename,
                     null, resultDataStdout, false);
-                if (error != null) {
-                    return error;
-                }
             }
 
-            // Write stderr to file
             if (!resultDataStderr.isEmpty()) {
                 filename = RESULT_SENDER.RESULT_FILE_STDERR_PREFIX + resultConfig.resultFilesSuffix;
-                error = FileUtils.writeTextToFile(filename, resultConfig.resultDirectoryPath + "/" + filename,
+                FileUtils.writeTextToFileOrThrow(filename, resultConfig.resultDirectoryPath + "/" + filename,
                     null, resultDataStderr, false);
-                if (error != null) {
-                    return error;
-                }
             }
 
-            // Write exitCode to file
             if (!resultDataExitCode.isEmpty()) {
                 filename = RESULT_SENDER.RESULT_FILE_EXIT_CODE_PREFIX + resultConfig.resultFilesSuffix;
-                error = FileUtils.writeTextToFile(filename, resultConfig.resultDirectoryPath + "/" + filename,
+                FileUtils.writeTextToFileOrThrow(filename, resultConfig.resultDirectoryPath + "/" + filename,
                     null, resultDataExitCode, false);
-                if (error != null) {
-                    return error;
-                }
             }
 
-            // Write errmsg to file
             if (resultData.isStateFailed() && !resultDataErrmsg.isEmpty()) {
                 filename = RESULT_SENDER.RESULT_FILE_ERRMSG_PREFIX + resultConfig.resultFilesSuffix;
-                error = FileUtils.writeTextToFile(filename, resultConfig.resultDirectoryPath + "/" + filename,
+                FileUtils.writeTextToFileOrThrow(filename, resultConfig.resultDirectoryPath + "/" + filename,
                     null, resultDataErrmsg, false);
-                if (error != null) {
-                    return error;
-                }
             }
 
-            // Write errCode to file
-            // This must be created after writing to other result files has already finished since
-            // caller should wait for this file to be created to be notified that the command has
-            // finished and should then start reading from the rest of the result files if they exist.
-            // Since there may be a delay between creation of errCode file and writing to it or flushing
-            // to disk, we create a temp file first and then move it to the final destination, since
-            // caller may otherwise read from an empty file in some cases.
-
-            // Write errCode to temp file
+            // Write errCode to temp file first (atomic rename ensures caller sees complete file)
             String temp_filename = RESULT_SENDER.RESULT_FILE_ERR_PREFIX + "-" + AndroidUtils.getCurrentMilliSecondLocalTimeStamp();
             if (!resultConfig.resultFilesSuffix.isEmpty()) temp_filename = temp_filename + "-" + resultConfig.resultFilesSuffix;
-            error = FileUtils.writeTextToFile(temp_filename, resultConfig.resultDirectoryPath + "/" + temp_filename,
+            FileUtils.writeTextToFileOrThrow(temp_filename, resultConfig.resultDirectoryPath + "/" + temp_filename,
                 null, String.valueOf(resultData.getErrCode()), false);
-            if (error != null) {
-                return error;
-            }
 
-            // Move errCode temp file to final destination
             filename = RESULT_SENDER.RESULT_FILE_ERR_PREFIX + resultConfig.resultFilesSuffix;
-            error = FileUtils.moveRegularFile(RESULT_SENDER.RESULT_FILE_ERR_PREFIX + " temp file", resultConfig.resultDirectoryPath + "/" + temp_filename,
+            FileUtils.moveRegularFileOrThrow(RESULT_SENDER.RESULT_FILE_ERR_PREFIX + " temp file", resultConfig.resultDirectoryPath + "/" + temp_filename,
                 resultConfig.resultDirectoryPath + "/" + filename, false);
-            if (error != null) {
-                return error;
-            }
         }
-
-        return null;
-    }
-
-    /**
-     * Exception-throwing sibling of {@link #sendCommandResultDataToDirectory(Context, String, String, ResultConfig, ResultData, boolean)}.
-     * @throws TermuxException If failed to send the result.
-     */
-    @SuppressWarnings("deprecation")
-    public static void sendCommandResultDataToDirectoryOrThrow(Context context, String logTag, String label, ResultConfig resultConfig, ResultData resultData, boolean logStdoutAndStderr) throws TermuxException {
-        TermuxException.throwIfFailed(sendCommandResultDataToDirectory(context, logTag, label, resultConfig, resultData, logStdoutAndStderr));
     }
 
 }

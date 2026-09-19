@@ -8,6 +8,7 @@ import com.termux.shared.file.FileUtils;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.markdown.MarkdownUtils;
 import com.termux.shared.errors.Error;
+import com.termux.shared.errors.TermuxException;
 import com.termux.shared.android.AndroidUtils;
 
 import java.nio.charset.Charset;
@@ -107,10 +108,11 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
         Logger.logError(reportString.toString());
 
         // Write report string to crash log file
-        Error error = FileUtils.writeTextToFile("crash log", crashHandlerClient.getCrashLogFilePath(context),
-                        Charset.defaultCharset(), reportString.toString(), false);
-        if (error != null) {
-            Logger.logErrorExtended(LOG_TAG, error.toString());
+        try {
+            FileUtils.writeTextToFileOrThrow("crash log", crashHandlerClient.getCrashLogFilePath(context),
+                            Charset.defaultCharset(), reportString.toString(), false);
+        } catch (TermuxException e) {
+            Logger.logErrorExtended(LOG_TAG, e.toString());
         }
     }
 

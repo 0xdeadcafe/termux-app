@@ -15,6 +15,7 @@ import com.termux.shared.android.AndroidUtils;
 import com.termux.shared.crash.CrashHandler;
 import com.termux.shared.data.DataUtils;
 import com.termux.shared.errors.Error;
+import com.termux.shared.errors.TermuxException;
 import com.termux.shared.file.FileUtils;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.markdown.MarkdownUtils;
@@ -171,23 +172,20 @@ public class TermuxCrashUtils implements CrashHandler.CrashHandlerClient {
         if (!FileUtils.regularFileExists(TermuxConstants.TERMUX_CRASH_LOG_FILE_PATH, false))
             return;
 
-        Error error;
-        StringBuilder reportStringBuilder = new StringBuilder();
-
-        // Read report string from crash log file
-        error = FileUtils.readTextFromFile("crash log", TermuxConstants.TERMUX_CRASH_LOG_FILE_PATH, Charset.defaultCharset(), reportStringBuilder, false);
-        if (error != null) {
-            Logger.logErrorExtended(logTag, error.toString());
+        String reportString;
+        try {
+            reportString = FileUtils.readTextFromFileOrThrow("crash log", TermuxConstants.TERMUX_CRASH_LOG_FILE_PATH, Charset.defaultCharset(), false);
+        } catch (TermuxException e) {
+            Logger.logErrorExtended(logTag, e.toString());
             return;
         }
 
         // Move crash log file to backup location if it exists
-        error = FileUtils.moveRegularFile("crash log", TermuxConstants.TERMUX_CRASH_LOG_FILE_PATH, TermuxConstants.TERMUX_CRASH_LOG_BACKUP_FILE_PATH, true);
-        if (error != null) {
-            Logger.logErrorExtended(logTag, error.toString());
+        try {
+            FileUtils.moveRegularFileOrThrow("crash log", TermuxConstants.TERMUX_CRASH_LOG_FILE_PATH, TermuxConstants.TERMUX_CRASH_LOG_BACKUP_FILE_PATH, true);
+        } catch (TermuxException e) {
+            Logger.logErrorExtended(logTag, e.toString());
         }
-
-        String reportString = reportStringBuilder.toString();
 
         if (reportString.isEmpty())
             return;

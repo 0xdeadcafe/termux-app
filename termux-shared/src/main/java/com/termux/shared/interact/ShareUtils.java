@@ -18,6 +18,7 @@ import com.termux.shared.data.IntentUtils;
 import com.termux.shared.file.FileUtils;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.errors.Error;
+import com.termux.shared.errors.TermuxException;
 import com.termux.shared.android.PermissionUtils;
 
 import java.nio.charset.Charset;
@@ -210,15 +211,15 @@ public class ShareUtils {
             return;
         }
 
-        Error error = FileUtils.writeTextToFile(label, filePath,
-            Charset.defaultCharset(), text, false);
-        if (error != null) {
-            Logger.logErrorExtended(LOG_TAG, error.toString());
-            Logger.showToast(context, Error.getMinimalErrorString(error), true);
-        } else {
-            if (showToast)
-                Logger.showToast(context, context.getString(R.string.msg_file_saved_successfully, label, filePath), true);
+        try {
+            FileUtils.writeTextToFileOrThrow(label, filePath, Charset.defaultCharset(), text, false);
+        } catch (TermuxException e) {
+            Logger.logErrorExtended(LOG_TAG, e.toString());
+            Logger.showToast(context, Error.getMinimalErrorString(e.getError()), true);
+            return;
         }
+        if (showToast)
+                Logger.showToast(context, context.getString(R.string.msg_file_saved_successfully, label, filePath), true);
     }
 
 }
