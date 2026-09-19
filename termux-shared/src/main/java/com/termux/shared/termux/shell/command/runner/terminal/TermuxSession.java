@@ -141,7 +141,7 @@ public class TermuxSession {
         Collections.sort(environmentList);
         String[] environmentArray = environmentList.toArray(new String[0]);
 
-        if (!executionCommand.setState(ExecutionCommand.ExecutionState.EXECUTING)) {
+        if (!executionCommand.lifecycle.setState(ExecutionCommand.ExecutionState.EXECUTING, executionCommand.getCommandIdAndLabelLogString())) {
             executionCommand.setStateFailed(Errno.ERRNO_FAILED.getCode(), currentPackageContext.getString(R.string.error_failed_to_execute_termux_session_command, executionCommand.getCommandIdAndLabelLogString()));
             TermuxSession.processTermuxSessionResult(null, executionCommand);
             return null;
@@ -194,7 +194,7 @@ public class TermuxSession {
         if (this.mSetStdoutOnExit)
             mExecutionCommand.resultData.stdout.append(ShellUtils.getTerminalSessionTranscriptText(mTerminalSession, true, false));
 
-        if (!mExecutionCommand.setState(ExecutionCommand.ExecutionState.EXECUTED))
+        if (!mExecutionCommand.lifecycle.setState(ExecutionCommand.ExecutionState.EXECUTED, mExecutionCommand.getCommandIdAndLabelLogString()))
             return;
 
         TermuxSession.processTermuxSessionResult(this, null);
@@ -210,7 +210,7 @@ public class TermuxSession {
      */
     public void killIfExecuting(@NonNull final Context context, boolean processResult) {
         // If execution command has already finished executing, then no need to process results or send SIGKILL
-        if (mExecutionCommand.hasExecuted()) {
+        if (mExecutionCommand.lifecycle.hasExecuted()) {
             Logger.logDebug(LOG_TAG, "Ignoring sending SIGKILL to \"" + mExecutionCommand.getCommandIdAndLabelLogString() + "\" TermuxSession since it has already finished executing");
             return;
         }
@@ -254,7 +254,7 @@ public class TermuxSession {
 
         if (executionCommand == null) return;
 
-        if (executionCommand.shouldNotProcessResults()) {
+        if (executionCommand.lifecycle.shouldNotProcessResults()) {
             Logger.logDebug(LOG_TAG, "Ignoring duplicate call to process \"" + executionCommand.getCommandIdAndLabelLogString() + "\" TermuxSession result");
             return;
         }
@@ -267,7 +267,7 @@ public class TermuxSession {
             // If a callback is not set and execution command didn't fail, then we set success state now
             // Otherwise, the callback host can set it himself when its done with the termuxSession
             if (!executionCommand.isStateFailed())
-                executionCommand.setState(ExecutionCommand.ExecutionState.SUCCESS);
+                executionCommand.lifecycle.setState(ExecutionCommand.ExecutionState.SUCCESS, executionCommand.getCommandIdAndLabelLogString());
         }
     }
 

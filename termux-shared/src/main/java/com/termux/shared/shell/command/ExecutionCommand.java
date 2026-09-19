@@ -144,10 +144,8 @@ public class ExecutionCommand {
     /** The process id of command. */
     public int mPid = -1;
 
-    /** The current state of the {@link ExecutionCommand}. */
-    private ExecutionState currentState = ExecutionState.PRE_EXECUTION;
-    /** The previous state of the {@link ExecutionCommand}. */
-    private ExecutionState previousState = ExecutionState.PRE_EXECUTION;
+    /** Lifecycle state machine for this command. */
+    public final ExecutionLifecycle lifecycle = new ExecutionLifecycle();
 
 
     /** The executable for the {@link ExecutionCommand}. */
@@ -225,10 +223,6 @@ public class ExecutionCommand {
      * of the result. */
     public final ResultData resultData = new ResultData();
 
-
-    /** Defines if processing results already called for this {@link ExecutionCommand}. */
-    public boolean processingResultsAlreadyCalled;
-
     private static final String LOG_TAG = "ExecutionCommand";
 
 
@@ -255,34 +249,19 @@ public class ExecutionCommand {
     }
 
 
-    public synchronized boolean setState(ExecutionState newState) {
-        // The state transition cannot go back or change if already at {@link ExecutionState#SUCCESS}
-        if (newState.getValue() < currentState.getValue() || currentState == ExecutionState.SUCCESS) {
-            Logger.logError(LOG_TAG, "Invalid "+ getCommandIdAndLabelLogString() + " state transition from \"" + currentState.getName() + "\" to " +  "\"" + newState.getName() + "\"");
-            return false;
-        }
-
-        // The {@link ExecutionState#FAILED} can be set again, like to add more errors, but we don't update
-        // {@link #previousState} with the {@link #currentState} value if its at {@link ExecutionState#FAILED} to
-        // preserve the last valid state
-        if (currentState != ExecutionState.FAILED)
-            previousState = currentState;
-
-        currentState = newState;
-        return  true;
+    /** Delegate: advance state via {@link ExecutionLifecycle#setState}. */
+    public boolean setState(ExecutionState newState) {
+        return lifecycle.setState(newState, getCommandIdAndLabelLogString());
     }
 
-    public synchronized boolean hasExecuted() {
-        return currentState.getValue() >= ExecutionState.EXECUTED.getValue();
-    }
+    /** Delegate: {@link ExecutionLifecycle#hasExecuted()}. */
+    public boolean hasExecuted() { return lifecycle.hasExecuted(); }
 
-    public synchronized boolean isExecuting() {
-        return currentState == ExecutionState.EXECUTING;
-    }
+    /** Delegate: {@link ExecutionLifecycle#isExecuting()}. */
+    public boolean isExecuting() { return lifecycle.isExecuting(); }
 
-    public synchronized boolean isSuccessful() {
-        return currentState == ExecutionState.SUCCESS;
-    }
+    /** Delegate: {@link ExecutionLifecycle#isSuccessful()}. */
+    public boolean isSuccessful() { return lifecycle.isSuccessful(); }
 
 
     public synchronized boolean setStateFailed(@NonNull Error error) {
@@ -315,25 +294,20 @@ public class ExecutionCommand {
         return setState(ExecutionState.FAILED);
     }
 
-    public synchronized boolean shouldNotProcessResults() {
-        if (processingResultsAlreadyCalled) {
-            return true;
-        } else {
-            processingResultsAlreadyCalled = true;
-            return false;
-        }
-    }
+    /** Delegate: {@link ExecutionLifecycle#shouldNotProcessResults()}. */
+    public boolean shouldNotProcessResults() { return lifecycle.shouldNotProcessResults(); }
 
+    /** Returns {@code true} if the command is in {@link ExecutionState#FAILED} AND
+     * {@link result.ResultData} contains at least one error. */
     public synchronized boolean isStateFailed() {
-        if (currentState != ExecutionState.FAILED)
+        if (lifecycle.getCurrentState() != ExecutionState.FAILED)
             return false;
-
         if (!resultData.isStateFailed()) {
-            Logger.logWarn(LOG_TAG, "The "  + getCommandIdAndLabelLogString() + " has an invalid errCode value set in errors list while having ExecutionState.FAILED state.\n" + resultData.errorsList);
+            Logger.logWarn(LOG_TAG, "The " + getCommandIdAndLabelLogString()
+                    + " has an invalid errCode value set in errors list while having ExecutionState.FAILED state.\n" + resultData.errorsList);
             return false;
-        } else {
-            return true;
         }
+        return true;
     }
 
 
@@ -365,7 +339,7 @@ public class ExecutionCommand {
         if (executionCommand.mPid != -1)
             logString.append("\n").append(executionCommand.getPidLogString());
 
-        if (executionCommand.previousState != ExecutionState.PRE_EXECUTION)
+        if (executionCommand.lifecycle.getPreviousState() != ExecutionState.PRE_EXECUTION)
             logString.append("\n").append(executionCommand.getPreviousStateLogString());
         logString.append("\n").append(executionCommand.getCurrentStateLogString());
 
@@ -470,8 +444,8 @@ public class ExecutionCommand {
         if (executionCommand.mPid != -1)
             markdownString.append("\n").append(MarkdownUtils.getSingleLineMarkdownStringEntry("Pid", executionCommand.mPid, "-"));
 
-        markdownString.append("\n").append(MarkdownUtils.getSingleLineMarkdownStringEntry("Previous State", executionCommand.previousState.getName(), "-"));
-        markdownString.append("\n").append(MarkdownUtils.getSingleLineMarkdownStringEntry("Current State", executionCommand.currentState.getName(), "-"));
+        markdownString.append("\n").append(MarkdownUtils.getSingleLineMarkdownStringEntry("Previous State", executionCommand.lifecycle.getPreviousState().getName(), "-"));
+        markdownString.append("\n").append(MarkdownUtils.getSingleLineMarkdownStringEntry("Current State", executionCommand.lifecycle.getCurrentState().getName(), "-"));
 
         markdownString.append("\n").append(MarkdownUtils.getSingleLineMarkdownStringEntry("Executable", executionCommand.executable, "-"));
         markdownString.append("\n").append(getArgumentsMarkdownString("Arguments", executionCommand.arguments));
@@ -527,11 +501,11 @@ public class ExecutionCommand {
     }
 
     public String getCurrentStateLogString() {
-        return "Current State: `" + currentState.getName() + "`";
+        return "Current State: `" + lifecycle.getCurrentState().getName() + "`";
     }
 
     public String getPreviousStateLogString() {
-        return "Previous State: `" + previousState.getName() + "`";
+        return "Previous State: `" + lifecycle.getPreviousState().getName() + "`";
     }
 
     public String getCommandLabelLogString() {

@@ -112,7 +112,7 @@ public final class AppShell {
         Collections.sort(environmentList);
         String[] environmentArray = environmentList.toArray(new String[0]);
 
-        if (!executionCommand.setState(ExecutionState.EXECUTING)) {
+        if (!executionCommand.lifecycle.setState(ExecutionState.EXECUTING, executionCommand.getCommandIdAndLabelLogString())) {
             executionCommand.setStateFailed(Errno.ERRNO_FAILED.getCode(), currentPackageContext.getString(R.string.error_failed_to_execute_app_shell_command, executionCommand.getCommandIdAndLabelLogString()));
             AppShell.processAppShellResult(null, executionCommand);
             return null;
@@ -238,7 +238,7 @@ public final class AppShell {
 
         mExecutionCommand.resultData.exitCode = exitCode;
 
-        if (!mExecutionCommand.setState(ExecutionState.EXECUTED))
+        if (!mExecutionCommand.lifecycle.setState(ExecutionState.EXECUTED, mExecutionCommand.getCommandIdAndLabelLogString()))
             return;
 
         AppShell.processAppShellResult(this, null);
@@ -254,7 +254,7 @@ public final class AppShell {
      */
     public void killIfExecuting(@NonNull final Context context, boolean processResult) {
         // If execution command has already finished executing, then no need to process results or send SIGKILL
-        if (mExecutionCommand.hasExecuted()) {
+        if (mExecutionCommand.lifecycle.hasExecuted()) {
             Logger.logDebug(LOG_TAG, "Ignoring sending SIGKILL to \"" + mExecutionCommand.getCommandIdAndLabelLogString() + "\" AppShell since it has already finished executing");
             return;
         }
@@ -268,7 +268,7 @@ public final class AppShell {
             }
         }
 
-        if (mExecutionCommand.isExecuting()) {
+        if (mExecutionCommand.lifecycle.isExecuting()) {
             kill();
         }
     }
@@ -307,7 +307,7 @@ public final class AppShell {
 
         if (executionCommand == null) return;
 
-        if (executionCommand.shouldNotProcessResults()) {
+        if (executionCommand.lifecycle.shouldNotProcessResults()) {
             Logger.logDebug(LOG_TAG, "Ignoring duplicate call to process \"" + executionCommand.getCommandIdAndLabelLogString() + "\" AppShell result");
             return;
         }
@@ -320,7 +320,7 @@ public final class AppShell {
             // If a callback is not set and execution command didn't fail, then we set success state now
             // Otherwise, the callback host can set it himself when its done with the appShell
             if (!executionCommand.isStateFailed())
-                executionCommand.setState(ExecutionCommand.ExecutionState.SUCCESS);
+                executionCommand.lifecycle.setState(ExecutionCommand.ExecutionState.SUCCESS, executionCommand.getCommandIdAndLabelLogString());
         }
     }
 
