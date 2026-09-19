@@ -41,7 +41,7 @@ import com.termux.shared.theme.ThemeUtils;
  * keyboards.
  *
  * To use it, add following to a layout file and import it in your activity layout file or inflate
- * it with a {@link androidx.viewpager.widget.ViewPager}.:
+ * it with a {@link androidx.viewpager2.widget.ViewPager2}.
  * {@code
  * <?xml version="1.0" encoding="utf-8"?>
  * <com.termux.shared.termux.extrakeys.ExtraKeysView xmlns:android="http://schemas.android.com/apk/res/android"
@@ -54,7 +54,7 @@ import com.termux.shared.theme.ThemeUtils;
  * }
  *
  * Then in your activity, get its reference by a call to {@link android.app.Activity#findViewById(int)}
- * or {@link LayoutInflater#inflate(int, ViewGroup)} if using {@link androidx.viewpager.widget.ViewPager}.
+ * or {@link LayoutInflater#inflate(int, ViewGroup)} if using {@link androidx.viewpager2.widget.ViewPager2}.
  * Then call {@link #setExtraKeysViewClient(IExtraKeysView)} and pass it the implementation of
  * {@link IExtraKeysView} so that you can receive callbacks. You can also override other values set
  * in {@link ExtraKeysView#ExtraKeysView(Context, AttributeSet)} by calling the respective functions.
