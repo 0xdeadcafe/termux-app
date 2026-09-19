@@ -41,7 +41,7 @@ public class ReflectionUtils {
         public Object value;
 
         FieldInvokeResult(boolean success, Object value) {
-            this.value = success;
+            this.success = success;
             this.value = value;
         }
     }
@@ -140,7 +140,7 @@ public class ReflectionUtils {
         public Object value;
 
         MethodInvokeResult(boolean success, Object value) {
-            this.value = success;
+            this.success = success;
             this.value = value;
         }
     }
