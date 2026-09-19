@@ -85,13 +85,15 @@ public class LocalServerSocket implements Closeable {
 
             // Create the server socket file parent directory and set SERVER_SOCKET_PARENT_DIRECTORY_PERMISSIONS if missing
             String socketParentPath = new File(path).getParent();
-            error = FileUtils.validateDirectoryFileExistenceAndPermissions(mLocalSocketRunConfig.getTitle() + " server socket file parent",
-                socketParentPath,
-                null, true,
-                SERVER_SOCKET_PARENT_DIRECTORY_PERMISSIONS, true, true,
-                false, false);
-            if (error != null)
-                return error;
+            try {
+                FileUtils.validateDirectoryFileExistenceAndPermissionsOrThrow(mLocalSocketRunConfig.getTitle() + " server socket file parent",
+                    socketParentPath,
+                    null, true,
+                    SERVER_SOCKET_PARENT_DIRECTORY_PERMISSIONS, true, true,
+                    false, false);
+            } catch (TermuxException e) {
+                return e.getError();
+            }
 
 
             // Delete the server socket file to stop any existing servers and for bind() to succeed

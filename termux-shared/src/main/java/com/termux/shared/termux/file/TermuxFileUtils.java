@@ -12,6 +12,7 @@ import com.termux.shared.logger.Logger;
 import com.termux.shared.markdown.MarkdownUtils;
 import com.termux.shared.shell.command.ExecutionCommand;
 import com.termux.shared.errors.Error;
+import com.termux.shared.errors.TermuxException;
 import com.termux.shared.file.FileUtilsErrno;
 import com.termux.shared.termux.shell.command.environment.TermuxShellEnvironment;
 import com.termux.shared.shell.command.runner.app.AppShell;
@@ -167,10 +168,15 @@ public class TermuxFileUtils {
     public static Error validateDirectoryFileExistenceAndPermissions(String label, final String filePath, final boolean createDirectoryIfMissing,
                                                                      final boolean setPermissions, final boolean setMissingPermissionsOnly,
                                                                      final boolean ignoreErrorsIfPathIsInParentDirPath, final boolean ignoreIfNotExecutable) {
-        return FileUtils.validateDirectoryFileExistenceAndPermissions(label, filePath,
-            TermuxFileUtils.getMatchedAllowedTermuxWorkingDirectoryParentPathForPath(filePath), createDirectoryIfMissing,
-            FileUtils.APP_WORKING_DIRECTORY_PERMISSIONS, setPermissions, setMissingPermissionsOnly,
-            ignoreErrorsIfPathIsInParentDirPath, ignoreIfNotExecutable);
+        try {
+            FileUtils.validateDirectoryFileExistenceAndPermissionsOrThrow(label, filePath,
+                TermuxFileUtils.getMatchedAllowedTermuxWorkingDirectoryParentPathForPath(filePath), createDirectoryIfMissing,
+                FileUtils.APP_WORKING_DIRECTORY_PERMISSIONS, setPermissions, setMissingPermissionsOnly,
+                ignoreErrorsIfPathIsInParentDirPath, ignoreIfNotExecutable);
+            return null;
+        } catch (TermuxException e) {
+            return e.getError();
+        }
     }
 
     /**
@@ -285,10 +291,15 @@ public class TermuxFileUtils {
      * or validating permissions failed, otherwise {@code null}.
      */
     public static Error isTermuxPrefixDirectoryAccessible(boolean createDirectoryIfMissing, boolean setMissingPermissions) {
-           return FileUtils.validateDirectoryFileExistenceAndPermissions("termux prefix directory", TermuxConstants.TERMUX_PREFIX_DIR_PATH,
+        try {
+            FileUtils.validateDirectoryFileExistenceAndPermissionsOrThrow("termux prefix directory", TermuxConstants.TERMUX_PREFIX_DIR_PATH,
                 null, createDirectoryIfMissing,
                 FileUtils.APP_WORKING_DIRECTORY_PERMISSIONS, setMissingPermissions, true,
                 false, false);
+            return null;
+        } catch (TermuxException e) {
+            return e.getError();
+        }
     }
 
     /**
@@ -303,10 +314,15 @@ public class TermuxFileUtils {
      * or validating permissions failed, otherwise {@code null}.
      */
     public static Error isTermuxPrefixStagingDirectoryAccessible(boolean createDirectoryIfMissing, boolean setMissingPermissions) {
-        return FileUtils.validateDirectoryFileExistenceAndPermissions("termux prefix staging directory", TermuxConstants.TERMUX_STAGING_PREFIX_DIR_PATH,
-            null, createDirectoryIfMissing,
-            FileUtils.APP_WORKING_DIRECTORY_PERMISSIONS, setMissingPermissions, true,
-            false, false);
+        try {
+            FileUtils.validateDirectoryFileExistenceAndPermissionsOrThrow("termux prefix staging directory", TermuxConstants.TERMUX_STAGING_PREFIX_DIR_PATH,
+                null, createDirectoryIfMissing,
+                FileUtils.APP_WORKING_DIRECTORY_PERMISSIONS, setMissingPermissions, true,
+                false, false);
+            return null;
+        } catch (TermuxException e) {
+            return e.getError();
+        }
     }
 
     /**
@@ -321,10 +337,15 @@ public class TermuxFileUtils {
      * or validating permissions failed, otherwise {@code null}.
      */
     public static Error isAppsTermuxAppDirectoryAccessible(boolean createDirectoryIfMissing, boolean setMissingPermissions) {
-        return FileUtils.validateDirectoryFileExistenceAndPermissions("apps/termux-app directory", TermuxConstants.TERMUX_APP.APPS_DIR_PATH,
-            null, createDirectoryIfMissing,
-            FileUtils.APP_WORKING_DIRECTORY_PERMISSIONS, setMissingPermissions, true,
-            false, false);
+        try {
+            FileUtils.validateDirectoryFileExistenceAndPermissionsOrThrow("apps/termux-app directory", TermuxConstants.TERMUX_APP.APPS_DIR_PATH,
+                null, createDirectoryIfMissing,
+                FileUtils.APP_WORKING_DIRECTORY_PERMISSIONS, setMissingPermissions, true,
+                false, false);
+            return null;
+        } catch (TermuxException e) {
+            return e.getError();
+        }
     }
 
     /**

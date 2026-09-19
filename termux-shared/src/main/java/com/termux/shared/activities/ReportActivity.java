@@ -23,6 +23,7 @@ import com.termux.shared.file.FileUtils;
 import com.termux.shared.file.filesystem.FileType;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.errors.Error;
+import com.termux.shared.errors.TermuxException;
 import com.termux.shared.termux.TermuxConstants;
 import com.termux.shared.markdown.MarkdownBlockAdapter;
 import com.termux.shared.markdown.MarkdownUtils;
@@ -395,9 +396,10 @@ public class ReportActivity extends AppCompatActivity {
         reportInfoFilePath = FileUtils.getCanonicalPath(reportInfoFilePath, null);
         if(!reportInfoFilePath.equals(reportInfoDirectoryPath) && reportInfoFilePath.startsWith(reportInfoDirectoryPath + "/")) {
             Logger.logVerbose(LOG_TAG, "Deleting " + ReportInfo.class.getSimpleName() + " serialized object file at path \"" + reportInfoFilePath + "\"");
-            Error error = FileUtils.deleteRegularFile(ReportInfo.class.getSimpleName(), reportInfoFilePath, true);
-            if (error != null) {
-                Logger.logErrorExtended(LOG_TAG, error.toString());
+            try {
+                FileUtils.deleteRegularFileOrThrow(ReportInfo.class.getSimpleName(), reportInfoFilePath, true);
+            } catch (TermuxException e) {
+                Logger.logErrorExtended(LOG_TAG, e.toString());
             }
         } else {
             Logger.logError(LOG_TAG, "Not deleting " + ReportInfo.class.getSimpleName() + " serialized object file at path \"" + reportInfoFilePath + "\" since its not under \"" + reportInfoDirectoryPath + "\"");
@@ -438,7 +440,12 @@ public class ReportActivity extends AppCompatActivity {
         // Only regular files are deleted and subdirectories are not checked
         String reportInfoDirectoryPath = getReportInfoDirectoryPath(context);
         Logger.logVerbose(LOG_TAG, "Deleting " + ReportInfo.class.getSimpleName() + " serialized object files under directory path \"" + reportInfoDirectoryPath + "\" older than " + days + " days");
-        return FileUtils.deleteFilesOlderThanXDays(ReportInfo.class.getSimpleName(), reportInfoDirectoryPath, null, days, true, FileType.REGULAR.getValue());
+        try {
+            FileUtils.deleteFilesOlderThanXDaysOrThrow(ReportInfo.class.getSimpleName(), reportInfoDirectoryPath, null, days, true, FileType.REGULAR.getValue());
+            return null;
+        } catch (TermuxException e) {
+            return e.getError();
+        }
     }
 
 
