@@ -55,7 +55,6 @@ public class TermuxNotificationUtils {
      * @param notificationBigText The full text of the notification that may optionally be styled.
      * @param contentIntent The {@link PendingIntent} which should be sent when notification is clicked.
      * @param deleteIntent The {@link PendingIntent} which should be sent when notification is deleted.
-     * @param notificationMode The notification mode. It must be one of {@code NotificationUtils.NOTIFICATION_MODE_*}.
      * @return Returns the {@link NotificationCompat.Builder}.
      */
     @Nullable
@@ -67,11 +66,10 @@ public class TermuxNotificationUtils {
                                                                                  final CharSequence notificationText,
                                                                                  final CharSequence notificationBigText,
                                                                                  final PendingIntent contentIntent,
-                                                                                 final PendingIntent deleteIntent,
-                                                                                 final int notificationMode) {
-        NotificationCompat.Builder builder =  NotificationUtils.geNotificationBuilder(termuxPackageContext,
+                                                                                 final PendingIntent deleteIntent) {
+        NotificationCompat.Builder builder = NotificationUtils.getNotificationBuilder(termuxPackageContext,
             channelId, priority,
-            title, notificationText, notificationBigText, contentIntent, deleteIntent, notificationMode);
+            title, notificationText, notificationBigText, contentIntent, deleteIntent);
 
         if (builder == null)  return null;
 

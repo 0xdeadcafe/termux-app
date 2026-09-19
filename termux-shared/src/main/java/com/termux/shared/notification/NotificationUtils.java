@@ -4,33 +4,11 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
-import android.os.Build;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
-import com.termux.shared.logger.Logger;
-
 public class NotificationUtils {
-
-    /** Do not show notification */
-    public static final int NOTIFICATION_MODE_NONE = 0;
-    /** Show notification without sound, vibration or lights */
-    public static final int NOTIFICATION_MODE_SILENT = 1;
-    /** Show notification with sound */
-    public static final int NOTIFICATION_MODE_SOUND = 2;
-    /** Show notification with vibration */
-    public static final int NOTIFICATION_MODE_VIBRATE = 3;
-    /** Show notification with lights */
-    public static final int NOTIFICATION_MODE_LIGHTS = 4;
-    /** Show notification with sound and vibration */
-    public static final int NOTIFICATION_MODE_SOUND_AND_VIBRATE = 5;
-    /** Show notification with sound and lights */
-    public static final int NOTIFICATION_MODE_SOUND_AND_LIGHTS = 6;
-    /** Show notification with vibration and lights */
-    public static final int NOTIFICATION_MODE_VIBRATE_AND_LIGHTS = 7;
-    /** Show notification with sound, vibration and lights */
-    public static final int NOTIFICATION_MODE_ALL = 8;
 
     private static final String LOG_TAG = "NotificationUtils";
 
@@ -57,19 +35,14 @@ public class NotificationUtils {
      * @param notificationBigText The full text of the notification that may optionally be styled.
      * @param contentIntent The {@link PendingIntent} which should be sent when notification is clicked.
      * @param deleteIntent The {@link PendingIntent} which should be sent when notification is deleted.
-     * @param notificationMode The notification mode. It must be one of {@code NotificationUtils.NOTIFICATION_MODE_*}.
-     *                         The builder returned will be {@code null} if {@link #NOTIFICATION_MODE_NONE}
-     *                         is passed. That case should ideally be handled before calling this function.
-     * @return Returns the {@link NotificationCompat.Builder}.
+     * @return Returns the {@link NotificationCompat.Builder}, or {@code null} if {@code context} is null.
      */
     @Nullable
-    public static NotificationCompat.Builder geNotificationBuilder(
+    public static NotificationCompat.Builder getNotificationBuilder(
         final Context context, final String channelId, final int priority, final CharSequence title,
         final CharSequence notificationText, final CharSequence notificationBigText,
-        final PendingIntent contentIntent, final PendingIntent deleteIntent, final int notificationMode) {
+        final PendingIntent contentIntent, final PendingIntent deleteIntent) {
         if (context == null) return null;
-        // NotificationCompat.Builder accepts channelId in the constructor and calls setChannelId()
-        // automatically on API 26+, so the manual >= O version guard is no longer needed.
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, channelId);
         builder.setContentTitle(title);
         builder.setContentText(notificationText);
@@ -78,17 +51,12 @@ public class NotificationUtils {
         }
         builder.setContentIntent(contentIntent);
         builder.setDeleteIntent(deleteIntent);
-
         builder.setPriority(priority);
-
-        builder = setNotificationDefaults(builder, notificationMode);
-
         return builder;
     }
 
     /**
-     * Setup the notification channel if Android version is greater than or equal to
-     * {@link Build.VERSION_CODES#O}.
+     * Setup the notification channel.
      *
      * @param context The {@link Context} for operations.
      * @param channelId The id of the channel. Must be unique per package.
@@ -102,32 +70,6 @@ public class NotificationUtils {
         NotificationManager notificationManager = getNotificationManager(context);
         if (notificationManager != null)
             notificationManager.createNotificationChannel(channel);
-    }
-
-    public static NotificationCompat.Builder setNotificationDefaults(NotificationCompat.Builder builder, final int notificationMode) {
-
-        switch (notificationMode) {
-            case NOTIFICATION_MODE_NONE:
-                Logger.logWarn(LOG_TAG, "The NOTIFICATION_MODE_NONE passed to setNotificationDefaults(), force setting builder to null.");
-                return null; // return null since notification is not supposed to be shown
-            case NOTIFICATION_MODE_SILENT:
-                break;
-            // On API 26+, sound/vibrate/lights are controlled entirely by the NotificationChannel
-            // created in setupNotificationChannel(); setDefaults() has no effect on O+.
-            case NOTIFICATION_MODE_SOUND:
-            case NOTIFICATION_MODE_VIBRATE:
-            case NOTIFICATION_MODE_LIGHTS:
-            case NOTIFICATION_MODE_SOUND_AND_VIBRATE:
-            case NOTIFICATION_MODE_SOUND_AND_LIGHTS:
-            case NOTIFICATION_MODE_VIBRATE_AND_LIGHTS:
-            case NOTIFICATION_MODE_ALL:
-                break;
-            default:
-                Logger.logError(LOG_TAG, "Invalid notificationMode: \"" + notificationMode + "\" passed to setNotificationDefaults()");
-                break;
-        }
-
-        return builder;
     }
 
 }

@@ -817,10 +817,10 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
 
 
         // Build the notification
-        NotificationCompat.Builder builder =  NotificationUtils.geNotificationBuilder(this,
+        NotificationCompat.Builder builder =  NotificationUtils.getNotificationBuilder(this,
             TermuxConstants.TERMUX_APP_NOTIFICATION_CHANNEL_ID, priority,
             TermuxConstants.TERMUX_APP_NAME, notificationText, null,
-            contentIntent, null, NotificationUtils.NOTIFICATION_MODE_SILENT);
+            contentIntent, null);
         if (builder == null)  return null;
 
         // No need to show a timestamp:

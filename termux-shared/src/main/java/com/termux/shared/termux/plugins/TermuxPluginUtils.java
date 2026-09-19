@@ -414,8 +414,7 @@ public class TermuxPluginUtils {
 
         // Build the notification
         NotificationCompat.Builder builder = getPluginCommandErrorsNotificationBuilder(currentPackageContext, termuxPackageContext,
-            title, notificationTextCharSequence, notificationTextCharSequence, contentIntent, deleteIntent,
-            NotificationUtils.NOTIFICATION_MODE_VIBRATE);
+            title, notificationTextCharSequence, notificationTextCharSequence, contentIntent, deleteIntent);
         if (builder == null) return;
 
         // Send the notification
@@ -435,7 +434,6 @@ public class TermuxPluginUtils {
      * @param notificationBigText The full text of the notification that may optionally be styled.
      * @param contentIntent The {@link PendingIntent} which should be sent when notification is clicked.
      * @param deleteIntent The {@link PendingIntent} which should be sent when notification is deleted.
-     * @param notificationMode The notification mode. It must be one of {@code NotificationUtils.NOTIFICATION_MODE_*}.
      * @return Returns the {@link NotificationCompat.Builder}.
      */
     @Nullable
@@ -445,12 +443,11 @@ public class TermuxPluginUtils {
                                                                                  final CharSequence notificationText,
                                                                                  final CharSequence notificationBigText,
                                                                                  final PendingIntent contentIntent,
-                                                                                 final PendingIntent deleteIntent,
-                                                                                 final int notificationMode) {
+                                                                                 final PendingIntent deleteIntent) {
         return TermuxNotificationUtils.getTermuxOrPluginAppNotificationBuilder(
             currentPackageContext, termuxPackageContext,
             TermuxConstants.TERMUX_PLUGIN_COMMAND_ERRORS_NOTIFICATION_CHANNEL_ID, NotificationCompat.PRIORITY_HIGH,
-            title, notificationText, notificationBigText, contentIntent, deleteIntent, notificationMode);
+            title, notificationText, notificationBigText, contentIntent, deleteIntent);
     }
 
     /**
