@@ -1,4 +1,10 @@
-# Termux application
+# Termux application — security & quality bughunt fork
+
+> **This is a bughunt fork of [termux/termux-app](https://github.com/termux/termux-app).**
+> It exists to develop, validate, and upstream security fixes and code-quality improvements.
+> For the canonical project — releases, packages, wiki, community — please use the upstream repo.
+>
+> Upstream: **https://github.com/termux/termux-app**
 
 [![Build status](https://github.com/termux/termux-app/workflows/Build/badge.svg)](https://github.com/termux/termux-app/actions)
 [![Testing status](https://github.com/termux/termux-app/workflows/Unit%20tests/badge.svg)](https://github.com/termux/termux-app/actions)
@@ -22,6 +28,7 @@ Quick how-to about Termux package management is available at [Package Management
 ***
 
 ## Contents
+- [Differences from Upstream](#differences-from-upstream)
 - [Termux App and Plugins](#termux-app-and-plugins)
 - [Installation](#installation)
 - [Uninstallation](#uninstallation)
@@ -30,6 +37,85 @@ Quick how-to about Termux package management is available at [Package Management
 - [For Maintainers and Contributors](#for-maintainers-and-contributors)
 - [Forking](#forking)
 - [Sponsors and Funders](#sponsors-and-funders)
+##
+
+
+
+## Differences from Upstream
+
+The following changes have been developed in this fork against the upstream
+[`termux/termux-app`](https://github.com/termux/termux-app) `master` branch.
+Each item maps to a beads issue (internal tracker) and, where merged, to a commit in this repo.
+
+### Security
+
+| Issue | Summary |
+|---|---|
+| beads-x18 | **Zip Slip** — added canonical-path validation to `TermuxInstaller` bootstrap extraction to prevent path traversal via crafted zip entries |
+| beads-mv1 | **PendingIntent** — added `FLAG_IMMUTABLE` to all 7 `PendingIntent` construction sites (required for API 31+, exploitable on older targets) |
+| beads-pcx | **Path traversal** — sanitised `attachmentFileName` in `FileReceiverActivity` before constructing destination paths |
+| beads-0zt | **DocumentsProvider confinement** — `TermuxDocumentsProvider.getFileForDocId()` now enforces `BASE_DIR` boundary |
+| beads-rsp | **DocumentsProvider path traversal** — `createDocument()` rejects `displayName` values containing path separators |
+| beads-rhn | **DocumentsProvider `isChildDocument()`** — replaced `String.startsWith()` with canonical-path comparison to close symlink bypass |
+| beads-mvg | **Exported `SettingsActivity`** — added `android:permission` protection to the manifest entry |
+| beads-h94 | **Unsafe deserialisation** — replaced `ObjectInputStream` in `FileUtils.readSerializableObjectFromFile` with a safer alternative |
+| beads-ay9 | **OSC 52 clipboard abuse** — capped clipboard writes at 50 KB and added user-visible confirmation for terminal-initiated writes |
+
+### Bug Fixes
+
+| Issue | Summary |
+|---|---|
+| beads-27z | `buildNotification()` could return `null`; `startForeground()` / `notify()` now guard against this |
+| beads-6mb | `System.exit(1)` in `TerminalSession.wrapFileDescriptor()` replaced with proper exception to respect the Android lifecycle |
+| beads-9nu | JNI `createSubprocess()`: fixed memory leak on OOM path, null-pointer dereference, and local JNI reference table overflow |
+| beads-1m1 | `TerminalEmulator` cursor field race between main and render threads resolved (pre-existing self-acknowledged TODO) |
+| beads-1sf | `TermuxShellManager.init()` singleton made thread-safe with `volatile` + double-checked locking |
+| beads-2rk | `FileReceiverActivity.handleContentUri()` moved `ContentResolver` I/O off the main thread (ANR risk) |
+| beads-4xc | `TermuxActivity.onBackPressed()` — added missing `super.onBackPressed()` call (lint Error) |
+| beads-kk7 | `ReportActivity` / `TextIOActivity` `onBackPressed()` — added missing `super` calls |
+| beads-5qo | Toolbar text input now respects bracketed-paste mode (DECSET 2004) instead of bypassing it |
+| beads-8ch | Bootstrap install race with `Activity` recreation on first launch fixed; no more blank terminal or partial install |
+| beads-8qk | Shell-list mutations in async callbacks now synchronised on the `TermuxService` lock |
+| beads-c8u | `AmSocketServer.processAmClient()` — added missing `return` after error response to prevent double-send protocol corruption |
+| beads-dq0 | `TermuxDocumentsProvider.queryChildDocuments()` — guarded `listFiles()` null return (NPE) |
+| beads-i4p | `TermuxDocumentsProvider.querySearchDocuments()` — fixed NPE on null `listFiles()` and fail-open on `IOException` |
+| beads-ggl | `FileUtils.normalizePath()` — now strips `../` in addition to `./` |
+| beads-x0g | `ByteQueue.write()` — fixed `IllegalArgumentException` crash when pasting a bare `ESC` (`\x1B`) character |
+| beads-7o3 | Terminal toolbar no longer renders as zero-height ghost when `extraKeysInfo` is `null` |
+| beads-8vd | `RunCommandService.onStartCommand()` — moved `SharedPreferences` and file reads off the main thread (ANR risk) |
+
+### Dependencies & Modernisation
+
+| Issue | Summary |
+|---|---|
+| beads-ywe / beads-kqu | Bumped `targetSdkVersion` 28 → 34; fixed all API-34 blockers and one latent crash |
+| beads-7v6 | Raised `minSdkVersion` 21 → 26 (Android 8.0 Oreo); deleted all dead `< API 26` branches |
+| beads-47b | Replaced abandoned `Markwon` markdown library (last release 2021, archived) with `commonmark-java` + custom renderer |
+| beads-e6w | Removed `Guava 24.1-jre` (6-year-old, 3.5 MB dependency; all usages replaced with stdlib) |
+| beads-3xi | Bumped `desugar_jdk_libs` 1.1.5 → 2.1.5 (required for `compileSdk 35+`) |
+
+### Code Quality & Refactoring
+
+| Issue | Summary |
+|---|---|
+| beads-bgv | Migrated `NotificationUtils` from deprecated `android.app.Notification.Builder` to `NotificationCompat.Builder` |
+| beads-1kf / beads-9rw | Errno-style return codes migrated to `TermuxException` / `OrThrow` pattern across `ResultSender`, `FunctionErrno`, `FileUtils`, socket layers |
+
+### Tests Added
+
+| Issue | Summary |
+|---|---|
+| beads-64b | Robolectric coverage for all four `TermuxDocumentsProvider` security fixes |
+| beads-4yq | OSC 52 clipboard 50 KB cap — re-enabled disabled test and added limit assertion |
+| beads-e35 | `normalizePath` `../` stripping and `ByteQueue` zero-length write edge cases |
+| beads-94h | Robolectric `Os.lstat` `ENOENT` gap fixed via opt-in seam (`NativeDispatcherEnoentFixRule`) |
+
+### CI
+
+- Added Gradle dependency caching to reduce flaky-network CI failures.
+- Fixed `gradle/actions/wrapper-validation` and `dependency-submission` action versions.
+- Added `workflow_dispatch` trigger to test and build workflows.
+
 ##
 
 
