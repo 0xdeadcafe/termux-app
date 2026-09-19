@@ -44,7 +44,7 @@ public class NativeDispatcherEnoentFixRuleTest {
     // opt-in only by clearing the checker within a single test to simulate "rule not applied".
     @Test
     public void gapIsStillPresentWhenCheckerNotInstalled() {
-        NativeDispatcher.TEST_ONLY_FILE_EXISTENCE_CHECKER = null; // simulate no @Rule
+        FileTypes.TEST_ONLY_FILE_EXISTENCE_CHECKER = null; // simulate no @Rule
         File missing = new File("/tmp/definitely-missing-" + System.nanoTime() + ".txt");
         // This documents the known Robolectric limitation (beads-94h) still reproduces by
         // default: without the checker installed, a missing path is misclassified as something

@@ -8,7 +8,7 @@ import java.nio.file.Paths;
 
 /**
  * JUnit {@link org.junit.rules.TestRule} that installs a correct, real-filesystem-backed
- * {@link NativeDispatcher.TestOnlyFileExistenceChecker} for the duration of a test, working
+ * {@link FileTypes.TestOnlyFileExistenceChecker} for the duration of a test, working
  * around a Robolectric limitation where {@code android.system.Os.lstat()}/{@code stat()} never
  * throw {@code ENOENT} for a genuinely missing path (see beads-94h). Guarantees the checker is
  * reset to {@code null} after the test, even if the test throws.
@@ -42,12 +42,12 @@ public class NativeDispatcherEnoentFixRule extends ExternalResource {
 
     @Override
     protected void before() {
-        NativeDispatcher.TEST_ONLY_FILE_EXISTENCE_CHECKER = filePath ->
+        FileTypes.TEST_ONLY_FILE_EXISTENCE_CHECKER = filePath ->
             Files.exists(Paths.get(filePath), LinkOption.NOFOLLOW_LINKS);
     }
 
     @Override
     protected void after() {
-        NativeDispatcher.TEST_ONLY_FILE_EXISTENCE_CHECKER = null;
+        FileTypes.TEST_ONLY_FILE_EXISTENCE_CHECKER = null;
     }
 }
