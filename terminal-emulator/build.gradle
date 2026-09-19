@@ -62,11 +62,6 @@ dependencies {
 
 }
 
-task sourceJar(type: Jar) {
-    from android.sourceSets.main.java.srcDirs
-    archiveClassifier = "sources"
-}
-
 afterEvaluate {
     publishing {
         publications {
@@ -76,7 +71,6 @@ afterEvaluate {
                 groupId = 'com.termux'
                 artifactId = 'terminal-emulator'
                 version = '0.118.0'
-                artifact(sourceJar)
             }
         }
     }
