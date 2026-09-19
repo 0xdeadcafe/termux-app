@@ -21,15 +21,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 
 /**
- * Unit tests for the sendCommandResultData*OrThrow sibling methods added for beads-1kf
- * (ResultSenderErrno migration, part of the beads-xs0 Errno/Error deprecate-first migration
- * family).
+ * Unit tests for {@link ResultSender}.
  *
- * <p>As with beads-km2, tests that would need to write a brand-new result file to a directory
- * are avoided (see beads-94h): sendCommandResultDataToDirectory's temp-file-then-move pattern
- * hits the same Robolectric Os.lstat ENOENT gap for the initial write. Tests here focus on
- * validation branches and the PendingIntent-based success path, which doesn't touch the
- * filesystem at all.
+ * <p>Tests cover the typed {@link ResultDestination} variants introduced when {@code ResultConfig}
+ * was replaced with a sealed interface (beads-sl6).
  */
 @RunWith(RobolectricTestRunner.class)
 public class ResultSenderOrThrowTest {
@@ -53,23 +48,28 @@ public class ResultSenderOrThrowTest {
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
+    private ResultDestination.PendingIntentResult newFullPendingIntentResult() {
+        return new ResultDestination.PendingIntentResult(
+            newPendingIntent(),
+            "result", "stdout", "stderr", "exit_code", "err_code", "errmsg",
+            "stdout_original_length", "stderr_original_length");
+    }
+
     // -----------------------------------------------------------------------
-    // Success paths (previously blocked by beads-94h; now unlocked via enoentFix)
+    // Success paths
     // -----------------------------------------------------------------------
 
     @Test
     public void sendCommandResultDataToDirectoryOrThrow_singleFile_writesResultFile() throws Exception {
         File outputDir = tempFolder.newFolder("result-output");
 
-        ResultConfig resultConfig = new ResultConfig();
-        resultConfig.resultDirectoryPath = outputDir.getAbsolutePath();
-        resultConfig.resultSingleFile = true;
-        resultConfig.resultFileBasename = "result";
+        ResultDestination.DirectoryResult dir = new ResultDestination.DirectoryResult(
+            outputDir.getAbsolutePath(), null, true, "result", null, null, "");
 
         ResultData resultData = newResultData("hello from result", 0);
 
         ResultSender.sendCommandResultDataToDirectoryOrThrow(
-            RuntimeEnvironment.getApplication(), "test", "label", resultConfig, resultData, false);
+            RuntimeEnvironment.getApplication(), "test", "label", dir, resultData, false);
 
         File resultFile = new File(outputDir, "result");
         assertTrue("result file must exist after send", resultFile.exists());
@@ -84,77 +84,66 @@ public class ResultSenderOrThrowTest {
     @Test
     public void sendCommandResultDataOrThrow_throwsForNullParams() {
         assertThrows(TermuxException.class, () ->
-            ResultSender.sendCommandResultDataOrThrow(null, "test", "label", null, null, false));
+            ResultSender.sendCommandResultDataOrThrow(null, "test", "label", null, null, null, false));
     }
 
     @Test
-    public void sendCommandResultDataOrThrow_throwsWhenNeitherPendingIntentNorDirectorySet() {
-        ResultConfig resultConfig = new ResultConfig();
+    public void sendCommandResultDataOrThrow_throwsWhenNeitherDestinationSet() {
         ResultData resultData = newResultData("hello", 0);
 
         assertThrows(TermuxException.class, () ->
-            ResultSender.sendCommandResultDataOrThrow(RuntimeEnvironment.getApplication(), "test", "label", resultConfig, resultData, false));
+            ResultSender.sendCommandResultDataOrThrow(
+                RuntimeEnvironment.getApplication(), "test", "label", null, null, resultData, false));
     }
 
     @Test
-    public void sendCommandResultDataWithPendingIntentOrThrow_throwsForMissingRequiredFields() {
-        ResultConfig resultConfig = new ResultConfig();
-        resultConfig.resultPendingIntent = newPendingIntent();
-        // resultBundleKey deliberately left null.
+    public void sendCommandResultDataWithPendingIntentOrThrow_throwsForNullPendingIntent() {
+        // PendingIntentResult cannot be constructed with null pendingIntent by callers (it's @NonNull),
+        // so we test the null-destination guard instead.
         ResultData resultData = newResultData("hello", 0);
 
         assertThrows(TermuxException.class, () ->
-            ResultSender.sendCommandResultDataWithPendingIntentOrThrow(RuntimeEnvironment.getApplication(), "test", "label", resultConfig, resultData, false));
+            ResultSender.sendCommandResultDataWithPendingIntentOrThrow(
+                RuntimeEnvironment.getApplication(), "test", "label", null, resultData, false));
     }
 
     @Test
     public void sendCommandResultDataWithPendingIntentOrThrow_doesNotThrowForValidSend() throws TermuxException {
-        ResultConfig resultConfig = new ResultConfig();
-        resultConfig.resultPendingIntent = newPendingIntent();
-        resultConfig.resultBundleKey = "result";
-        resultConfig.resultStdoutKey = "stdout";
-        resultConfig.resultStdoutOriginalLengthKey = "stdout_original_length";
-        resultConfig.resultStderrKey = "stderr";
-        resultConfig.resultStderrOriginalLengthKey = "stderr_original_length";
-        resultConfig.resultExitCodeKey = "exit_code";
-        resultConfig.resultErrCodeKey = "err_code";
-        resultConfig.resultErrmsgKey = "errmsg";
-
+        ResultDestination.PendingIntentResult pi = newFullPendingIntentResult();
         ResultData resultData = newResultData("hello", 0);
 
-        ResultSender.sendCommandResultDataWithPendingIntentOrThrow(RuntimeEnvironment.getApplication(), "test", "label", resultConfig, resultData, false);
+        ResultSender.sendCommandResultDataWithPendingIntentOrThrow(
+            RuntimeEnvironment.getApplication(), "test", "label", pi, resultData, false);
     }
 
     @Test
-    public void sendCommandResultDataToDirectoryOrThrow_throwsForNullDirectoryPath() {
-        ResultConfig resultConfig = new ResultConfig();
+    public void sendCommandResultDataToDirectoryOrThrow_throwsForNullDir() {
         ResultData resultData = newResultData("hello", 0);
 
         assertThrows(TermuxException.class, () ->
-            ResultSender.sendCommandResultDataToDirectoryOrThrow(RuntimeEnvironment.getApplication(), "test", "label", resultConfig, resultData, false));
+            ResultSender.sendCommandResultDataToDirectoryOrThrow(
+                RuntimeEnvironment.getApplication(), "test", "label", null, resultData, false));
     }
 
     @Test
     public void sendCommandResultDataToDirectoryOrThrow_throwsForInvalidSingleFileBasename() {
-        ResultConfig resultConfig = new ResultConfig();
-        resultConfig.resultDirectoryPath = "/tmp";
-        resultConfig.resultSingleFile = true;
-        resultConfig.resultFileBasename = "contains/a/slash";
+        ResultDestination.DirectoryResult dir = new ResultDestination.DirectoryResult(
+            "/tmp", null, true, "contains/a/slash", null, null, "");
         ResultData resultData = newResultData("hello", 0);
 
         assertThrows(TermuxException.class, () ->
-            ResultSender.sendCommandResultDataToDirectoryOrThrow(RuntimeEnvironment.getApplication(), "test", "label", resultConfig, resultData, false));
+            ResultSender.sendCommandResultDataToDirectoryOrThrow(
+                RuntimeEnvironment.getApplication(), "test", "label", dir, resultData, false));
     }
 
     @Test
     public void sendCommandResultDataToDirectoryOrThrow_throwsForInvalidFilesSuffix() {
-        ResultConfig resultConfig = new ResultConfig();
-        resultConfig.resultDirectoryPath = "/tmp";
-        resultConfig.resultSingleFile = false;
-        resultConfig.resultFilesSuffix = "contains/a/slash";
+        ResultDestination.DirectoryResult dir = new ResultDestination.DirectoryResult(
+            "/tmp", null, false, null, null, null, "contains/a/slash");
         ResultData resultData = newResultData("hello", 0);
 
         assertThrows(TermuxException.class, () ->
-            ResultSender.sendCommandResultDataToDirectoryOrThrow(RuntimeEnvironment.getApplication(), "test", "label", resultConfig, resultData, false));
+            ResultSender.sendCommandResultDataToDirectoryOrThrow(
+                RuntimeEnvironment.getApplication(), "test", "label", dir, resultData, false));
     }
 }

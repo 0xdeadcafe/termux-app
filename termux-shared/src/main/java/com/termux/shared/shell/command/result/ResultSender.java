@@ -22,82 +22,70 @@ public class ResultSender {
     private static final String LOG_TAG = "ResultSender";
 
     /**
-     * Send result stored in {@link ResultConfig} to command caller via
-     * {@link ResultConfig#resultPendingIntent} and/or by writing it to files in
-     * {@link ResultConfig#resultDirectoryPath}. If both are not {@code null}, then result will be
-     * sent via both.
+     * Send {@link ResultData} to the caller via the supplied destinations.
      *
-     * @param context The {@link Context} for operations.
-     * @param logTag The log tag to use for logging.
-     * @param label The label for the command.
-     * @param resultConfig The {@link ResultConfig} object containing information on how to send the result.
-     * @param resultData The {@link ResultData} object containing result data.
-     * @param logStdoutAndStderr Set to {@code true} if {@link ResultData#stdout} and {@link ResultData#stderr}
-     *                           should be logged.
-     * @return Returns the {@link Error} if failed to send the result, otherwise {@code null}.
-     * @deprecated Use {@link #sendCommandResultDataOrThrow(Context, String, String, ResultConfig, ResultData, boolean)} instead.
+     * <p>If both {@code pi} and {@code dir} are non-null the result is delivered via both channels
+     * in order: PendingIntent first, then directory. If the PendingIntent delivery fails the
+     * directory delivery is skipped.
+     *
+     * @param context              The {@link Context} for operations.
+     * @param logTag               The log tag to use for logging.
+     * @param label                The label for the command.
+     * @param pi                   The {@link ResultDestination.PendingIntentResult}, or {@code null}.
+     * @param dir                  The {@link ResultDestination.DirectoryResult}, or {@code null}.
+     * @param resultData           The {@link ResultData} object containing result data.
+     * @param logStdoutAndStderr   Set to {@code true} to log stdout/stderr.
+     * @throws TermuxException If a delivery step fails.
      */
-    @Deprecated
-    public static Error sendCommandResultData(Context context, String logTag, String label, ResultConfig resultConfig, ResultData resultData, boolean logStdoutAndStderr) {
-        if (context == null || resultConfig == null || resultData == null)
-            return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETERS.getError("context, resultConfig or resultData", "sendCommandResultData");
+    public static void sendCommandResultDataOrThrow(Context context, String logTag, String label,
+            ResultDestination.PendingIntentResult pi,
+            ResultDestination.DirectoryResult dir,
+            ResultData resultData, boolean logStdoutAndStderr) throws TermuxException {
+        if (context == null || (pi == null && dir == null) || resultData == null)
+            throw new TermuxException(FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETERS.getError(
+                    "context, resultData, or both pi and dir", "sendCommandResultDataOrThrow"));
 
-        Error error;
-
-        if (resultConfig.resultPendingIntent != null) {
-            error = sendCommandResultDataWithPendingIntent(context, logTag, label, resultConfig, resultData, logStdoutAndStderr);
-            if (error != null || resultConfig.resultDirectoryPath == null)
-                return error;
+        if (pi != null) {
+            sendCommandResultDataWithPendingIntentOrThrow(context, logTag, label, pi, resultData, logStdoutAndStderr);
+            if (dir == null) return;
         }
 
-        if (resultConfig.resultDirectoryPath != null) {
-            return sendCommandResultDataToDirectory(context, logTag, label, resultConfig, resultData, logStdoutAndStderr);
-        } else {
-            return FunctionErrno.ERRNO_UNSET_PARAMETERS.getError("resultConfig.resultPendingIntent or resultConfig.resultDirectoryPath", "sendCommandResultData");
-        }
+        if (dir != null)
+            sendCommandResultDataToDirectoryOrThrow(context, logTag, label, dir, resultData, logStdoutAndStderr);
     }
 
     /**
-     * Exception-throwing sibling of {@link #sendCommandResultData(Context, String, String, ResultConfig, ResultData, boolean)}.
-     * @throws TermuxException If failed to send the result.
-     */
-    @SuppressWarnings("deprecation")
-    public static void sendCommandResultDataOrThrow(Context context, String logTag, String label, ResultConfig resultConfig, ResultData resultData, boolean logStdoutAndStderr) throws TermuxException {
-        TermuxException.throwIfFailed(sendCommandResultData(context, logTag, label, resultConfig, resultData, logStdoutAndStderr));
-    }
-
-    /**
-     * Send result stored in {@link ResultConfig} to command caller via {@link ResultConfig#resultPendingIntent}.
+     * Send {@link ResultData} to the command caller via {@link ResultDestination.PendingIntentResult}.
      *
-     * @param context The {@link Context} for operations.
-     * @param logTag The log tag to use for logging.
-     * @param label The label for the command.
-     * @param resultConfig The {@link ResultConfig} object containing information on how to send the result.
-     * @param resultData The {@link ResultData} object containing result data.
-     * @param logStdoutAndStderr Set to {@code true} if {@link ResultData#stdout} and {@link ResultData#stderr}
-     *                           should be logged.
-     * @return Returns the {@link Error} if failed to send the result, otherwise {@code null}.
-     * @deprecated Use {@link #sendCommandResultDataWithPendingIntentOrThrow(Context, String, String, ResultConfig, ResultData, boolean)} instead.
+     * @param context            The {@link Context} for operations.
+     * @param logTag             The log tag to use for logging.
+     * @param label              The label for the command.
+     * @param pi                 The {@link ResultDestination.PendingIntentResult} describing the delivery.
+     * @param resultData         The {@link ResultData} object containing result data.
+     * @param logStdoutAndStderr Set to {@code true} to log stdout/stderr.
+     * @throws TermuxException If delivery fails.
      */
-    @Deprecated
-    public static Error sendCommandResultDataWithPendingIntent(Context context, String logTag, String label, ResultConfig resultConfig, ResultData resultData, boolean logStdoutAndStderr) {
-        if (context == null || resultConfig == null || resultData == null || resultConfig.resultPendingIntent == null || resultConfig.resultBundleKey == null)
-            return FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError("context, resultConfig, resultData, resultConfig.resultPendingIntent or resultConfig.resultBundleKey", "sendCommandResultDataWithPendingIntent");
+    public static void sendCommandResultDataWithPendingIntentOrThrow(Context context, String logTag, String label,
+            ResultDestination.PendingIntentResult pi,
+            ResultData resultData, boolean logStdoutAndStderr) throws TermuxException {
+        if (context == null || pi == null || resultData == null)
+            throw new TermuxException(FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(
+                    "context, pi or resultData", "sendCommandResultDataWithPendingIntentOrThrow"));
 
         logTag = DataUtils.getDefaultIfNull(logTag, LOG_TAG);
 
-        Logger.logDebugExtended(logTag, "Sending result for command \"" + label + "\":\n" + resultConfig.toString() + "\n" + ResultData.getResultDataLogString(resultData, logStdoutAndStderr));
+        Logger.logDebugExtended(logTag, "Sending result for command \"" + label + "\":\n" + pi + "\n" + ResultData.getResultDataLogString(resultData, logStdoutAndStderr));
 
         String resultDataStdout = resultData.stdout.toString();
         String resultDataStderr = resultData.stderr.toString();
 
-        String truncatedStdout = null;
-        String truncatedStderr = null;
-
         String stdoutOriginalLength = String.valueOf(resultDataStdout.length());
         String stderrOriginalLength = String.valueOf(resultDataStderr.length());
 
-        // Truncate stdout and stdout to max TRANSACTION_SIZE_LIMIT_IN_BYTES
+        // Truncate stdout and stderr to TRANSACTION_SIZE_LIMIT_IN_BYTES
+        String truncatedStdout = null;
+        String truncatedStderr = null;
+
         if (resultDataStderr.isEmpty()) {
             truncatedStdout = DataUtils.getTruncatedCommandOutput(resultDataStdout, DataUtils.TRANSACTION_SIZE_LIMIT_IN_BYTES, false, false, false);
         } else if (resultDataStdout.isEmpty()) {
@@ -125,82 +113,52 @@ public class ResultSender {
 
         String errmsgOriginalLength = (resultDataErrmsg == null) ? null : String.valueOf(resultDataErrmsg.length());
 
-        // Truncate error to max TRANSACTION_SIZE_LIMIT_IN_BYTES / 4
-        // trim from end to preserve start of stacktraces
+        // Truncate error to TRANSACTION_SIZE_LIMIT_IN_BYTES / 4 (trim from end to preserve stacktrace start)
         String truncatedErrmsg = DataUtils.getTruncatedCommandOutput(resultDataErrmsg, DataUtils.TRANSACTION_SIZE_LIMIT_IN_BYTES / 4, true, false, false);
         if (truncatedErrmsg != null && truncatedErrmsg.length() < resultDataErrmsg.length()) {
             Logger.logWarn(logTag, "The result for command \"" + label + "\" error length truncated from " + errmsgOriginalLength + " to " + truncatedErrmsg.length());
             resultDataErrmsg = truncatedErrmsg;
         }
 
-
         final Bundle resultBundle = new Bundle();
-        resultBundle.putString(resultConfig.resultStdoutKey, resultDataStdout);
-        resultBundle.putString(resultConfig.resultStdoutOriginalLengthKey, stdoutOriginalLength);
-        resultBundle.putString(resultConfig.resultStderrKey, resultDataStderr);
-        resultBundle.putString(resultConfig.resultStderrOriginalLengthKey, stderrOriginalLength);
+        resultBundle.putString(pi.stdoutKey, resultDataStdout);
+        resultBundle.putString(pi.stdoutOriginalLengthKey, stdoutOriginalLength);
+        resultBundle.putString(pi.stderrKey, resultDataStderr);
+        resultBundle.putString(pi.stderrOriginalLengthKey, stderrOriginalLength);
         if (resultData.exitCode != null)
-            resultBundle.putInt(resultConfig.resultExitCodeKey, resultData.exitCode);
-        resultBundle.putInt(resultConfig.resultErrCodeKey, resultData.getErrCode());
-        resultBundle.putString(resultConfig.resultErrmsgKey, resultDataErrmsg);
+            resultBundle.putInt(pi.exitCodeKey, resultData.exitCode);
+        resultBundle.putInt(pi.errCodeKey, resultData.getErrCode());
+        resultBundle.putString(pi.errmsgKey, resultDataErrmsg);
 
         Intent resultIntent = new Intent();
-        resultIntent.putExtra(resultConfig.resultBundleKey, resultBundle);
+        resultIntent.putExtra(pi.bundleKey, resultBundle);
 
         try {
-            resultConfig.resultPendingIntent.send(context, Activity.RESULT_OK, resultIntent);
+            pi.pendingIntent.send(context, Activity.RESULT_OK, resultIntent);
         } catch (PendingIntent.CanceledException e) {
-            // The caller doesn't want the result? That's fine, just ignore
-            Logger.logDebug(logTag, "The command \"" + label + "\" creator " + resultConfig.resultPendingIntent.getCreatorPackage() + " does not want the results anymore");
-        }
-
-        return null;
-
-    }
-
-    /**
-     * Exception-throwing sibling of {@link #sendCommandResultDataWithPendingIntent(Context, String, String, ResultConfig, ResultData, boolean)}.
-     * @throws TermuxException If failed to send the result.
-     */
-    @SuppressWarnings("deprecation")
-    public static void sendCommandResultDataWithPendingIntentOrThrow(Context context, String logTag, String label, ResultConfig resultConfig, ResultData resultData, boolean logStdoutAndStderr) throws TermuxException {
-        TermuxException.throwIfFailed(sendCommandResultDataWithPendingIntent(context, logTag, label, resultConfig, resultData, logStdoutAndStderr));
-    }
-
-    /**
-     * Send result stored in {@link ResultConfig} to command caller by writing it to files in
-     * {@link ResultConfig#resultDirectoryPath}.
-     *
-     * @return Returns the {@link Error} if failed to send the result, otherwise {@code null}.
-     * @deprecated Use {@link #sendCommandResultDataToDirectoryOrThrow(Context, String, String, ResultConfig, ResultData, boolean)} instead.
-     */
-    @Deprecated
-    @SuppressWarnings("deprecation")
-    public static Error sendCommandResultDataToDirectory(Context context, String logTag, String label, ResultConfig resultConfig, ResultData resultData, boolean logStdoutAndStderr) {
-        try {
-            sendCommandResultDataToDirectoryOrThrow(context, logTag, label, resultConfig, resultData, logStdoutAndStderr);
-            return null;
-        } catch (TermuxException e) {
-            return e.getError();
+            // The caller doesn't want the result anymore — ignore
+            Logger.logDebug(logTag, "The command \"" + label + "\" creator " + pi.pendingIntent.getCreatorPackage() + " does not want the results anymore");
         }
     }
 
     /**
-     * Send result stored in {@link ResultConfig} to command caller by writing it to files in
-     * {@link ResultConfig#resultDirectoryPath}.
+     * Send {@link ResultData} to the command caller by writing it to files in
+     * {@link ResultDestination.DirectoryResult#directoryPath}.
      *
-     * @param context The {@link Context} for operations.
-     * @param logTag The log tag to use for logging.
-     * @param label The label for the command.
-     * @param resultConfig The {@link ResultConfig} object containing information on how to send the result.
-     * @param resultData The {@link ResultData} object containing result data.
-     * @param logStdoutAndStderr Set to {@code true} if {@link ResultData#stdout} and {@link ResultData#stderr}
-     *                           should be logged.
-     * @throws TermuxException If failed to send the result.
+     * @param context            The {@link Context} for operations.
+     * @param logTag             The log tag to use for logging.
+     * @param label              The label for the command.
+     * @param dir                The {@link ResultDestination.DirectoryResult} describing the delivery.
+     * @param resultData         The {@link ResultData} object containing result data.
+     * @param logStdoutAndStderr Set to {@code true} to log stdout/stderr.
+     * @throws TermuxException If delivery fails.
      */
-    public static void sendCommandResultDataToDirectoryOrThrow(Context context, String logTag, String label, ResultConfig resultConfig, ResultData resultData, boolean logStdoutAndStderr) throws TermuxException {
-        if (context == null || resultConfig == null || resultData == null || DataUtils.isNullOrEmpty(resultConfig.resultDirectoryPath))
-            throw new TermuxException(FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError("context, resultConfig, resultData or resultConfig.resultDirectoryPath", "sendCommandResultDataToDirectoryOrThrow"));
+    public static void sendCommandResultDataToDirectoryOrThrow(Context context, String logTag, String label,
+            ResultDestination.DirectoryResult dir,
+            ResultData resultData, boolean logStdoutAndStderr) throws TermuxException {
+        if (context == null || dir == null || resultData == null)
+            throw new TermuxException(FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(
+                    "context, dir or resultData", "sendCommandResultDataToDirectoryOrThrow"));
 
         logTag = DataUtils.getDefaultIfNull(logTag, LOG_TAG);
 
@@ -211,36 +169,30 @@ public class ResultSender {
         if (resultData.exitCode != null)
             resultDataExitCode = String.valueOf(resultData.exitCode);
 
-        String resultDataErrmsg = null;
-        if (resultData.isStateFailed()) {
-            resultDataErrmsg = ResultData.getErrorsListLogString(resultData);
-        }
-        resultDataErrmsg = DataUtils.getDefaultIfNull(resultDataErrmsg, "");
+        String resultDataErrmsg = DataUtils.getDefaultIfNull(
+                resultData.isStateFailed() ? ResultData.getErrorsListLogString(resultData) : null, "");
 
-        resultConfig.resultDirectoryPath = FileUtils.getCanonicalPath(resultConfig.resultDirectoryPath, null);
-
-        Logger.logDebugExtended(logTag, "Writing result for command \"" + label + "\":\n" + resultConfig.toString() + "\n" + ResultData.getResultDataLogString(resultData, logStdoutAndStderr));
+        Logger.logDebugExtended(logTag, "Writing result for command \"" + label + "\":\n" + dir + "\n" + ResultData.getResultDataLogString(resultData, logStdoutAndStderr));
 
         try {
-            FileUtils.validateDirectoryFileExistenceAndPermissionsOrThrow("result", resultConfig.resultDirectoryPath,
-                resultConfig.resultDirectoryAllowedParentPath, true,
+            FileUtils.validateDirectoryFileExistenceAndPermissionsOrThrow("result", dir.directoryPath,
+                dir.directoryAllowedParentPath, true,
                 FileUtils.APP_WORKING_DIRECTORY_PERMISSIONS, true, true,
                 true, true);
         } catch (TermuxException e) {
-            e.getError().appendMessage("\n" + context.getString(R.string.msg_directory_absolute_path, "Result", resultConfig.resultDirectoryPath));
+            e.getError().appendMessage("\n" + context.getString(R.string.msg_directory_absolute_path, "Result", dir.directoryPath));
             throw e;
         }
 
-        if (resultConfig.resultSingleFile) {
-            if (DataUtils.isNullOrEmpty(resultConfig.resultFileBasename) ||
-                    resultConfig.resultFileBasename.contains("/"))
-                throw new TermuxException(ResultSenderErrno.ERROR_RESULT_FILE_BASENAME_NULL_OR_INVALID.getError(resultConfig.resultFileBasename));
+        if (dir.singleFile) {
+            if (DataUtils.isNullOrEmpty(dir.fileBasename) || dir.fileBasename.contains("/"))
+                throw new TermuxException(ResultSenderErrno.ERROR_RESULT_FILE_BASENAME_NULL_OR_INVALID.getError(dir.fileBasename));
 
             String error_or_output;
 
             if (resultData.isStateFailed()) {
                 try {
-                    if (DataUtils.isNullOrEmpty(resultConfig.resultFileErrorFormat)) {
+                    if (DataUtils.isNullOrEmpty(dir.fileErrorFormat)) {
                         error_or_output = String.format(RESULT_SENDER.FORMAT_FAILED_ERR__ERRMSG__STDOUT__STDERR__EXIT_CODE,
                             MarkdownUtils.getMarkdownCodeForString(String.valueOf(resultData.getErrCode()), false),
                             MarkdownUtils.getMarkdownCodeForString(resultDataErrmsg, true),
@@ -248,7 +200,7 @@ public class ResultSender {
                             MarkdownUtils.getMarkdownCodeForString(resultDataStderr, true),
                             MarkdownUtils.getMarkdownCodeForString(resultDataExitCode, false));
                     } else {
-                        error_or_output = String.format(resultConfig.resultFileErrorFormat,
+                        error_or_output = String.format(dir.fileErrorFormat,
                             resultData.getErrCode(), resultDataErrmsg, resultDataStdout, resultDataStderr, resultDataExitCode);
                     }
                 } catch (Exception e) {
@@ -256,7 +208,7 @@ public class ResultSender {
                 }
             } else {
                 try {
-                    if (DataUtils.isNullOrEmpty(resultConfig.resultFileOutputFormat)) {
+                    if (DataUtils.isNullOrEmpty(dir.fileOutputFormat)) {
                         if (resultDataStderr.isEmpty() && resultDataExitCode.equals("0"))
                             error_or_output = String.format(RESULT_SENDER.FORMAT_SUCCESS_STDOUT, resultDataStdout);
                         else if (resultDataStderr.isEmpty())
@@ -269,7 +221,7 @@ public class ResultSender {
                                 MarkdownUtils.getMarkdownCodeForString(resultDataStderr, true),
                                 MarkdownUtils.getMarkdownCodeForString(resultDataExitCode, false));
                     } else {
-                        error_or_output = String.format(resultConfig.resultFileOutputFormat,
+                        error_or_output = String.format(dir.fileOutputFormat,
                             resultDataStdout, resultDataStderr, resultDataExitCode);
                     }
                 } catch (Exception e) {
@@ -277,53 +229,51 @@ public class ResultSender {
                 }
             }
 
-            String temp_filename = resultConfig.resultFileBasename + "-" + AndroidUtils.getCurrentMilliSecondLocalTimeStamp();
-            FileUtils.writeTextToFileOrThrow(temp_filename, resultConfig.resultDirectoryPath + "/" + temp_filename,
+            String temp_filename = dir.fileBasename + "-" + AndroidUtils.getCurrentMilliSecondLocalTimeStamp();
+            FileUtils.writeTextToFileOrThrow(temp_filename, dir.directoryPath + "/" + temp_filename,
                 null, error_or_output, false);
-            FileUtils.moveRegularFileOrThrow("error or output temp file", resultConfig.resultDirectoryPath + "/" + temp_filename,
-                resultConfig.resultDirectoryPath + "/" + resultConfig.resultFileBasename, false);
+            FileUtils.moveRegularFileOrThrow("error or output temp file", dir.directoryPath + "/" + temp_filename,
+                dir.directoryPath + "/" + dir.fileBasename, false);
         } else {
             String filename;
 
-            if (resultConfig.resultFilesSuffix == null)
-                resultConfig.resultFilesSuffix = "";
-
-            if (resultConfig.resultFilesSuffix.contains("/"))
-                throw new TermuxException(ResultSenderErrno.ERROR_RESULT_FILES_SUFFIX_INVALID.getError(resultConfig.resultFilesSuffix));
+            if (dir.filesSuffix.contains("/"))
+                throw new TermuxException(ResultSenderErrno.ERROR_RESULT_FILES_SUFFIX_INVALID.getError(dir.filesSuffix));
 
             if (!resultDataStdout.isEmpty()) {
-                filename = RESULT_SENDER.RESULT_FILE_STDOUT_PREFIX + resultConfig.resultFilesSuffix;
-                FileUtils.writeTextToFileOrThrow(filename, resultConfig.resultDirectoryPath + "/" + filename,
+                filename = RESULT_SENDER.RESULT_FILE_STDOUT_PREFIX + dir.filesSuffix;
+                FileUtils.writeTextToFileOrThrow(filename, dir.directoryPath + "/" + filename,
                     null, resultDataStdout, false);
             }
 
             if (!resultDataStderr.isEmpty()) {
-                filename = RESULT_SENDER.RESULT_FILE_STDERR_PREFIX + resultConfig.resultFilesSuffix;
-                FileUtils.writeTextToFileOrThrow(filename, resultConfig.resultDirectoryPath + "/" + filename,
+                filename = RESULT_SENDER.RESULT_FILE_STDERR_PREFIX + dir.filesSuffix;
+                FileUtils.writeTextToFileOrThrow(filename, dir.directoryPath + "/" + filename,
                     null, resultDataStderr, false);
             }
 
             if (!resultDataExitCode.isEmpty()) {
-                filename = RESULT_SENDER.RESULT_FILE_EXIT_CODE_PREFIX + resultConfig.resultFilesSuffix;
-                FileUtils.writeTextToFileOrThrow(filename, resultConfig.resultDirectoryPath + "/" + filename,
+                filename = RESULT_SENDER.RESULT_FILE_EXIT_CODE_PREFIX + dir.filesSuffix;
+                FileUtils.writeTextToFileOrThrow(filename, dir.directoryPath + "/" + filename,
                     null, resultDataExitCode, false);
             }
 
             if (resultData.isStateFailed() && !resultDataErrmsg.isEmpty()) {
-                filename = RESULT_SENDER.RESULT_FILE_ERRMSG_PREFIX + resultConfig.resultFilesSuffix;
-                FileUtils.writeTextToFileOrThrow(filename, resultConfig.resultDirectoryPath + "/" + filename,
+                filename = RESULT_SENDER.RESULT_FILE_ERRMSG_PREFIX + dir.filesSuffix;
+                FileUtils.writeTextToFileOrThrow(filename, dir.directoryPath + "/" + filename,
                     null, resultDataErrmsg, false);
             }
 
             // Write errCode to temp file first (atomic rename ensures caller sees complete file)
             String temp_filename = RESULT_SENDER.RESULT_FILE_ERR_PREFIX + "-" + AndroidUtils.getCurrentMilliSecondLocalTimeStamp();
-            if (!resultConfig.resultFilesSuffix.isEmpty()) temp_filename = temp_filename + "-" + resultConfig.resultFilesSuffix;
-            FileUtils.writeTextToFileOrThrow(temp_filename, resultConfig.resultDirectoryPath + "/" + temp_filename,
+            if (!dir.filesSuffix.isEmpty()) temp_filename = temp_filename + "-" + dir.filesSuffix;
+            FileUtils.writeTextToFileOrThrow(temp_filename, dir.directoryPath + "/" + temp_filename,
                 null, String.valueOf(resultData.getErrCode()), false);
 
-            filename = RESULT_SENDER.RESULT_FILE_ERR_PREFIX + resultConfig.resultFilesSuffix;
-            FileUtils.moveRegularFileOrThrow(RESULT_SENDER.RESULT_FILE_ERR_PREFIX + " temp file", resultConfig.resultDirectoryPath + "/" + temp_filename,
-                resultConfig.resultDirectoryPath + "/" + filename, false);
+            filename = RESULT_SENDER.RESULT_FILE_ERR_PREFIX + dir.filesSuffix;
+            FileUtils.moveRegularFileOrThrow(RESULT_SENDER.RESULT_FILE_ERR_PREFIX + " temp file",
+                dir.directoryPath + "/" + temp_filename,
+                dir.directoryPath + "/" + filename, false);
         }
     }
 

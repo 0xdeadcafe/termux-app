@@ -1,5 +1,6 @@
 package com.termux.shared.shell.command;
 
+import android.app.PendingIntent;
 import android.content.Intent;
 import android.net.Uri;
 
@@ -7,7 +8,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.termux.shared.data.IntentUtils;
-import com.termux.shared.shell.command.result.ResultConfig;
+import com.termux.shared.shell.command.result.ResultDestination;
 import com.termux.shared.shell.command.result.ResultData;
 import com.termux.shared.errors.Error;
 import com.termux.shared.logger.Logger;
@@ -223,9 +224,35 @@ public class ExecutionCommand {
      * like with an intent or from within Termux app itself. */
     public boolean isPluginExecutionCommand;
 
-    /** Defines the {@link ResultConfig} for the {@link ExecutionCommand} containing information
-     * on how to handle the result. */
-    public final ResultConfig resultConfig = new ResultConfig();
+    // ------------------------------------------------------------------
+    // Raw result-delivery fields — populated from intent extras before
+    // TermuxPluginUtils.setPlugin*ResultVariables() is called.
+    // ------------------------------------------------------------------
+
+    /** The {@link PendingIntent} to fire with the result, or {@code null} if not requested. */
+    @Nullable public PendingIntent resultPendingIntent;
+    /** Directory path to write result files into, or {@code null} if not requested. */
+    @Nullable public String resultDirectoryPath;
+    /** Whether to write a single combined result file instead of per-stream files. */
+    public boolean resultSingleFile;
+    /** Basename for the result file when {@link #resultSingleFile} is {@code true}. */
+    @Nullable public String resultFileBasename;
+    /** {@link java.util.Formatter} format string for successful result file output. */
+    @Nullable public String resultFileOutputFormat;
+    /** {@link java.util.Formatter} format string for error result file output. */
+    @Nullable public String resultFileErrorFormat;
+    /** Suffix appended to result filenames. */
+    @Nullable public String resultFilesSuffix;
+
+    // ------------------------------------------------------------------
+    // Typed destinations — set by TermuxPluginUtils.setPlugin*ResultVariables()
+    // just before ResultSender is called.
+    // ------------------------------------------------------------------
+
+    /** Typed PendingIntent destination, or {@code null} if not active. */
+    @Nullable public ResultDestination.PendingIntentResult resultPendingIntentDestination;
+    /** Typed directory destination, or {@code null} if not active. */
+    @Nullable public ResultDestination.DirectoryResult resultDirectoryDestination;
 
     /** Defines the {@link ResultData} for the {@link ExecutionCommand} containing information
      * of the result. */
@@ -257,7 +284,7 @@ public class ExecutionCommand {
 
 
     public boolean isPluginExecutionCommandWithPendingResult() {
-        return isPluginExecutionCommand && resultConfig.isCommandWithPendingResult();
+        return isPluginExecutionCommand && (resultPendingIntent != null || resultDirectoryPath != null);
     }
 
 
@@ -407,7 +434,7 @@ public class ExecutionCommand {
 
         logString.append("\n").append(executionCommand.getIsPluginExecutionCommandLogString());
         if (executionCommand.isPluginExecutionCommand)
-            logString.append("\n").append(ResultConfig.getResultConfigLogString(executionCommand.resultConfig, ignoreNull));
+            logString.append("\n").append(ResultDestination.getLogString(executionCommand.resultPendingIntentDestination, executionCommand.resultDirectoryDestination, ignoreNull));
 
         return logString.toString();
     }
@@ -500,7 +527,7 @@ public class ExecutionCommand {
 
         markdownString.append("\n").append(MarkdownUtils.getSingleLineMarkdownStringEntry("isPluginExecutionCommand", executionCommand.isPluginExecutionCommand, "-"));
 
-        markdownString.append("\n\n").append(ResultConfig.getResultConfigMarkdownString(executionCommand.resultConfig));
+        markdownString.append("\n\n").append(ResultDestination.getMarkdownString(executionCommand.resultPendingIntentDestination, executionCommand.resultDirectoryDestination));
 
         markdownString.append("\n\n").append(ResultData.getResultDataMarkdownString(executionCommand.resultData));
 

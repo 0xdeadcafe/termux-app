@@ -1,7 +1,6 @@
 package com.termux.shared.shell.command;
 
 import com.termux.shared.errors.Errno;
-import com.termux.shared.shell.command.result.ResultConfig;
 
 import java.util.Formatter;
 import java.util.IllegalFormatException;
@@ -14,38 +13,40 @@ public class ShellCommandConstants {
     public static final class RESULT_SENDER {
 
         /*
-         * The default `Formatter` format strings to use for `ResultConfig#resultFileBasename`
-         * if `ResultConfig#resultSingleFile` is `true`.
+         * The default `Formatter` format strings to use for
+         * {@link com.termux.shared.shell.command.result.ResultDestination.DirectoryResult#fileBasename}
+         * if {@link com.termux.shared.shell.command.result.ResultDestination.DirectoryResult#singleFile}
+         * is {@code true}.
          */
 
         /** The {@link Formatter} format string for success if only `stdout` needs to be written to
-         * {@link ResultConfig#resultFileBasename} where `stdout` maps to `%1$s`.
-         * This is used when `err` equals {@link Errno#ERRNO_SUCCESS} (-1) and `stderr` is empty
-         * and `exit_code` equals `0` and {@link ResultConfig#resultFileOutputFormat} is not passed. */
+         * the result file basename where `stdout` maps to `%1$s`.
+         * Used when `err` equals {@link Errno#ERRNO_SUCCESS} (-1), `stderr` is empty,
+         * `exit_code` equals `0`, and no custom output format is supplied. */
         public static final String FORMAT_SUCCESS_STDOUT = "%1$s%n";
-        /** The {@link Formatter} format string for success if `stdout` and `exit_code` need to be written to
-         * {@link ResultConfig#resultFileBasename} where `stdout` maps to `%1$s` and `exit_code` to `%2$s`.
-         * This is used when `err` equals {@link Errno#ERRNO_SUCCESS} (-1) and `stderr` is empty
-         * and `exit_code` does not equal `0` and {@link ResultConfig#resultFileOutputFormat} is not passed.
+        /** The {@link Formatter} format string for success if `stdout` and `exit_code` need to be
+         * written to the result file basename where `stdout` maps to `%1$s` and `exit_code` to `%2$s`.
+         * Used when `err` equals {@link Errno#ERRNO_SUCCESS} (-1), `stderr` is empty,
+         * `exit_code` does not equal `0`, and no custom output format is supplied.
          * The exit code will be placed in a markdown inline code. */
         public static final String FORMAT_SUCCESS_STDOUT__EXIT_CODE = "%1$s%n%n%n%nexit_code=%2$s%n";
-        /** The {@link Formatter} format string for success if `stdout`, `stderr` and `exit_code` need to be
-         * written to {@link ResultConfig#resultFileBasename} where `stdout` maps to `%1$s`, `stderr`
+        /** The {@link Formatter} format string for success if `stdout`, `stderr` and `exit_code` need
+         * to be written to the result file basename where `stdout` maps to `%1$s`, `stderr`
          * maps to `%2$s` and `exit_code` to `%3$s`.
-         * This is used when `err` equals {@link Errno#ERRNO_SUCCESS} (-1) and `stderr` is not empty
-         * and {@link ResultConfig#resultFileOutputFormat} is not passed.
+         * Used when `err` equals {@link Errno#ERRNO_SUCCESS} (-1), `stderr` is not empty,
+         * and no custom output format is supplied.
          * The stdout and stderr will be placed in a markdown code block. The exit code will be placed
          * in a markdown inline code. The surrounding backticks will be 3 more than the consecutive
          * backticks in any parameter itself for code blocks. */
         public static final String FORMAT_SUCCESS_STDOUT__STDERR__EXIT_CODE = "stdout=%n%1$s%n%n%n%nstderr=%n%2$s%n%n%n%nexit_code=%3$s%n";
         /** The {@link Formatter} format string for failure if `err`, `errmsg`(`error`), `stdout`,
-         * `stderr` and `exit_code` need to be written to {@link ResultConfig#resultFileBasename} where
+         * `stderr` and `exit_code` need to be written to the result file basename where
          * `err` maps to `%1$s`, `errmsg` maps to `%2$s`, `stdout` maps
          * to `%3$s`, `stderr` to `%4$s` and `exit_code` maps to `%5$s`.
          * Do not define an argument greater than `5`, like `%6$s` if you change this value since it will
-         * raise {@link IllegalFormatException}.
-         * This is used when `err` does not equal {@link Errno#ERRNO_SUCCESS} (-1) and
-         * {@link ResultConfig#resultFileErrorFormat} is not passed.
+         * raise {@link java.util.IllegalFormatException}.
+         * Used when `err` does not equal {@link Errno#ERRNO_SUCCESS} (-1) and no custom error format
+         * is supplied.
          * The errmsg, stdout and stderr will be placed in a markdown code block. The err and exit code
          * will be placed in a markdown inline code. The surrounding backticks will be 3 more than
          * the consecutive backticks in any parameter itself for code blocks. The stdout, stderr
@@ -55,8 +56,10 @@ public class ShellCommandConstants {
 
 
         /*
-         * The default prefixes to use for result files under `ResultConfig#resultDirectoryPath`
-         * if `ResultConfig#resultSingleFile` is `false`.
+         * The default prefixes to use for result files under
+         * {@link com.termux.shared.shell.command.result.ResultDestination.DirectoryResult#directoryPath}
+         * if {@link com.termux.shared.shell.command.result.ResultDestination.DirectoryResult#singleFile}
+         * is {@code false}.
          */
 
         /** The prefix for the err result file. */

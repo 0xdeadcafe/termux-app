@@ -13,7 +13,7 @@ import com.termux.shared.R;
 import com.termux.shared.activities.ReportActivity;
 import com.termux.shared.file.FileUtils;
 import com.termux.shared.termux.file.TermuxFileUtils;
-import com.termux.shared.shell.command.result.ResultConfig;
+import com.termux.shared.shell.command.result.ResultDestination;
 import com.termux.shared.shell.command.result.ResultData;
 import com.termux.shared.errors.Errno;
 import com.termux.shared.errors.Error;
@@ -46,7 +46,7 @@ public class TermuxPluginUtils {
      * The ExecutionCommand currentState must be greater or equal to
      * {@link ExecutionCommand.ExecutionState#EXECUTED}.
      * If the {@link ExecutionCommand#isPluginExecutionCommand} is {@code true} and
-     * {@link ResultConfig#resultPendingIntent} or {@link ResultConfig#resultDirectoryPath}
+     * {@link ExecutionCommand#resultPendingIntent} or {@link ExecutionCommand#resultDirectoryPath}
      * is not {@code null}, then the result of commands are sent back to the command caller.
      *
      * @param context The {@link Context} that will be used to send result intent to the {@link PendingIntent} creator.
@@ -75,15 +75,22 @@ public class TermuxPluginUtils {
 
         // If execution command was started by a plugin which expects the result back
         if (isPluginExecutionCommandWithPendingResult) {
-            // Set variables which will be used by sendCommandResultData to send back the result
-            if (executionCommand.resultConfig.resultPendingIntent != null)
+            // Build typed destinations then dispatch
+            if (executionCommand.resultPendingIntent != null)
                 setPluginResultPendingIntentVariables(executionCommand);
-            if (executionCommand.resultConfig.resultDirectoryPath != null)
+            if (executionCommand.resultDirectoryPath != null)
                 setPluginResultDirectoryVariables(executionCommand);
 
             // Send result to caller
-            error = ResultSender.sendCommandResultData(context, logTag, executionCommand.getCommandIdAndLabelLogString(),
-                executionCommand.resultConfig, executionCommand.resultData, isExecutionCommandLoggingEnabled);
+            try {
+                ResultSender.sendCommandResultDataOrThrow(context, logTag,
+                    executionCommand.getCommandIdAndLabelLogString(),
+                    executionCommand.resultPendingIntentDestination,
+                    executionCommand.resultDirectoryDestination,
+                    executionCommand.resultData, isExecutionCommandLoggingEnabled);
+            } catch (com.termux.shared.errors.TermuxException e) {
+                error = e.getError();
+            }
             if (error != null) {
                 // error will be added to existing Errors
                 resultData.setStateFailed(error);
@@ -94,7 +101,7 @@ public class TermuxPluginUtils {
                     ResultData.getErrorsListMinimalString(resultData),
                     ExecutionCommand.getExecutionCommandMarkdownString(executionCommand),
                     false, true, TermuxUtils.AppInfoMode.TERMUX_AND_CALLING_PACKAGE,true,
-                    executionCommand.resultConfig.resultPendingIntent != null ? executionCommand.resultConfig.resultPendingIntent.getCreatorPackage(): null);
+                    executionCommand.resultPendingIntent != null ? executionCommand.resultPendingIntent.getCreatorPackage(): null);
             }
 
         }
@@ -134,7 +141,7 @@ public class TermuxPluginUtils {
      * The {@link ResultData#errorsList} must also be set with appropriate error info.
      *
      * If the {@link ExecutionCommand#isPluginExecutionCommand} is {@code true} and
-     * {@link ResultConfig#resultPendingIntent} or {@link ResultConfig#resultDirectoryPath}
+     * {@link ExecutionCommand#resultPendingIntent} or {@link ExecutionCommand#resultDirectoryPath}
      * is not {@code null}, then the errors of commands are sent back to the command caller.
      *
      * Otherwise if the {@link TERMUX_APP#KEY_PLUGIN_ERROR_NOTIFICATIONS_ENABLED} is
@@ -156,7 +163,7 @@ public class TermuxPluginUtils {
         if (context == null || executionCommand == null) return;
 
         logTag = DataUtils.getDefaultIfNull(logTag, LOG_TAG);
-        Error error;
+        Error error = null;
         ResultData resultData = executionCommand.resultData;
 
         if (!executionCommand.isStateFailed()) {
@@ -175,15 +182,22 @@ public class TermuxPluginUtils {
 
         // If execution command was started by a plugin which expects the result back
         if (isPluginExecutionCommandWithPendingResult) {
-            // Set variables which will be used by sendCommandResultData to send back the result
-            if (executionCommand.resultConfig.resultPendingIntent != null)
+            // Build typed destinations then dispatch
+            if (executionCommand.resultPendingIntent != null)
                 setPluginResultPendingIntentVariables(executionCommand);
-            if (executionCommand.resultConfig.resultDirectoryPath != null)
+            if (executionCommand.resultDirectoryPath != null)
                 setPluginResultDirectoryVariables(executionCommand);
 
             // Send result to caller
-            error = ResultSender.sendCommandResultData(context, logTag, executionCommand.getCommandIdAndLabelLogString(),
-                executionCommand.resultConfig, executionCommand.resultData, isExecutionCommandLoggingEnabled);
+            try {
+                ResultSender.sendCommandResultDataOrThrow(context, logTag,
+                    executionCommand.getCommandIdAndLabelLogString(),
+                    executionCommand.resultPendingIntentDestination,
+                    executionCommand.resultDirectoryDestination,
+                    executionCommand.resultData, isExecutionCommandLoggingEnabled);
+            } catch (com.termux.shared.errors.TermuxException e) {
+                error = e.getError();
+            }
             if (error != null) {
                 // error will be added to existing Errors
                 resultData.setStateFailed(error);
@@ -200,35 +214,41 @@ public class TermuxPluginUtils {
             ResultData.getErrorsListMinimalString(resultData),
             ExecutionCommand.getExecutionCommandMarkdownString(executionCommand),
             forceNotification, true, TermuxUtils.AppInfoMode.TERMUX_AND_CALLING_PACKAGE, true,
-            executionCommand.resultConfig.resultPendingIntent != null ? executionCommand.resultConfig.resultPendingIntent.getCreatorPackage(): null);
+            executionCommand.resultPendingIntent != null ? executionCommand.resultPendingIntent.getCreatorPackage(): null);
     }
 
-    /** Set variables which will be used by {@link ResultSender#sendCommandResultData(Context, String, String, ResultConfig, ResultData, boolean)}
-     * to send back the result via {@link ResultConfig#resultPendingIntent}. */
+    /** Construct a {@link ResultDestination.PendingIntentResult} and attach it to the command. */
     public static void setPluginResultPendingIntentVariables(ExecutionCommand executionCommand) {
-        ResultConfig resultConfig = executionCommand.resultConfig;
-
-        resultConfig.resultBundleKey = TERMUX_SERVICE.EXTRA_PLUGIN_RESULT_BUNDLE;
-        resultConfig.resultStdoutKey = TERMUX_SERVICE.EXTRA_PLUGIN_RESULT_BUNDLE_STDOUT;
-        resultConfig.resultStdoutOriginalLengthKey = TERMUX_SERVICE.EXTRA_PLUGIN_RESULT_BUNDLE_STDOUT_ORIGINAL_LENGTH;
-        resultConfig.resultStderrKey = TERMUX_SERVICE.EXTRA_PLUGIN_RESULT_BUNDLE_STDERR;
-        resultConfig.resultStderrOriginalLengthKey = TERMUX_SERVICE.EXTRA_PLUGIN_RESULT_BUNDLE_STDERR_ORIGINAL_LENGTH;
-        resultConfig.resultExitCodeKey = TERMUX_SERVICE.EXTRA_PLUGIN_RESULT_BUNDLE_EXIT_CODE;
-        resultConfig.resultErrCodeKey = TERMUX_SERVICE.EXTRA_PLUGIN_RESULT_BUNDLE_ERR;
-        resultConfig.resultErrmsgKey = TERMUX_SERVICE.EXTRA_PLUGIN_RESULT_BUNDLE_ERRMSG;
+        executionCommand.resultPendingIntentDestination = new ResultDestination.PendingIntentResult(
+            executionCommand.resultPendingIntent,
+            TERMUX_SERVICE.EXTRA_PLUGIN_RESULT_BUNDLE,
+            TERMUX_SERVICE.EXTRA_PLUGIN_RESULT_BUNDLE_STDOUT,
+            TERMUX_SERVICE.EXTRA_PLUGIN_RESULT_BUNDLE_STDERR,
+            TERMUX_SERVICE.EXTRA_PLUGIN_RESULT_BUNDLE_EXIT_CODE,
+            TERMUX_SERVICE.EXTRA_PLUGIN_RESULT_BUNDLE_ERR,
+            TERMUX_SERVICE.EXTRA_PLUGIN_RESULT_BUNDLE_ERRMSG,
+            TERMUX_SERVICE.EXTRA_PLUGIN_RESULT_BUNDLE_STDOUT_ORIGINAL_LENGTH,
+            TERMUX_SERVICE.EXTRA_PLUGIN_RESULT_BUNDLE_STDERR_ORIGINAL_LENGTH);
     }
 
-    /** Set variables which will be used by {@link ResultSender#sendCommandResultData(Context, String, String, ResultConfig, ResultData, boolean)}
-     * to send back the result by writing it to files in {@link ResultConfig#resultDirectoryPath}. */
+    /** Construct a {@link ResultDestination.DirectoryResult} and attach it to the command. */
     public static void setPluginResultDirectoryVariables(ExecutionCommand executionCommand) {
-        ResultConfig resultConfig = executionCommand.resultConfig;
+        String dirPath = TermuxFileUtils.getCanonicalPath(executionCommand.resultDirectoryPath, null, true);
+        String allowedParentPath = TermuxFileUtils.getMatchedAllowedTermuxWorkingDirectoryParentPathForPath(dirPath);
 
-        resultConfig.resultDirectoryPath = TermuxFileUtils.getCanonicalPath(resultConfig.resultDirectoryPath, null, true);
-        resultConfig.resultDirectoryAllowedParentPath = TermuxFileUtils.getMatchedAllowedTermuxWorkingDirectoryParentPathForPath(resultConfig.resultDirectoryPath);
+        // Default resultFileBasename to `<executable_basename>-<timestamp>.log` when singleFile is true
+        String basename = executionCommand.resultFileBasename;
+        if (executionCommand.resultSingleFile && basename == null)
+            basename = ShellUtils.getExecutableBasename(executionCommand.executable) + "-" + AndroidUtils.getCurrentMilliSecondLocalTimeStamp() + ".log";
 
-        // Set default resultFileBasename if resultSingleFile is true to `<executable_basename>-<timestamp>.log`
-        if (resultConfig.resultSingleFile && resultConfig.resultFileBasename == null)
-            resultConfig.resultFileBasename = ShellUtils.getExecutableBasename(executionCommand.executable) + "-" + AndroidUtils.getCurrentMilliSecondLocalTimeStamp() + ".log";
+        executionCommand.resultDirectoryDestination = new ResultDestination.DirectoryResult(
+            dirPath,
+            allowedParentPath,
+            executionCommand.resultSingleFile,
+            basename,
+            executionCommand.resultFileOutputFormat,
+            executionCommand.resultFileErrorFormat,
+            DataUtils.getDefaultIfNull(executionCommand.resultFilesSuffix, ""));
     }
 
 
