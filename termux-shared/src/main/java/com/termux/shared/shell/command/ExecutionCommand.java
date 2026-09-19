@@ -1,6 +1,5 @@
 package com.termux.shared.shell.command;
 
-import android.app.PendingIntent;
 import android.content.Intent;
 import android.net.Uri;
 
@@ -10,6 +9,7 @@ import androidx.annotation.Nullable;
 import com.termux.shared.data.IntentUtils;
 import com.termux.shared.shell.command.result.ResultDestination;
 import com.termux.shared.shell.command.result.ResultData;
+import com.termux.shared.shell.command.result.ResultIntake;
 import com.termux.shared.errors.Error;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.markdown.MarkdownUtils;
@@ -221,24 +221,13 @@ public class ExecutionCommand {
     public boolean isPluginExecutionCommand;
 
     // ------------------------------------------------------------------
-    // Raw result-delivery fields — populated from intent extras before
-    // TermuxPluginUtils.setPlugin*ResultVariables() is called.
+    // Raw result-delivery parameters from plugin Intent — set once at intake, before
+    // TermuxPluginUtils.setPlugin*ResultVariables() converts them to typed destinations.
+    // Non-null only when at least one delivery channel (PendingIntent or directory) is present.
     // ------------------------------------------------------------------
 
-    /** The {@link PendingIntent} to fire with the result, or {@code null} if not requested. */
-    @Nullable public PendingIntent resultPendingIntent;
-    /** Directory path to write result files into, or {@code null} if not requested. */
-    @Nullable public String resultDirectoryPath;
-    /** Whether to write a single combined result file instead of per-stream files. */
-    public boolean resultSingleFile;
-    /** Basename for the result file when {@link #resultSingleFile} is {@code true}. */
-    @Nullable public String resultFileBasename;
-    /** {@link java.util.Formatter} format string for successful result file output. */
-    @Nullable public String resultFileOutputFormat;
-    /** {@link java.util.Formatter} format string for error result file output. */
-    @Nullable public String resultFileErrorFormat;
-    /** Suffix appended to result filenames. */
-    @Nullable public String resultFilesSuffix;
+    /** Raw result-delivery parameters, or {@code null} if the caller expects no result. */
+    @Nullable public ResultIntake resultIntake;
 
     // ------------------------------------------------------------------
     // Typed destinations — set by TermuxPluginUtils.setPlugin*ResultVariables()
@@ -280,7 +269,7 @@ public class ExecutionCommand {
 
 
     public boolean isPluginExecutionCommandWithPendingResult() {
-        return isPluginExecutionCommand && (resultPendingIntent != null || resultDirectoryPath != null);
+        return isPluginExecutionCommand && resultIntake != null;
     }
 
 

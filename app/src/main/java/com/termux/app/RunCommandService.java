@@ -2,6 +2,7 @@ package com.termux.app;
 
 import android.app.Notification;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.ServiceCompat;
@@ -25,6 +26,7 @@ import com.termux.shared.logger.Logger;
 import com.termux.shared.notification.NotificationUtils;
 import com.termux.shared.shell.command.ExecutionCommand;
 import com.termux.shared.shell.command.ExecutionCommand.Runner;
+import com.termux.shared.shell.command.result.ResultIntake;
 
 /**
  * A service that receives {@link RUN_COMMAND_SERVICE#ACTION_RUN_COMMAND} intent from third party apps and
@@ -129,7 +131,11 @@ public class RunCommandService extends Service {
         executionCommand.commandDescription = IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_COMMAND_DESCRIPTION, null);
         executionCommand.commandHelp = IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_COMMAND_HELP, null);
         executionCommand.isPluginExecutionCommand = true;
-        executionCommand.resultPendingIntent = intent.getParcelableExtra(RUN_COMMAND_SERVICE.EXTRA_PENDING_INTENT);
+        // Set pendingIntent early so that the allow-external-apps error notification can show
+        // the creator package. Directory fields are withheld until the check passes (see below).
+        PendingIntent earlyPi = intent.getParcelableExtra(RUN_COMMAND_SERVICE.EXTRA_PENDING_INTENT);
+        if (earlyPi != null)
+            executionCommand.resultIntake = new ResultIntake(earlyPi, null, false, null, null, null, "");
 
         // If "allow-external-apps" property to not set to "true", then just return
         // We enable force notifications if "allow-external-apps" policy is violated so that the
@@ -155,14 +161,18 @@ public class RunCommandService extends Service {
         // is not "true" if we do not send the result, but a notification will still be shown for
         // clients to know. A result is still sent if pending intent is used as that does not have
         // this security issue.
-        executionCommand.resultPendingIntent = intent.getParcelableExtra(RUN_COMMAND_SERVICE.EXTRA_PENDING_INTENT);
-        executionCommand.resultDirectoryPath = IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_RESULT_DIRECTORY, null);
-        if (executionCommand.resultDirectoryPath != null) {
-            executionCommand.resultSingleFile = intent.getBooleanExtra(RUN_COMMAND_SERVICE.EXTRA_RESULT_SINGLE_FILE, false);
-            executionCommand.resultFileBasename = IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_RESULT_FILE_BASENAME, null);
-            executionCommand.resultFileOutputFormat = IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_RESULT_FILE_OUTPUT_FORMAT, null);
-            executionCommand.resultFileErrorFormat = IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_RESULT_FILE_ERROR_FORMAT, null);
-            executionCommand.resultFilesSuffix = IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_RESULT_FILES_SUFFIX, null);
+        PendingIntent resultPi = intent.getParcelableExtra(RUN_COMMAND_SERVICE.EXTRA_PENDING_INTENT);
+        String resultDir = IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_RESULT_DIRECTORY, null);
+        if (resultPi != null || resultDir != null) {
+            executionCommand.resultIntake = new ResultIntake(
+                resultPi, resultDir,
+                intent.getBooleanExtra(RUN_COMMAND_SERVICE.EXTRA_RESULT_SINGLE_FILE, false),
+                IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_RESULT_FILE_BASENAME, null),
+                IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_RESULT_FILE_OUTPUT_FORMAT, null),
+                IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_RESULT_FILE_ERROR_FORMAT, null),
+                DataUtils.getDefaultIfNull(IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_RESULT_FILES_SUFFIX, null), ""));
+        } else {
+            executionCommand.resultIntake = null;
         }
 
 
@@ -240,14 +250,14 @@ public class RunCommandService extends Service {
         execIntent.putExtra(TERMUX_SERVICE.EXTRA_COMMAND_DESCRIPTION, executionCommand.commandDescription);
         execIntent.putExtra(TERMUX_SERVICE.EXTRA_COMMAND_HELP, executionCommand.commandHelp);
         execIntent.putExtra(TERMUX_SERVICE.EXTRA_PLUGIN_API_HELP, executionCommand.pluginAPIHelp);
-        execIntent.putExtra(TERMUX_SERVICE.EXTRA_PENDING_INTENT, executionCommand.resultPendingIntent);
-        execIntent.putExtra(TERMUX_SERVICE.EXTRA_RESULT_DIRECTORY, executionCommand.resultDirectoryPath);
-        if (executionCommand.resultDirectoryPath != null) {
-            execIntent.putExtra(TERMUX_SERVICE.EXTRA_RESULT_SINGLE_FILE, executionCommand.resultSingleFile);
-            execIntent.putExtra(TERMUX_SERVICE.EXTRA_RESULT_FILE_BASENAME, executionCommand.resultFileBasename);
-            execIntent.putExtra(TERMUX_SERVICE.EXTRA_RESULT_FILE_OUTPUT_FORMAT, executionCommand.resultFileOutputFormat);
-            execIntent.putExtra(TERMUX_SERVICE.EXTRA_RESULT_FILE_ERROR_FORMAT, executionCommand.resultFileErrorFormat);
-            execIntent.putExtra(TERMUX_SERVICE.EXTRA_RESULT_FILES_SUFFIX, executionCommand.resultFilesSuffix);
+        execIntent.putExtra(TERMUX_SERVICE.EXTRA_PENDING_INTENT, executionCommand.resultIntake != null ? executionCommand.resultIntake.pendingIntent : null);
+        execIntent.putExtra(TERMUX_SERVICE.EXTRA_RESULT_DIRECTORY, executionCommand.resultIntake != null ? executionCommand.resultIntake.directoryPath : null);
+        if (executionCommand.resultIntake != null && executionCommand.resultIntake.directoryPath != null) {
+            execIntent.putExtra(TERMUX_SERVICE.EXTRA_RESULT_SINGLE_FILE, executionCommand.resultIntake.singleFile);
+            execIntent.putExtra(TERMUX_SERVICE.EXTRA_RESULT_FILE_BASENAME, executionCommand.resultIntake.fileBasename);
+            execIntent.putExtra(TERMUX_SERVICE.EXTRA_RESULT_FILE_OUTPUT_FORMAT, executionCommand.resultIntake.fileOutputFormat);
+            execIntent.putExtra(TERMUX_SERVICE.EXTRA_RESULT_FILE_ERROR_FORMAT, executionCommand.resultIntake.fileErrorFormat);
+            execIntent.putExtra(TERMUX_SERVICE.EXTRA_RESULT_FILES_SUFFIX, executionCommand.resultIntake.filesSuffix);
         }
 
         // Start TERMUX_SERVICE and pass it execution intent
