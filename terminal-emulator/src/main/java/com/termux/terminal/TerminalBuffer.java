@@ -1,14 +1,7 @@
 package com.termux.terminal;
 
 import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.HashMap;
-
-import android.graphics.Bitmap;
-import android.graphics.Rect;
-
-import android.os.SystemClock;
+import java.util.ArrayList;
 
 /**
  * A circular buffer of {@link TerminalRow}:s which keeps notes about what is visible on a logical screen and the scroll
@@ -17,12 +10,6 @@ import android.os.SystemClock;
  * See {@link #externalToInternalRow(int)} for how to map from logical screen rows to array indices.
  */
 public final class TerminalBuffer {
-
-    public static final String LOG_TAG = "TerminalBuffer";
-
-
-
-    private TerminalSessionClient mClient;
 
     TerminalRow[] mLines;
     /** The length of {@link #mLines}. */
@@ -34,73 +21,22 @@ public final class TerminalBuffer {
     /** The index in the circular buffer where the visible screen starts. */
     private int mScreenFirstRow = 0;
 
-
-    /**
-     * The {@link TerminalSixel} if a sixel command is being processed, from which the final
-     * {@link TerminalBitmap} is created.
-     */
-    private TerminalSixel mTerminalSixel;
-
-
-    /** The map for bitmap number to the {@link TerminalBitmap} loaded in the terminal. */
-    private final HashMap<Integer, TerminalBitmap> mTerminalBitmaps;
-
-    /** The time since last garbage collection for all the {@link TerminalBitmap} that are loaded in the terminal. */
-    private long mTerminalBitmapsLastGC;
-
-    /**
-     * The bitmap number start for {@link #mTerminalBitmaps} keys.
-     *
-     * The bitmap number and coordinates are encoded in the `long` {@link TerminalRow#mStyle} for
-     * the `TerminalRow` character of a column by
-     * {@link TerminalBitmap#buildOrThrow(TerminalBuffer, int, Bitmap, int, int, int, int)} by
-     * getting encoded value from {@link TextStyle#encodeTerminalBitmap(int, int, int)}.
-     * The `TerminalRenderer.render()` then checks during rendering terminal output whether a
-     * character at a row/coloumn index is a bitmap instead of text by calling
-     * `TextStyle.isTerminalBitmap()`.
-     */
-    public static final int TERMINAL_BITMAP__NUM_START = 0;
-
-    /**
-     * The bitmap number end for {@link #mTerminalBitmaps} keys.
-     */
-    public static final int TERMINAL_BITMAP__NUM_END = Integer.MAX_VALUE;
-
-
-
-
-    public TerminalBuffer(int columns, int totalRows, int screenRows) {
-        this(null, columns, totalRows, screenRows);
-    }
-
     /**
      * Create a transcript screen.
      *
-     * @param client    the {@link TerminalSessionClient}.
      * @param columns    the width of the screen in characters.
      * @param totalRows  the height of the entire text area, in rows of text.
      * @param screenRows the height of just the screen, not including the transcript that holds lines that have scrolled off
      *                   the top of the screen.
      */
-    public TerminalBuffer(TerminalSessionClient client, int columns, int totalRows, int screenRows) {
-        mClient = client;
-
+    public TerminalBuffer(int columns, int totalRows, int screenRows) {
         mColumns = columns;
         mTotalRows = totalRows;
         mScreenRows = screenRows;
         mLines = new TerminalRow[totalRows];
 
         blockSet(0, 0, columns, screenRows, ' ', TextStyle.NORMAL);
-        mTerminalBitmaps = new HashMap<>();
-        mTerminalBitmapsLastGC = SystemClock.uptimeMillis();
     }
-
-
-
-    public TerminalSessionClient getClient() {
-        return mClient;
-    }
-
 
     public String getTranscriptText() {
         return getSelectedText(0, -getActiveTranscriptRows(), mColumns, mScreenRows).trim();
@@ -296,124 +232,9 @@ public final class TerminalBuffer {
             cursor[1] -= shiftDownOfTopRow;
             mScreenRows = newRows;
         } else {
-            // Copy away old state and update new:
-            TerminalRow[] oldLines = mLines;
-            mLines = new TerminalRow[newTotalRows];
-            for (int i = 0; i < newTotalRows; i++)
-                mLines[i] = new TerminalRow(newColumns, currentStyle);
-
-            final int oldActiveTranscriptRows = mActiveTranscriptRows;
-            final int oldScreenFirstRow = mScreenFirstRow;
-            final int oldScreenRows = mScreenRows;
-            final int oldTotalRows = mTotalRows;
-            mTotalRows = newTotalRows;
-            mScreenRows = newRows;
-            mActiveTranscriptRows = mScreenFirstRow = 0;
-            mColumns = newColumns;
-
-            int newCursorRow = -1;
-            int newCursorColumn = -1;
-            int oldCursorRow = cursor[1];
-            int oldCursorColumn = cursor[0];
-            boolean newCursorPlaced = false;
-
-            int currentOutputExternalRow = 0;
-            int currentOutputExternalColumn = 0;
-
-            // Loop over every character in the initial state.
-            // Blank lines should be skipped only if at end of transcript (just as is done in the "fast" resize), so we
-            // keep track how many blank lines we have skipped if we later on find a non-blank line.
-            int skippedBlankLines = 0;
-            for (int externalOldRow = -oldActiveTranscriptRows; externalOldRow < oldScreenRows; externalOldRow++) {
-                // Do what externalToInternalRow() does but for the old state:
-                int internalOldRow = oldScreenFirstRow + externalOldRow;
-                internalOldRow = (internalOldRow < 0) ? (oldTotalRows + internalOldRow) : (internalOldRow % oldTotalRows);
-
-                TerminalRow oldLine = oldLines[internalOldRow];
-                boolean cursorAtThisRow = externalOldRow == oldCursorRow;
-                // The cursor may only be on a non-null line, which we should not skip:
-                if (oldLine == null || (!(!newCursorPlaced && cursorAtThisRow)) && oldLine.isBlank()) {
-                    skippedBlankLines++;
-                    continue;
-                } else if (skippedBlankLines > 0) {
-                    // After skipping some blank lines we encounter a non-blank line. Insert the skipped blank lines.
-                    for (int i = 0; i < skippedBlankLines; i++) {
-                        if (currentOutputExternalRow == mScreenRows - 1) {
-                            scrollDownOneLine(0, mScreenRows, currentStyle);
-                        } else {
-                            currentOutputExternalRow++;
-                        }
-                        currentOutputExternalColumn = 0;
-                    }
-                    skippedBlankLines = 0;
-                }
-
-                int lastNonSpaceIndex = 0;
-                boolean justToCursor = false;
-                if (cursorAtThisRow || oldLine.mLineWrap) {
-                    // Take the whole line, either because of cursor on it, or if line wrapping.
-                    lastNonSpaceIndex = oldLine.getSpaceUsed();
-                    if (cursorAtThisRow) justToCursor = true;
-                } else {
-                    for (int i = 0; i < oldLine.getSpaceUsed(); i++)
-                        // NEWLY INTRODUCED BUG! Should not index oldLine.mStyle with char indices
-                        if (oldLine.mText[i] != ' '/* || oldLine.mStyle[i] != currentStyle */)
-                            lastNonSpaceIndex = i + 1;
-                }
-
-                int currentOldCol = 0;
-                long styleAtCol = 0;
-                for (int i = 0; i < lastNonSpaceIndex; i++) {
-                    // Note that looping over java character, not cells.
-                    char c = oldLine.mText[i];
-                    int codePoint = (Character.isHighSurrogate(c)) ? Character.toCodePoint(c, oldLine.mText[++i]) : c;
-                    int displayWidth = WcWidth.width(codePoint);
-                    // Use the last style if this is a zero-width character:
-                    if (displayWidth > 0) styleAtCol = oldLine.getStyle(currentOldCol);
-
-                    // Line wrap as necessary:
-                    if (currentOutputExternalColumn + displayWidth > mColumns) {
-                        setLineWrap(currentOutputExternalRow);
-                        if (currentOutputExternalRow == mScreenRows - 1) {
-                            if (newCursorPlaced) newCursorRow--;
-                            scrollDownOneLine(0, mScreenRows, currentStyle);
-                        } else {
-                            currentOutputExternalRow++;
-                        }
-                        currentOutputExternalColumn = 0;
-                    }
-
-                    int offsetDueToCombiningChar = ((displayWidth <= 0 && currentOutputExternalColumn > 0) ? 1 : 0);
-                    int outputColumn = currentOutputExternalColumn - offsetDueToCombiningChar;
-                    setChar(outputColumn, currentOutputExternalRow, codePoint, styleAtCol);
-
-                    if (displayWidth > 0) {
-                        if (oldCursorRow == externalOldRow && oldCursorColumn == currentOldCol) {
-                            newCursorColumn = currentOutputExternalColumn;
-                            newCursorRow = currentOutputExternalRow;
-                            newCursorPlaced = true;
-                        }
-                        currentOldCol += displayWidth;
-                        currentOutputExternalColumn += displayWidth;
-                        if (justToCursor && newCursorPlaced) break;
-                    }
-                }
-                // Old row has been copied. Check if we need to insert newline if old line was not wrapping:
-                if (externalOldRow != (oldScreenRows - 1) && !oldLine.mLineWrap) {
-                    if (currentOutputExternalRow == mScreenRows - 1) {
-                        if (newCursorPlaced) newCursorRow--;
-                        scrollDownOneLine(0, mScreenRows, currentStyle);
-                    } else {
-                        currentOutputExternalRow++;
-                    }
-                    currentOutputExternalColumn = 0;
-                }
-            }
-
-            cursor[0] = newCursorColumn;
-            cursor[1] = newCursorRow;
+            // Reflow: repaginate logical lines, preserving scrollback history
+            reflowResize(newColumns, newRows, newTotalRows, cursor, currentStyle, altScreen);
         }
-
         // Handle cursor scrolling off screen:
         if (cursor[0] < 0 || cursor[1] < 0) cursor[0] = cursor[1] = 0;
     }
@@ -466,10 +287,6 @@ public final class TerminalBuffer {
         if (mLines[blankRow] == null) {
             mLines[blankRow] = new TerminalRow(mColumns, style);
         } else {
-            // Remove bitmaps that are completely scrolled out.
-            if(mLines[blankRow].mHasTerminalBitmap) {
-                removeScrolledOutTerminalBitmaps(blankRow);
-            }
             mLines[blankRow].clear(style);
         }
     }
@@ -508,13 +325,9 @@ public final class TerminalBuffer {
             throw new IllegalArgumentException(
                 "Illegal arguments! blockSet(" + sx + ", " + sy + ", " + w + ", " + h + ", " + val + ", " + mColumns + ", " + mScreenRows + ")");
         }
-        for (int y = 0; y < h; y++) {
+        for (int y = 0; y < h; y++)
             for (int x = 0; x < w; x++)
                 setChar(sx + x, sy + y, val, style);
-            if (sx + w == mColumns && val == ' ') {
-                clearLineWrap(sy + y);
-            }
-        }
     }
 
     public TerminalRow allocateFullLineIfNecessary(int row) {
@@ -557,7 +370,7 @@ public final class TerminalBuffer {
         }
     }
 
-    public synchronized void clearTranscript() {
+    public void clearTranscript() {
         if (mScreenFirstRow < mActiveTranscriptRows) {
             Arrays.fill(mLines, mTotalRows + mScreenFirstRow - mActiveTranscriptRows, mTotalRows, null);
             Arrays.fill(mLines, 0, mScreenFirstRow, null);
@@ -565,205 +378,254 @@ public final class TerminalBuffer {
             Arrays.fill(mLines, mScreenFirstRow - mActiveTranscriptRows, mScreenFirstRow, null);
         }
         mActiveTranscriptRows = 0;
-        clearTerminalBitmaps();
     }
 
 
 
-    public synchronized TerminalBitmap getTerminalBitmap(long style) {
-        int bitmapNum = TextStyle.getTerminalBitmapNum(style);
-        return bitmapNum >= TERMINAL_BITMAP__NUM_START ? mTerminalBitmaps.get(bitmapNum): null;
-    }
-
-    public synchronized void clearTerminalBitmaps() {
-        mTerminalBitmaps.clear();
-    }
-
-    public synchronized Bitmap getSixelBitmap(long style) {
-        TerminalBitmap terminalBitmap = getTerminalBitmap(style);
-        return terminalBitmap != null ? terminalBitmap.mBitmap : null;
-    }
 
 
-    public synchronized Rect getSixelRect(long style) {
-        TerminalBitmap terminalBitmap = getTerminalBitmap(style);
-        if (terminalBitmap == null) {
-            return null;
-        }
 
-        int x = TextStyle.getTerminalBitmapX(style);
-        int y = TextStyle.getTerminalBitmapY(style);
-        return new Rect(
-            x * terminalBitmap.mCellWidth,
-            y * terminalBitmap.mCellHeight,
-            (x + 1) * terminalBitmap.mCellWidth,
-            (y + 1) * terminalBitmap.mCellHeight);
-    }
+    private void reflowResize(int newColumns, int newRows, int newTotalRows, int[] cursor, long currentStyle, boolean altScreen) {
+        TerminalRow[] oldLines = mLines;
+        final int oldActiveTranscriptRows = mActiveTranscriptRows;
+        final int oldScreenFirstRow = mScreenFirstRow;
+        final int oldScreenRows = mScreenRows;
+        final int oldTotalRows = mTotalRows;
+        final int oldColumns = mColumns;
+        final int oldCursorRow = cursor[1];
+        final int oldCursorCol = cursor[0];
 
+        // Merge mLineWrap-connected rows into logical lines
+        java.util.ArrayList<LogicalLine> logicalLines = new java.util.ArrayList<>();
+        java.util.ArrayList<LogicalLine> blankLines = new java.util.ArrayList<>();
+        int cursorLineIdx = -1, cursorColOffset = -1;
+        boolean inLogicalLine = false;
 
-    public synchronized void sixelStart(int width, int height) {
-        mTerminalSixel = TerminalSixel.build(getClient(), width, height);
-    }
+        for (int externalOldRow = -oldActiveTranscriptRows; externalOldRow < oldScreenRows; externalOldRow++) {
+            int internalOldRow = oldScreenFirstRow + externalOldRow;
+            internalOldRow = (internalOldRow < 0) ? (oldTotalRows + internalOldRow) : (internalOldRow % oldTotalRows);
 
-    public synchronized int sixelEnd(int x, int y, int cellW, int cellH) {
-        if (mTerminalSixel == null) return 0;
-
-        int bitmapNum = getFreeTerminalBitmapNum();
-        if (bitmapNum < TERMINAL_BITMAP__NUM_START) {
-            Logger.logError(mClient, LOG_TAG, "Cannot create more than " + TERMINAL_BITMAP__NUM_END + " bitmaps");
-            return 0;
-        }
-
-        TerminalBitmap terminalBitmap = TerminalBitmap.build(this, bitmapNum, mTerminalSixel, x, y, cellW, cellH);
-        mTerminalSixel = null;
-        if (terminalBitmap == null || terminalBitmap.getBitmap() == null) {
-            return 0;
-        }
-        mTerminalBitmaps.put(bitmapNum, terminalBitmap);
-
-        doTerminalBitmapsGC(30000);
-        return terminalBitmap.mScrollLines;
-    }
-
-    /** Clears the {@link #mTerminalSixel} by setting it to `null`. */
-    public synchronized void sixelClear() {
-        mTerminalSixel = null;
-    }
-
-    /**
-     * Clears the {@link #mTerminalSixel} by setting it to `null` and logs error.
-     * Call this on error if further sixel commands/data should be parsed to prevent them from
-     * printing on terminal, but sixel rendering should be ignored.
-     */
-    public synchronized void sixelIgnore() {
-        Logger.logError(mClient, LOG_TAG, "Ignoring sixel rendering");
-        mTerminalSixel = null;
-    }
-
-    public synchronized boolean sixelReadData(int codePoint, int repeat) {
-        //  If an error occurred during processing (like OOM), then remaining sixel command is
-        //  completely read, but is ignored.
-        if (mTerminalSixel != null) {
-            if (!mTerminalSixel.readData(codePoint, repeat)) {
-                sixelIgnore();
-                return false;
+            TerminalRow oldLine = oldLines[internalOldRow];
+            if (oldLine == null) {
+                if (inLogicalLine) {
+                    logicalLines.get(logicalLines.size()-1).hardBreak = true;
+                    inLogicalLine = false;
+                }
+                LogicalLine blank = new LogicalLine();
+                blank.isBlank = true;
+                blank.blankLineHeight = 1;
+                blank.hardBreak = true;
+                blank.startExternalRow = externalOldRow;
+                blank.endExternalRow = externalOldRow;
+                blankLines.add(blank);
+                continue;
             }
-        }
-        return true;
-    }
 
-    public synchronized boolean sixelResize(int sixelWidth, int sixelHeight) {
-        //  If an error occurred during processing (like OOM), then remaining sixel command is
-        //  completely read, but is ignored.
-        if (mTerminalSixel != null) {
-            if (!mTerminalSixel.resize(sixelWidth, sixelHeight)) {
-                sixelIgnore();
-                return false;
+            boolean cursorAtThisRow = (externalOldRow == oldCursorRow);
+            int displayWidth = (oldLine.mLineWrap || cursorAtThisRow) ? oldColumns : countDisplayWidth(oldLine, oldColumns, false);
+
+            if (!inLogicalLine) {
+                LogicalLine ll = new LogicalLine();
+                ll.startExternalRow = externalOldRow;
+                ll.totalVisualCols = displayWidth;
+                logicalLines.add(ll);
+                inLogicalLine = true;
+            } else {
+                LogicalLine current = logicalLines.get(logicalLines.size()-1);
+                current.totalVisualCols += displayWidth;
+                current.endExternalRow = externalOldRow;
             }
-        }
-        return true;
-    }
 
-    public synchronized void sixelSetColor(int color) {
-        if (mTerminalSixel != null)
-            mTerminalSixel.setColor(color);
-    }
-
-    public synchronized void sixelSetRGBColor(int color, int r, int g, int b) {
-        if (mTerminalSixel != null)
-            mTerminalSixel.setRGBColor(color, r, g, b);
-    }
-
-
-
-    private synchronized int getFreeTerminalBitmapNum() {
-        int bitmapNum = TERMINAL_BITMAP__NUM_START;
-        while (mTerminalBitmaps.containsKey(bitmapNum)) {
-            bitmapNum++;
-            if (bitmapNum == TERMINAL_BITMAP__NUM_END) {
-                return -1;
+            if (cursorAtThisRow) {
+                cursorLineIdx = logicalLines.size() - 1;
+                cursorColOffset = oldCursorCol;
+                for (int r = logicalLines.get(cursorLineIdx).startExternalRow; r < externalOldRow; r++) {
+                    int ir = oldScreenFirstRow + r;
+                    ir = (ir < 0) ? (oldTotalRows + ir) : (ir % oldTotalRows);
+                    if (oldLines[ir] != null) cursorColOffset += oldColumns;
+                }
             }
-        }
-        return bitmapNum;
-    }
 
-
-    public synchronized int[] addTerminalBitmapForImage(byte[] image, int x, int y, int cellW, int cellH, int width, int height, boolean shouldPreserveAspectRatio) {
-        int bitmapNum = getFreeTerminalBitmapNum();
-        if (bitmapNum < TERMINAL_BITMAP__NUM_START) {
-            Logger.logError(mClient, LOG_TAG, "Cannot create more than " + TERMINAL_BITMAP__NUM_END + " bitmaps");
-            return new int[] {0, 0};
-        }
-
-        TerminalBitmap terminalBitmap = TerminalBitmap.build(this, bitmapNum, image, x, y,
-            cellW, cellH, width, height, shouldPreserveAspectRatio);
-        if (terminalBitmap == null || terminalBitmap.getBitmap() == null) {
-            return new int[] {0, 0};
-        }
-        mTerminalBitmaps.put(bitmapNum, terminalBitmap);
-
-        doTerminalBitmapsGC(30000);
-        return terminalBitmap.mCursorDelta;
-    }
-
-
-    /** Remove bitmaps that are completely scrolled out. */
-    public synchronized void removeScrolledOutTerminalBitmaps(int row) {
-        Set<Integer> bitmapsToRemove = new HashSet<>();
-
-        for (int column = 0; column < mColumns; column++) {
-            long columnStyle = mLines[row].getStyle(column);
-            int bitmapNum = TextStyle.getTerminalBitmapNum(columnStyle);
-            if (bitmapNum >= TERMINAL_BITMAP__NUM_START) {
-                bitmapsToRemove.add(bitmapNum);
-            }
-        }
-
-        if (row + 1 < mTotalRows) {
-            TerminalRow nextLine = mLines[row + 1];
-            if (nextLine.mHasTerminalBitmap) {
-                for (int column = 0; column < mColumns; column++) {
-                    long columnStyle = nextLine.getStyle(column);
-                    int bitmapNum = TextStyle.getTerminalBitmapNum(columnStyle);
-                    if (bitmapNum >= TERMINAL_BITMAP__NUM_START) {
-                        bitmapsToRemove.add(bitmapNum);
-                    }
+            if (!oldLine.mLineWrap) {
+                if (inLogicalLine) {
+                    logicalLines.get(logicalLines.size()-1).hardBreak = true;
+                    inLogicalLine = false;
                 }
             }
         }
 
-        for(Integer bitmapStyle : bitmapsToRemove) {
-            mTerminalBitmaps.remove(bitmapStyle);
+        if (inLogicalLine && logicalLines.size() > 0)
+            logicalLines.get(logicalLines.size()-1).hardBreak = true;
+
+        // Merge blank lines in position order
+        java.util.ArrayList<LogicalLine> allLines = new java.util.ArrayList<>();
+        int blankIdx = 0;
+        for (int li = 0; li < logicalLines.size(); li++) {
+            LogicalLine ll = logicalLines.get(li);
+            while (blankIdx < blankLines.size() && blankLines.get(blankIdx).startExternalRow < ll.startExternalRow)
+                allLines.add(blankLines.get(blankIdx++));
+            allLines.add(ll);
+        }
+        while (blankIdx < blankLines.size()) allLines.add(blankLines.get(blankIdx++));
+
+        // Count how many rows we need at the new width
+        int flatRowCount = 0;
+        for (int i = 0; i < allLines.size(); i++) {
+            LogicalLine ll = allLines.get(i);
+            if (ll.isBlank) {
+                flatRowCount += ll.blankLineHeight;
+            } else {
+                int rowsNeeded = Math.max(1, (ll.totalVisualCols + newColumns - 1) / newColumns);
+                flatRowCount += rowsNeeded;
+            }
+        }
+
+        int flatSize = Math.max(flatRowCount, newRows + 10);
+        TerminalRow[] flatRows = new TerminalRow[flatSize];
+        for (int i = 0; i < flatSize; i++)
+            flatRows[i] = new TerminalRow(newColumns, currentStyle);
+
+        // Walk old chars and write into new-width flat rows
+        int flatIdx = 0;
+        int cursorNewRow = -1, cursorNewCol = -1;
+        boolean cursorPlaced = false;
+
+        for (int lineIdx = 0; lineIdx < allLines.size(); lineIdx++) {
+            LogicalLine ll = allLines.get(lineIdx);
+            if (ll.isBlank) {
+                flatIdx += ll.blankLineHeight;
+                continue;
+            }
+
+            int writeCol = 0;
+            int rowEndExternal = ll.endExternalRow;
+
+            for (int externalOldRow = ll.startExternalRow; externalOldRow <= rowEndExternal; externalOldRow++) {
+                int internalOldRow = oldScreenFirstRow + externalOldRow;
+                internalOldRow = (internalOldRow < 0) ? (oldTotalRows + internalOldRow) : (internalOldRow % oldTotalRows);
+
+                TerminalRow oldLine = oldLines[internalOldRow];
+                if (oldLine == null) continue;
+
+                boolean cursorAtThisRow = (externalOldRow == oldCursorRow);
+                boolean rowLineWrap = (externalOldRow < rowEndExternal);
+                int widthToProcess = (rowLineWrap || cursorAtThisRow) ? oldColumns : countDisplayWidth(oldLine, oldColumns, false);
+
+                int oldCol = 0, charIdx = 0, spaceUsed = oldLine.getSpaceUsed(), colsWritten = 0;
+
+                while (charIdx < spaceUsed && colsWritten < widthToProcess && oldCol < oldColumns) {
+                    char c = oldLine.mText[charIdx];
+                    int codePoint, charsConsumed;
+                    if (Character.isHighSurrogate(c) && charIdx + 1 < spaceUsed) {
+                        codePoint = Character.toCodePoint(c, oldLine.mText[charIdx + 1]);
+                        charsConsumed = 2;
+                    } else {
+                        codePoint = c;
+                        charsConsumed = 1;
+                    }
+                    int w = WcWidth.width(codePoint);
+                    long style = (w > 0) ? oldLine.getStyle(oldCol) : 0;
+
+                    if (w <= 0) {
+                        if (writeCol > 0) flatRows[flatIdx].setChar(writeCol - 1, codePoint, style);
+                        charIdx += charsConsumed;
+                        continue;
+                    }
+
+                    if (writeCol + w > newColumns && writeCol > 0) {
+                        if (rowLineWrap || colsWritten + w < widthToProcess)
+                            flatRows[flatIdx].mLineWrap = true;
+                        flatIdx++;
+                        writeCol = 0;
+                    }
+
+                    if (writeCol + w > newColumns) {
+                        charIdx += charsConsumed;
+                        if (w > 0) oldCol += w;
+                        continue;
+                    }
+
+                    flatRows[flatIdx].setChar(writeCol, codePoint, style);
+                    colsWritten += w;
+
+                    if (!cursorPlaced && cursorAtThisRow && oldCol <= oldCursorCol && oldCursorCol < oldCol + w) {
+                        cursorNewRow = flatIdx;
+                        cursorNewCol = writeCol;
+                        cursorPlaced = true;
+                    }
+
+                    writeCol += w;
+                    oldCol += w;
+                    charIdx += charsConsumed;
+                }
+            }
+
+            if (flatIdx < flatRows.length) flatRows[flatIdx].mLineWrap = false;
+            flatIdx++;
+        }
+
+        // Split into history + screen keeping cursor visible
+        int effectiveContentRows = flatIdx;
+        if (effectiveContentRows <= newRows) {
+            mActiveTranscriptRows = 0;
+            mScreenFirstRow = 0;
+            for (int i = 0; i < effectiveContentRows && i < newTotalRows; i++) mLines[i] = flatRows[i];
+            for (int i = effectiveContentRows; i < newRows; i++)
+                if (mLines[i] == null) mLines[i] = new TerminalRow(newColumns, currentStyle);
+        } else {
+            int cursorRow = cursorPlaced ? cursorNewRow : effectiveContentRows - 1;
+            int historyRows = Math.max(0, Math.min(cursorRow - Math.min(cursorRow, newRows - 1), effectiveContentRows - newRows));
+            historyRows = Math.min(historyRows, newTotalRows - newRows);
+            if (altScreen) historyRows = 0;
+
+            mActiveTranscriptRows = historyRows;
+            mScreenFirstRow = historyRows;
+
+            for (int i = 0; i < historyRows; i++) mLines[i % newTotalRows] = flatRows[i];
+            for (int i = 0; i < newRows && (historyRows + i) < flatRows.length; i++)
+                mLines[(historyRows + i) % newTotalRows] = flatRows[historyRows + i];
+
+            if (cursorPlaced) cursorNewRow -= historyRows;
+        }
+
+        if (cursorPlaced) { cursor[0] = cursorNewCol; cursor[1] = cursorNewRow; }
+        if (cursor[0] < 0 || cursor[1] < 0) cursor[0] = cursor[1] = 0;
+        if (cursor[1] >= mScreenRows) {
+            cursor[1] = mScreenRows - 1;
+            if (cursor[0] >= newColumns) cursor[0] = newColumns - 1;
         }
     }
 
-    public synchronized void doTerminalBitmapsGC(int timeDelta) {
-        if (mTerminalBitmaps.isEmpty() || mTerminalBitmapsLastGC + timeDelta > SystemClock.uptimeMillis()) {
-            return;
-        }
-
-        Set<Integer> bitmapsToKeep = new HashSet<>();
-
-        for (int line = 0; line < mLines.length; line++) {
-            if(mLines[line] != null && mLines[line].mHasTerminalBitmap) {
-                for (int column = 0; column < mColumns; column++) {
-                    long style = mLines[line].getStyle(column);
-                    int bitmapNum = TextStyle.getTerminalBitmapNum(style);
-                    if (bitmapNum >= TERMINAL_BITMAP__NUM_START) {
-                        bitmapsToKeep.add(bitmapNum);
-                    }
-                }
+    private static int countDisplayWidth(TerminalRow row, int columns, boolean includeTrailingSpaces) {
+        if (row == null) return 0;
+        if (includeTrailingSpaces) return columns;
+        int cols = 0, charIdx = 0, spaceUsed = row.getSpaceUsed(), lastNonSpaceCol = -1;
+        while (charIdx < spaceUsed && cols < columns) {
+            char c = row.mText[charIdx];
+            int codePoint;
+            if (Character.isHighSurrogate(c) && charIdx + 1 < spaceUsed) {
+                codePoint = Character.toCodePoint(c, row.mText[charIdx + 1]);
+                charIdx += 2;
+            } else {
+                codePoint = c;
+                charIdx++;
+            }
+            int w = WcWidth.width(codePoint);
+            if (w > 0) {
+                cols += w;
+                if (codePoint != ' ') lastNonSpaceCol = cols;
             }
         }
+        return (lastNonSpaceCol >= 0) ? lastNonSpaceCol : 0;
+    }
 
-        Set<Integer> bitmapNums = new HashSet<>(mTerminalBitmaps.keySet());
-        for (Integer bitmapNum: bitmapNums) {
-            if (!bitmapsToKeep.contains(bitmapNum)) {
-                mTerminalBitmaps.remove(bitmapNum);
-            }
-        }
+    private static final class LogicalLine {
+        int startExternalRow, endExternalRow;
+        int totalVisualCols;
+        boolean hardBreak, isBlank;
+        int blankLineHeight = 1;
 
-        mTerminalBitmapsLastGC = SystemClock.uptimeMillis();
+        LogicalLine() {}
     }
 
 }
