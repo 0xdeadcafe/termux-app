@@ -287,7 +287,9 @@ public class TermuxDocumentsProvider extends DocumentsProvider {
         } else if (file.canWrite()) {
             flags |= Document.FLAG_SUPPORTS_WRITE;
         }
-        if (file.getParentFile().canWrite()) flags |= Document.FLAG_SUPPORTS_DELETE;
+        final File parentFile = file.getParentFile();
+        if (parentFile != null && parentFile.canWrite())
+            flags |= Document.FLAG_SUPPORTS_DELETE | Document.FLAG_SUPPORTS_MOVE | Document.FLAG_SUPPORTS_RENAME;
 
         final String displayName = file.getName();
         final String mimeType = getMimeType(file);

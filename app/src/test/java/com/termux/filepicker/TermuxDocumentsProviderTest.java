@@ -192,4 +192,51 @@ public class TermuxDocumentsProviderTest {
         assertEquals(2, cursor.getCount());
     }
 
+    // -----------------------------------------------------------------------
+    // Group 5: includeFile() move/rename flags + null-safe getParentFile() (beads-1sv)
+    // -----------------------------------------------------------------------
+
+    @Test
+    public void includeFile_setsDeleteMovedRenameWhenParentWritable() throws Exception {
+        File file = new File(baseDir, "movable.txt");
+        assertTrue(file.createNewFile());
+
+        Cursor cursor = provider.queryDocument(file.getPath(), null);
+        assertTrue(cursor.moveToFirst());
+        int flags = cursor.getInt(cursor.getColumnIndexOrThrow(Document.COLUMN_FLAGS));
+
+        assertTrue("FLAG_SUPPORTS_DELETE should be set",
+            (flags & Document.FLAG_SUPPORTS_DELETE) != 0);
+        assertTrue("FLAG_SUPPORTS_MOVE should be set",
+            (flags & Document.FLAG_SUPPORTS_MOVE) != 0);
+        assertTrue("FLAG_SUPPORTS_RENAME should be set",
+            (flags & Document.FLAG_SUPPORTS_RENAME) != 0);
+    }
+
+    @Test
+    public void includeFile_noMoveRenameDeleteForNonWritableParent() throws Exception {
+        // Create a subdirectory with a file, then make the subdirectory read-only so that
+        // getParentFile().canWrite() returns false for the child file.
+        File subDir = tempFolder.newFolder("readonly-parent");
+        File file = new File(subDir, "locked.txt");
+        assertTrue(file.createNewFile());
+        assertTrue(subDir.setWritable(false, false));
+
+        try {
+            Cursor cursor = provider.queryDocument(file.getPath(), null);
+            assertTrue(cursor.moveToFirst());
+            int flags = cursor.getInt(cursor.getColumnIndexOrThrow(Document.COLUMN_FLAGS));
+
+            assertEquals("FLAG_SUPPORTS_DELETE should NOT be set",
+                0, flags & Document.FLAG_SUPPORTS_DELETE);
+            assertEquals("FLAG_SUPPORTS_MOVE should NOT be set",
+                0, flags & Document.FLAG_SUPPORTS_MOVE);
+            assertEquals("FLAG_SUPPORTS_RENAME should NOT be set",
+                0, flags & Document.FLAG_SUPPORTS_RENAME);
+        } finally {
+            subDir.setWritable(true, false); // restore so TemporaryFolder cleanup succeeds
+        }
+    }
+
 }
+
