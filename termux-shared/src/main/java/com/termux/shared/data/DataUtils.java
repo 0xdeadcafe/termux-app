@@ -5,7 +5,6 @@ import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.google.common.base.Strings;
 
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutputStream;
@@ -206,7 +205,7 @@ public class DataUtils {
         if (string == null || string.isEmpty())
             return string;
         else
-            return string.replaceAll("(?m)^", Strings.repeat(indent, Math.max(count, 1)));
+            return string.replaceAll("(?m)^", String.join("", Collections.nCopies(Math.max(count, 1), indent)));
     }
 
 

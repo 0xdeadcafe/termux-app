@@ -1,6 +1,5 @@
 package com.termux.shared.termux.settings.properties;
 
-import com.google.common.collect.ImmutableBiMap;
 import com.termux.shared.termux.shell.am.TermuxAmSocketServer;
 import com.termux.shared.theme.NightMode;
 import com.termux.shared.file.FileUtils;
@@ -15,6 +14,7 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /*
@@ -181,12 +181,10 @@ public final class TermuxPropertyConstants {
     public static final int DEFAULT_IVALUE_BELL_BEHAVIOUR = IVALUE_BELL_BEHAVIOUR_VIBRATE;
 
     /** Defines the bidirectional map for bell behaviour values and their internal values */
-    public static final ImmutableBiMap<String, Integer> MAP_BELL_BEHAVIOUR =
-        new ImmutableBiMap.Builder<String, Integer>()
-            .put(VALUE_BELL_BEHAVIOUR_VIBRATE, IVALUE_BELL_BEHAVIOUR_VIBRATE)
-            .put(VALUE_BELL_BEHAVIOUR_BEEP, IVALUE_BELL_BEHAVIOUR_BEEP)
-            .put(VALUE_BELL_BEHAVIOUR_IGNORE, IVALUE_BELL_BEHAVIOUR_IGNORE)
-            .build();
+    public static final Map<String, Integer> MAP_BELL_BEHAVIOUR = SharedProperties.mapOf(
+        SharedProperties.entry(VALUE_BELL_BEHAVIOUR_VIBRATE, IVALUE_BELL_BEHAVIOUR_VIBRATE),
+        SharedProperties.entry(VALUE_BELL_BEHAVIOUR_BEEP, IVALUE_BELL_BEHAVIOUR_BEEP),
+        SharedProperties.entry(VALUE_BELL_BEHAVIOUR_IGNORE, IVALUE_BELL_BEHAVIOUR_IGNORE));
 
 
 
@@ -211,12 +209,10 @@ public final class TermuxPropertyConstants {
     public static final int DEFAULT_IVALUE_TERMINAL_CURSOR_STYLE = TerminalEmulator.DEFAULT_TERMINAL_CURSOR_STYLE;
 
     /** Defines the bidirectional map for terminal cursor styles and their internal values */
-    public static final ImmutableBiMap<String, Integer> MAP_TERMINAL_CURSOR_STYLE =
-        new ImmutableBiMap.Builder<String, Integer>()
-            .put(VALUE_TERMINAL_CURSOR_STYLE_BLOCK, IVALUE_TERMINAL_CURSOR_STYLE_BLOCK)
-            .put(VALUE_TERMINAL_CURSOR_STYLE_UNDERLINE, IVALUE_TERMINAL_CURSOR_STYLE_UNDERLINE)
-            .put(VALUE_TERMINAL_CURSOR_STYLE_BAR, IVALUE_TERMINAL_CURSOR_STYLE_BAR)
-            .build();
+    public static final Map<String, Integer> MAP_TERMINAL_CURSOR_STYLE = SharedProperties.mapOf(
+        SharedProperties.entry(VALUE_TERMINAL_CURSOR_STYLE_BLOCK, IVALUE_TERMINAL_CURSOR_STYLE_BLOCK),
+        SharedProperties.entry(VALUE_TERMINAL_CURSOR_STYLE_UNDERLINE, IVALUE_TERMINAL_CURSOR_STYLE_UNDERLINE),
+        SharedProperties.entry(VALUE_TERMINAL_CURSOR_STYLE_BAR, IVALUE_TERMINAL_CURSOR_STYLE_BAR));
 
 
 
@@ -286,13 +282,11 @@ public final class TermuxPropertyConstants {
     public static final int ACTION_SHORTCUT_RENAME_SESSION = 4;
 
     /** Defines the bidirectional map for session shortcut values and their internal actions */
-    public static final ImmutableBiMap<String, Integer> MAP_SESSION_SHORTCUTS =
-        new ImmutableBiMap.Builder<String, Integer>()
-            .put(KEY_SHORTCUT_CREATE_SESSION, ACTION_SHORTCUT_CREATE_SESSION)
-            .put(KEY_SHORTCUT_NEXT_SESSION, ACTION_SHORTCUT_NEXT_SESSION)
-            .put(KEY_SHORTCUT_PREVIOUS_SESSION, ACTION_SHORTCUT_PREVIOUS_SESSION)
-            .put(KEY_SHORTCUT_RENAME_SESSION, ACTION_SHORTCUT_RENAME_SESSION)
-            .build();
+    public static final Map<String, Integer> MAP_SESSION_SHORTCUTS = SharedProperties.mapOf(
+        SharedProperties.entry(KEY_SHORTCUT_CREATE_SESSION, ACTION_SHORTCUT_CREATE_SESSION),
+        SharedProperties.entry(KEY_SHORTCUT_NEXT_SESSION, ACTION_SHORTCUT_NEXT_SESSION),
+        SharedProperties.entry(KEY_SHORTCUT_PREVIOUS_SESSION, ACTION_SHORTCUT_PREVIOUS_SESSION),
+        SharedProperties.entry(KEY_SHORTCUT_RENAME_SESSION, ACTION_SHORTCUT_RENAME_SESSION));
 
 
 
@@ -308,11 +302,9 @@ public final class TermuxPropertyConstants {
     public static final String DEFAULT_IVALUE_BACK_KEY_BEHAVIOUR = IVALUE_BACK_KEY_BEHAVIOUR_BACK;
 
     /** Defines the bidirectional map for back key behaviour values and their internal values */
-    public static final ImmutableBiMap<String, String> MAP_BACK_KEY_BEHAVIOUR =
-        new ImmutableBiMap.Builder<String, String>()
-            .put(IVALUE_BACK_KEY_BEHAVIOUR_BACK, IVALUE_BACK_KEY_BEHAVIOUR_BACK)
-            .put(IVALUE_BACK_KEY_BEHAVIOUR_ESCAPE, IVALUE_BACK_KEY_BEHAVIOUR_ESCAPE)
-            .build();
+    public static final Map<String, String> MAP_BACK_KEY_BEHAVIOUR = SharedProperties.mapOf(
+        SharedProperties.entry(IVALUE_BACK_KEY_BEHAVIOUR_BACK, IVALUE_BACK_KEY_BEHAVIOUR_BACK),
+        SharedProperties.entry(IVALUE_BACK_KEY_BEHAVIOUR_ESCAPE, IVALUE_BACK_KEY_BEHAVIOUR_ESCAPE));
 
 
 
@@ -343,12 +335,10 @@ public final class TermuxPropertyConstants {
     public static final String DEFAULT_IVALUE_NIGHT_MODE = IVALUE_NIGHT_MODE_SYSTEM;
 
     /** Defines the bidirectional map for {@link NightMode} values and their internal values */
-    public static final ImmutableBiMap<String, String> MAP_NIGHT_MODE =
-        new ImmutableBiMap.Builder<String, String>()
-            .put(IVALUE_NIGHT_MODE_TRUE, IVALUE_NIGHT_MODE_TRUE)
-            .put(IVALUE_NIGHT_MODE_FALSE, IVALUE_NIGHT_MODE_FALSE)
-            .put(IVALUE_NIGHT_MODE_SYSTEM, IVALUE_NIGHT_MODE_SYSTEM)
-            .build();
+    public static final Map<String, String> MAP_NIGHT_MODE = SharedProperties.mapOf(
+        SharedProperties.entry(IVALUE_NIGHT_MODE_TRUE, IVALUE_NIGHT_MODE_TRUE),
+        SharedProperties.entry(IVALUE_NIGHT_MODE_FALSE, IVALUE_NIGHT_MODE_FALSE),
+        SharedProperties.entry(IVALUE_NIGHT_MODE_SYSTEM, IVALUE_NIGHT_MODE_SYSTEM));
 
 
 
@@ -360,11 +350,9 @@ public final class TermuxPropertyConstants {
     public static final String DEFAULT_IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR = IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_SHOW_HIDE;
 
     /** Defines the bidirectional map for toggle soft keyboard behaviour values and their internal values */
-    public static final ImmutableBiMap<String, String> MAP_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR =
-        new ImmutableBiMap.Builder<String, String>()
-            .put(IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_SHOW_HIDE, IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_SHOW_HIDE)
-            .put(IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_ENABLE_DISABLE, IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_ENABLE_DISABLE)
-            .build();
+    public static final Map<String, String> MAP_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR = SharedProperties.mapOf(
+        SharedProperties.entry(IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_SHOW_HIDE, IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_SHOW_HIDE),
+        SharedProperties.entry(IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_ENABLE_DISABLE, IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR_ENABLE_DISABLE));
 
 
 
@@ -376,11 +364,9 @@ public final class TermuxPropertyConstants {
     public static final String DEFAULT_IVALUE_VOLUME_KEYS_BEHAVIOUR = IVALUE_VOLUME_KEY_BEHAVIOUR_VIRTUAL;
 
     /** Defines the bidirectional map for volume keys behaviour values and their internal values */
-    public static final ImmutableBiMap<String, String> MAP_VOLUME_KEYS_BEHAVIOUR =
-        new ImmutableBiMap.Builder<String, String>()
-            .put(IVALUE_VOLUME_KEY_BEHAVIOUR_VIRTUAL, IVALUE_VOLUME_KEY_BEHAVIOUR_VIRTUAL)
-            .put(IVALUE_VOLUME_KEY_BEHAVIOUR_VOLUME, IVALUE_VOLUME_KEY_BEHAVIOUR_VOLUME)
-            .build();
+    public static final Map<String, String> MAP_VOLUME_KEYS_BEHAVIOUR = SharedProperties.mapOf(
+        SharedProperties.entry(IVALUE_VOLUME_KEY_BEHAVIOUR_VIRTUAL, IVALUE_VOLUME_KEY_BEHAVIOUR_VIRTUAL),
+        SharedProperties.entry(IVALUE_VOLUME_KEY_BEHAVIOUR_VOLUME, IVALUE_VOLUME_KEY_BEHAVIOUR_VOLUME));
 
 
 

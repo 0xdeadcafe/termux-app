@@ -8,7 +8,6 @@ import android.os.Build;
 
 import androidx.annotation.NonNull;
 
-import com.google.common.base.Joiner;
 import com.termux.shared.R;
 import com.termux.shared.data.DataUtils;
 import com.termux.shared.logger.Logger;
@@ -22,6 +21,8 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Properties;
 import java.util.TimeZone;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -156,7 +157,8 @@ public class AndroidUtils {
         appendPropertyToMarkdown(markdownString, "BOARD", Build.BOARD);
         appendPropertyToMarkdown(markdownString, "HARDWARE", Build.HARDWARE);
         appendPropertyToMarkdown(markdownString, "DEVICE", Build.DEVICE);
-        appendPropertyToMarkdown(markdownString, "SUPPORTED_ABIS", Joiner.on(", ").skipNulls().join(Build.SUPPORTED_ABIS));
+        appendPropertyToMarkdown(markdownString, "SUPPORTED_ABIS", Arrays.stream(Build.SUPPORTED_ABIS)
+            .filter(java.util.Objects::nonNull).collect(Collectors.joining(", ")));
 
         markdownString.append("\n##\n");
 

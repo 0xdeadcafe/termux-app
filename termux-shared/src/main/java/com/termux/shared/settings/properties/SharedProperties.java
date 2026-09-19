@@ -6,9 +6,6 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.google.common.collect.BiMap;
-import com.google.common.collect.ImmutableBiMap;
-import com.google.common.primitives.Primitives;
 import com.termux.shared.file.FileUtils;
 import com.termux.shared.file.filesystem.FileType;
 import com.termux.shared.logger.Logger;
@@ -17,7 +14,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.AbstractMap;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -68,20 +70,44 @@ public class SharedProperties {
     private final Object mLock = new Object();
 
     /** Defines the bidirectional map for boolean values and their internal values  */
-    public static final ImmutableBiMap<String, Boolean> MAP_GENERIC_BOOLEAN =
-        new ImmutableBiMap.Builder<String, Boolean>()
-            .put("true", true)
-            .put("false", false)
-            .build();
+    public static final Map<String, Boolean> MAP_GENERIC_BOOLEAN = mapOf(
+        entry("true", true),
+        entry("false", false));
 
     /** Defines the bidirectional map for inverted boolean values and their internal values  */
-    public static final ImmutableBiMap<String, Boolean> MAP_GENERIC_INVERTED_BOOLEAN =
-        new ImmutableBiMap.Builder<String, Boolean>()
-            .put("true", false)
-            .put("false", true)
-            .build();
+    public static final Map<String, Boolean> MAP_GENERIC_INVERTED_BOOLEAN = mapOf(
+        entry("true", false),
+        entry("false", true));
 
     private static final String LOG_TAG = "SharedProperties";
+
+    /** The boxed wrapper classes for Java's 8 primitive types, used by {@link #putToMap(HashMap, String, Object)}. */
+    private static final Set<Class<?>> WRAPPER_TYPES = new HashSet<>(Arrays.asList(
+        Boolean.class, Byte.class, Character.class, Double.class,
+        Float.class, Integer.class, Long.class, Short.class));
+
+    /**
+     * Build an immutable, insertion-order-preserving {@link Map} from the given entries.
+     * Replaces Guava's {@code ImmutableBiMap.Builder}; only forward lookups
+     * ({@link Map#get(Object)}) are needed by any real caller in this codebase -- the sole
+     * reverse lookup previously done via {@code BiMap#inverse()} (in
+     * {@link #getDefaultIfNotInMap(String, Map, Object, Object, boolean, String)}, for an error
+     * message only) is done with a linear scan instead, which is fine given these maps are tiny
+     * and the scan only happens on an already-erroring path.
+     */
+    @SafeVarargs
+    public static <K, V> Map<K, V> mapOf(Map.Entry<K, V>... entries) {
+        Map<K, V> map = new LinkedHashMap<>();
+        for (Map.Entry<K, V> entry : entries) {
+            map.put(entry.getKey(), entry.getValue());
+        }
+        return Collections.unmodifiableMap(map);
+    }
+
+    /** Build a {@link Map.Entry} for use with {@link #mapOf(Map.Entry[])}. */
+    public static <K, V> Map.Entry<K, V> entry(K key, V value) {
+        return new AbstractMap.SimpleEntry<>(key, value);
+    }
 
     /**
      * Constructor for the SharedProperties class.
@@ -405,7 +431,7 @@ public class SharedProperties {
         boolean put = false;
         if (value != null) {
             Class<?> clazz = value.getClass();
-            if (clazz.isPrimitive() || Primitives.isWrapperType(clazz) || value instanceof String) {
+            if (clazz.isPrimitive() || WRAPPER_TYPES.contains(clazz) || value instanceof String) {
                 put = true;
             }
         } else {
@@ -518,26 +544,35 @@ public class SharedProperties {
     }
 
     /**
-     * Get the value for the {@code inputValue} {@link Object} key from a {@link BiMap<>}, otherwise
+     * Get the value for the {@code inputValue} {@link Object} key from a {@link Map}, otherwise
      * default value if key not found in {@code map}.
      *
      * @param key The shared properties {@link String} key value for which the value is being returned.
-     * @param map The {@link BiMap<>} value to get the value from.
+     * @param map The {@link Map} value to get the value from.
      * @param inputValue The {@link Object} key value of the map.
      * @param defaultOutputValue The default {@link boolean} value to return if {@code inputValue} not found in map.
-     *            The default value must exist as a value in the {@link BiMap<>} passed.
+     *            The default value must exist as a value in the {@link Map} passed.
      * @param logErrorOnInvalidValue If {@code true}, then an error will be logged if {@code inputValue}
      *                               was not {@code null} and was not found in the map.
      * @param logTag If log tag to use for logging errors.
      * @return Returns the value for the {@code inputValue} key from the map if it exists. Otherwise
      * returns default value.
      */
-    public static Object getDefaultIfNotInMap(String key, @NonNull BiMap<?, ?> map, Object inputValue, Object defaultOutputValue, boolean logErrorOnInvalidValue, String logTag) {
+    public static Object getDefaultIfNotInMap(String key, @NonNull Map<?, ?> map, Object inputValue, Object defaultOutputValue, boolean logErrorOnInvalidValue, String logTag) {
         Object outputValue = map.get(inputValue);
         if (outputValue == null) {
-            Object defaultInputValue = map.inverse().get(defaultOutputValue);
+            // Reverse lookup for the error message only: find the key whose value equals
+            // defaultOutputValue. A linear scan is fine here since these maps are tiny and this
+            // only runs on an already-erroring path (previously map.inverse().get(...) via Guava's BiMap).
+            Object defaultInputValue = null;
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                if (java.util.Objects.equals(entry.getValue(), defaultOutputValue)) {
+                    defaultInputValue = entry.getKey();
+                    break;
+                }
+            }
             if (defaultInputValue == null)
-                Logger.logError(LOG_TAG, "The default output value \"" + defaultOutputValue + "\" for the key \"" + key + "\" does not exist as a value in the BiMap passed to getDefaultIfNotInMap(): " + map.values());
+                Logger.logError(LOG_TAG, "The default output value \"" + defaultOutputValue + "\" for the key \"" + key + "\" does not exist as a value in the Map passed to getDefaultIfNotInMap(): " + map.values());
 
             if (logErrorOnInvalidValue && inputValue != null) {
                 if (key != null)

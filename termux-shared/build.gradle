@@ -13,7 +13,6 @@ android {
         implementation "androidx.core:core:1.13.1"
         implementation "androidx.recyclerview:recyclerview:1.3.2"
         implementation "com.google.android.material:material:1.12.0"
-        implementation "com.google.guava:guava:24.1-jre"
         implementation "org.commonmark:commonmark:0.30.0"
         implementation "org.lsposed.hiddenapibypass:hiddenapibypass:6.1"
 

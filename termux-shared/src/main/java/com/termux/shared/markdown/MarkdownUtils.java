@@ -16,7 +16,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 
-import com.google.common.base.Strings;
 import com.termux.shared.R;
 import com.termux.shared.theme.ThemeUtils;
 
@@ -40,6 +39,7 @@ import org.commonmark.node.Text;
 import org.commonmark.parser.Parser;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -89,7 +89,7 @@ public class MarkdownUtils {
             backticksCountToUse = maxConsecutiveBackTicksCount + 1;
 
         // create a string with n backticks where n==backticksCountToUse
-        String backticksToUse = Strings.repeat(backtick, backticksCountToUse);
+        String backticksToUse = String.join("", Collections.nCopies(backticksCountToUse, backtick));
 
         if (codeBlock)
             return backticksToUse + "\n" + string + "\n" + backticksToUse;

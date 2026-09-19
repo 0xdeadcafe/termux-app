@@ -19,7 +19,6 @@ import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
-import com.google.common.base.Joiner;
 import com.termux.shared.R;
 import com.termux.shared.file.FileUtils;
 import com.termux.shared.logger.Logger;
@@ -66,7 +65,7 @@ public class PermissionUtils {
         if (permissionsNotRequested.size() > 0) {
             Logger.logError(LOG_TAG,
                 context.getString(R.string.error_attempted_to_check_for_permissions_not_requested,
-                    Joiner.on(", ").join(permissionsNotRequested)));
+                    String.join(", ", permissionsNotRequested)));
             return false;
         }
 
@@ -122,7 +121,7 @@ public class PermissionUtils {
         if (permissionsNotRequested.size() > 0) {
             Logger.logErrorAndShowToast(context, LOG_TAG,
                 context.getString(R.string.error_attempted_to_ask_for_permissions_not_requested,
-                    Joiner.on(", ").join(permissionsNotRequested)));
+                    String.join(", ", permissionsNotRequested)));
             return false;
         }
 

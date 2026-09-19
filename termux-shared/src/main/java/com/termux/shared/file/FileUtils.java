@@ -5,7 +5,6 @@ import android.system.Os;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.google.common.io.RecursiveDeleteOption;
 import com.termux.shared.file.filesystem.FileType;
 import com.termux.shared.file.filesystem.FileTypes;
 import com.termux.shared.data.DataUtils;
@@ -36,8 +35,14 @@ import java.io.ObjectStreamClass;
 import java.io.OutputStreamWriter;
 import java.io.Serializable;
 import java.nio.charset.Charset;
+import java.nio.file.DirectoryStream;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
 import java.nio.file.LinkOption;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
@@ -1567,6 +1572,53 @@ public class FileUtils {
     }
 
     /**
+     * Delete {@code path} and, if it is a directory, everything under it, using plain
+     * {@code java.nio.file} APIs. Replaces Guava's
+     * {@code MoreFiles.deleteRecursively(path, RecursiveDeleteOption.ALLOW_INSECURE)}.
+     * <p/>
+     * Symlinks are not followed: a symlink found during the walk is deleted itself (as a single
+     * file), not its target, matching Guava's default (non-"ALLOW_INSECURE"-related) behaviour.
+     * Unlike Guava's version, this fails fast on the first error encountered rather than
+     * collecting every failure across the tree into one exception with suppressed throwables --
+     * acceptable here since every caller already wraps this in a generic error path.
+     */
+    private static void deleteRecursivelyNio(Path path) throws IOException {
+        if (!Files.exists(path, LinkOption.NOFOLLOW_LINKS)) return;
+
+        if (Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)) {
+            Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    Files.delete(file);
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                    if (exc != null) throw exc;
+                    Files.delete(dir);
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        } else {
+            Files.delete(path);
+        }
+    }
+
+    /**
+     * Delete everything directly and recursively under {@code dir}, but not {@code dir} itself.
+     * Replaces Guava's
+     * {@code MoreFiles.deleteDirectoryContents(path, RecursiveDeleteOption.ALLOW_INSECURE)}.
+     */
+    private static void deleteDirectoryContentsNio(Path dir) throws IOException {
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
+            for (Path entry : stream) {
+                deleteRecursivelyNio(entry);
+            }
+        }
+    }
+
+    /**
      * Delete file at path.
      *
      * The {@code filePath} must be the canonical path to the file to be deleted since symlinks will
@@ -1625,25 +1677,10 @@ public class FileUtils {
 
             Logger.logVerbose(LOG_TAG, "Deleting " + label + "file at path \"" + filePath + "\"");
 
-            /*
-             * Use {@link SecureDirectoryStream} if available for safer directory deletion.
-             * https://guava.dev/releases/24.1-jre/api/docs/com/google/common/io/MoreFiles.html#deleteRecursively-java.nio.file.Path-com.google.common.io.RecursiveDeleteOption...-
-             * https://github.com/google/guava/issues/365
-             * https://cs.android.com/android/platform/superproject/+/android-11.0.0_r3:libcore/ojluni/src/main/java/sun/nio/fs/UnixSecureDirectoryStream.java
-             *
-             * MoreUtils is marked with the @Beta annotation so the API may be removed in
-             * future but has been there for a few years now.
-             *
-             * If an exception is thrown, the exception message might not contain the full errors.
-             * Individual failures get added to suppressed throwables which can be extracted
-             * from the exception object by calling `Throwable[] getSuppressed()`. So just logging
-             * the exception message and stacktrace may not be enough, the suppressed throwables
-             * need to be logged as well, which the Logger class does if they are found in the
-             * exception added to the Error that's returned by this function.
-             * https://github.com/google/guava/blob/v30.1.1/guava/src/com/google/common/io/MoreFiles.java#L775
-             */
-            //noinspection UnstableApiUsage
-            com.google.common.io.MoreFiles.deleteRecursively(file.toPath(), RecursiveDeleteOption.ALLOW_INSECURE);
+            // If an exception is thrown mid-walk, files/directories already removed stay removed;
+            // the walk fails fast on the first error rather than collecting every failure, which
+            // is fine here since the caller already wraps this in a generic error path.
+            deleteRecursivelyNio(file.toPath());
 
             // If file still exists after deleting it
             fileType = getFileType(filePath, false);
@@ -1725,10 +1762,7 @@ public class FileUtils {
 
             // If directory exists, clear its contents
             if (fileType == FileType.DIRECTORY) {
-                /* If an exception is thrown, the exception message might not contain the full errors.
-                 * Individual failures get added to suppressed throwables. */
-                //noinspection UnstableApiUsage
-                com.google.common.io.MoreFiles.deleteDirectoryContents(file.toPath(), RecursiveDeleteOption.ALLOW_INSECURE);
+                deleteDirectoryContentsNio(file.toPath());
             }
             // Else create it
             else {
