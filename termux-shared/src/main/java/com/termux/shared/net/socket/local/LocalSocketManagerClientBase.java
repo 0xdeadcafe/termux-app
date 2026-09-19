@@ -20,8 +20,8 @@ public abstract class LocalSocketManagerClientBase implements ILocalSocketManage
     public void onError(@NonNull LocalSocketManager localSocketManager,
                         @Nullable LocalClientSocket clientSocket, @NonNull Error error) {
         // Only log if log level is debug or higher since PeerCred.cmdline may contain private info
-        Logger.logErrorPrivate(getLogTag(), "onError");
-        Logger.logErrorPrivateExtended(getLogTag(), LocalSocketManager.getErrorLogString(error,
+        Logger.logDebug(getLogTag(), "onError");
+        Logger.logDebugExtended(getLogTag(), LocalSocketManager.getErrorLogString(error,
             localSocketManager.getLocalSocketRunConfig(), clientSocket));
     }
 

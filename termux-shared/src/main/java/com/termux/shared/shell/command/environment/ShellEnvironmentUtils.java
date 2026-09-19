@@ -107,13 +107,13 @@ public class ShellEnvironmentUtils {
     public static boolean isValidEnvironmentVariableNameValuePair(@Nullable String name, @Nullable String value, boolean logErrors) {
         if (!isValidEnvironmentVariableName(name)) {
             if (logErrors)
-                Logger.logErrorPrivate(LOG_TAG, "Invalid environment variable name. name=`" + name + "`, value=`" + value + "`");
+                Logger.logDebug(LOG_TAG, "Invalid environment variable name. name=`" + name + "`, value=`" + value + "`");
             return false;
         }
 
         if (!isValidEnvironmentVariableValue(value)) {
             if (logErrors)
-                Logger.logErrorPrivate(LOG_TAG, "Invalid environment variable value. name=`" + name + "`, value=`" + value + "`");
+                Logger.logDebug(LOG_TAG, "Invalid environment variable value. name=`" + name + "`, value=`" + value + "`");
             return false;
         }
 

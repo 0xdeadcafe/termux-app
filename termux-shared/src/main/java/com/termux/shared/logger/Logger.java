@@ -11,9 +11,6 @@ import androidx.annotation.NonNull;
 import com.termux.shared.R;
 import com.termux.shared.data.DataUtils;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -120,25 +117,7 @@ public class Logger {
 
 
 
-    public static void logErrorPrivate(String tag, String message) {
-        if (CURRENT_LOG_LEVEL >= LOG_LEVEL_DEBUG)
-            logMessage(Log.ERROR, tag, message);
-    }
 
-    public static void logErrorPrivate(String message) {
-        if (CURRENT_LOG_LEVEL >= LOG_LEVEL_DEBUG)
-            logMessage(Log.ERROR, DEFAULT_LOG_TAG, message);
-    }
-
-    public static void logErrorPrivateExtended(String tag, String message) {
-        if (CURRENT_LOG_LEVEL >= LOG_LEVEL_DEBUG)
-            logExtendedMessage(Log.ERROR, tag, message);
-    }
-
-    public static void logErrorPrivateExtended(String message) {
-        if (CURRENT_LOG_LEVEL >= LOG_LEVEL_DEBUG)
-            logExtendedMessage(Log.ERROR, DEFAULT_LOG_TAG, message);
-    }
 
 
 
@@ -212,9 +191,7 @@ public class Logger {
         logExtendedMessage(Log.VERBOSE, DEFAULT_LOG_TAG, message);
     }
 
-    public static void logVerboseForce(String tag, String message) {
-        Log.v(tag, message);
-    }
+
 
 
 
@@ -306,22 +283,7 @@ public class Logger {
 
 
     public static String getStackTraceString(Throwable throwable) {
-        if (throwable == null) return null;
-
-        String stackTraceString = null;
-
-        try {
-            StringWriter errors = new StringWriter();
-            PrintWriter pw = new PrintWriter(errors);
-            throwable.printStackTrace(pw);
-            pw.close();
-            stackTraceString = errors.toString();
-            errors.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return stackTraceString;
+        return throwable == null ? null : Log.getStackTraceString(throwable);
     }
 
 

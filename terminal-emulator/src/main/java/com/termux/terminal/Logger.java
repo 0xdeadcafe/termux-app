@@ -2,10 +2,6 @@ package com.termux.terminal;
 
 import android.util.Log;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-
 public class Logger {
 
     public static void logError(TerminalSessionClient client, String logTag, String message) {
@@ -59,22 +55,7 @@ public class Logger {
     }
 
     public static String getStackTraceString(Throwable throwable) {
-        if (throwable == null) return null;
-
-        String stackTraceString = null;
-
-        try {
-            StringWriter errors = new StringWriter();
-            PrintWriter pw = new PrintWriter(errors);
-            throwable.printStackTrace(pw);
-            pw.close();
-            stackTraceString = errors.toString();
-            errors.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return stackTraceString;
+        return throwable == null ? null : Log.getStackTraceString(throwable);
     }
 
 }

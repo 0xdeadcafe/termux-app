@@ -170,7 +170,7 @@ public class TermuxPluginUtils {
         // Log the error and any exception. ResultData should not be logged if pending result since ResultSender will do it
         Logger.logError(logTag, "Processing plugin execution error for:\n" + executionCommand.getCommandIdAndLabelLogString());
         Logger.logError(logTag, "Set log level to debug or higher to see error in logs");
-        Logger.logErrorPrivateExtended(logTag, ExecutionCommand.getExecutionOutputLogString(executionCommand, true,
+        Logger.logDebugExtended(logTag, ExecutionCommand.getExecutionOutputLogString(executionCommand, true,
             !isPluginExecutionCommandWithPendingResult, isExecutionCommandLoggingEnabled));
 
         // If execution command was started by a plugin which expects the result back
@@ -187,7 +187,7 @@ public class TermuxPluginUtils {
             if (error != null) {
                 // error will be added to existing Errors
                 resultData.setStateFailed(error);
-                Logger.logErrorPrivateExtended(logTag, ExecutionCommand.getExecutionOutputLogString(executionCommand, true, true, isExecutionCommandLoggingEnabled));
+                Logger.logDebugExtended(logTag, ExecutionCommand.getExecutionOutputLogString(executionCommand, true, true, isExecutionCommandLoggingEnabled));
                 forceNotification = true;
             }
 

@@ -16,6 +16,8 @@
 
 package com.termux.shared.shell;
 
+import android.util.Log;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -201,7 +203,7 @@ public class StreamGobbler extends Thread {
             String line;
             while ((line = reader.readLine()) != null) {
                 if (loggingEnabled)
-                    Logger.logVerboseForce(defaultLogTag + "Command", String.format(Locale.ENGLISH, "[%s] %s", shell, line)); // This will get truncated by LOGGER_ENTRY_MAX_LEN, likely 4KB
+                    Log.v(defaultLogTag + "Command", String.format(Locale.ENGLISH, "[%s] %s", shell, line)); // This will get truncated by LOGGER_ENTRY_MAX_LEN, likely 4KB
 
                 if (stringWriter != null) stringWriter.append(line).append("\n");
                 if (listWriter != null) listWriter.add(line);
