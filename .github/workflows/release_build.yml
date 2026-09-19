@@ -161,13 +161,22 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
+
+          cat > /tmp/release-notes.md <<'NOTES'
+          Automated release build for tag `$TAG`.
+
+          Signed with the shared test key (`testkey_untrusted.jks`) — **not** a
+          production key. Install only builds you trust from this repository.
+
+          See [README.md](README.md) for differences from upstream
+          [termux/termux-app](https://github.com/termux/termux-app).
+          NOTES
+
+          # Substitute the actual tag name into the notes
+          sed -i "s/\$TAG/$TAG/g" /tmp/release-notes.md
+
           gh release create "$TAG" \
             --title "Release $TAG" \
-            --notes "Automated release build for tag \`$TAG\`.
-
-Signed with the shared test key (\`testkey_untrusted.jks\`) — **not** a
-production key. Install only builds you trust from this repository.
-
-See [README.md](README.md) for differences from upstream [termux/termux-app](https://github.com/termux/termux-app)." \
+            --notes-file /tmp/release-notes.md \
             release-artifacts/*.apk \
             release-artifacts/*_sha256sums
