@@ -97,8 +97,8 @@ public final class AppShell {
         if (executionCommand.shellName == null)
             executionCommand.shellName = executableBasename;
 
-        if (executionCommand.commandLabel == null)
-            executionCommand.commandLabel = executableBasename;
+        if ("Execution Command".equals(executionCommand.metadata.label))
+            executionCommand.metadata = executionCommand.metadata.withLabel(executableBasename);
 
         // Setup command args
         final String[] commandArray = shellEnvironmentClient.setupShellCommandArguments(executionCommand.executable, executionCommand.arguments);

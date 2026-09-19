@@ -129,8 +129,8 @@ public class TermuxSession {
 
         executionCommand.arguments = arguments;
 
-        if (executionCommand.commandLabel == null)
-            executionCommand.commandLabel = processName;
+        if ("Execution Command".equals(executionCommand.metadata.label))
+            executionCommand.metadata = executionCommand.metadata.withLabel(processName);
 
         // Setup command environment
         HashMap<String, String> environment = shellEnvironmentClient.setupShellCommandEnvironment(currentPackageContext,

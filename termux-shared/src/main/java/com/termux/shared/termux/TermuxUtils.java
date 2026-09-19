@@ -607,7 +607,7 @@ public class TermuxUtils {
         ExecutionCommand executionCommand = new ExecutionCommand(-1,
             TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/bash", null, aptInfoScript,
             null, ExecutionCommand.Runner.APP_SHELL, false);
-        executionCommand.commandLabel = "APT Info Command";
+        executionCommand.metadata = executionCommand.metadata.withLabel("APT Info Command");
         executionCommand.backgroundCustomLogLevel = Logger.LOG_LEVEL_OFF;
         AppShell appShell = AppShell.execute(context, executionCommand, null, new TermuxShellEnvironment(), null, true);
         if (appShell == null || !executionCommand.isSuccessful() || executionCommand.resultData.exitCode != 0) {
@@ -666,7 +666,7 @@ public class TermuxUtils {
         // Logging must be disabled for output of logcat command itself in StreamGobbler
         ExecutionCommand executionCommand = new ExecutionCommand(-1, "/system/bin/sh",
             null, logcatScript + "\n", "/", ExecutionCommand.Runner.APP_SHELL, true);
-        executionCommand.commandLabel = "Logcat dump command";
+        executionCommand.metadata = executionCommand.metadata.withLabel("Logcat dump command");
         executionCommand.backgroundCustomLogLevel = Logger.LOG_LEVEL_OFF;
         AppShell appShell = AppShell.execute(context, executionCommand, null, new TermuxShellEnvironment(), null, true);
         if (appShell == null || !executionCommand.isSuccessful()) {

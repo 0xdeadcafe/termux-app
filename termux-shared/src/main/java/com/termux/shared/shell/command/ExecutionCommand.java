@@ -198,27 +198,9 @@ public class ExecutionCommand {
 
 
 
-    /** The command label for the {@link ExecutionCommand}. */
-    public String commandLabel;
-    /** The markdown text for the command description for the {@link ExecutionCommand}. */
-    public String commandDescription;
-    /** The markdown text for the help of command for the {@link ExecutionCommand}. This can be used
-     * to provide useful info to the user if an internal error is raised. */
-    public String commandHelp;
-
-
-    /** Defines the markdown text for the help of the Termux plugin API that was used to start the
-     * {@link ExecutionCommand}. This can be used to provide useful info to the user if an internal
-     * error is raised. */
-    public String pluginAPIHelp;
-
-
-    /** Defines the {@link Intent} received which started the command. */
-    public Intent commandIntent;
-
-    /** Defines if {@link ExecutionCommand} was started because of an external plugin request
-     * like with an intent or from within Termux app itself. */
-    public boolean isPluginExecutionCommand;
+    /** Diagnostic and display metadata — set from intent extras, used only for logging,
+     * error reporting, and notifications. Never {@code null}. */
+    public CommandMetadata metadata = new CommandMetadata("Execution Command", null, null, null, null, false);
 
     // ------------------------------------------------------------------
     // Raw result-delivery parameters from plugin Intent — set once at intake, before
@@ -269,7 +251,7 @@ public class ExecutionCommand {
 
 
     public boolean isPluginExecutionCommandWithPendingResult() {
-        return isPluginExecutionCommand && resultIntake != null;
+        return metadata.isPlugin && resultIntake != null;
     }
 
 
@@ -414,11 +396,11 @@ public class ExecutionCommand {
 
         logString.append("\n").append(executionCommand.getSetRunnerShellEnvironmentLogString());
 
-        if (!ignoreNull || executionCommand.commandIntent != null)
+        if (!ignoreNull || executionCommand.metadata.commandIntent != null)
             logString.append("\n").append(executionCommand.getCommandIntentLogString());
 
         logString.append("\n").append(executionCommand.getIsPluginExecutionCommandLogString());
-        if (executionCommand.isPluginExecutionCommand)
+        if (executionCommand.metadata.isPlugin)
             logString.append("\n").append(ResultDestination.getLogString(executionCommand.resultPendingIntentDestination, executionCommand.resultDirectoryDestination, ignoreNull));
 
         return logString.toString();
@@ -479,11 +461,11 @@ public class ExecutionCommand {
     public static String getExecutionCommandMarkdownString(final ExecutionCommand executionCommand) {
         if (executionCommand == null) return "null";
 
-        if (executionCommand.commandLabel == null) executionCommand.commandLabel = "Execution Command";
+        if (executionCommand.metadata.label == null) throw new AssertionError("metadata.label must not be null");
 
         StringBuilder markdownString = new StringBuilder();
 
-        markdownString.append("## ").append(executionCommand.commandLabel).append("\n");
+        markdownString.append("## ").append(executionCommand.metadata.label).append("\n");
 
         if (executionCommand.mPid != -1)
             markdownString.append("\n").append(MarkdownUtils.getSingleLineMarkdownStringEntry("Pid", executionCommand.mPid, "-"));
@@ -510,22 +492,22 @@ public class ExecutionCommand {
         markdownString.append("\n").append(MarkdownUtils.getSingleLineMarkdownStringEntry("Shell Create Mode", executionCommand.shellCreateMode, "-"));
         markdownString.append("\n").append(MarkdownUtils.getSingleLineMarkdownStringEntry("Set Shell Command Shell Environment", executionCommand.setShellCommandShellEnvironment, "-"));
 
-        markdownString.append("\n").append(MarkdownUtils.getSingleLineMarkdownStringEntry("isPluginExecutionCommand", executionCommand.isPluginExecutionCommand, "-"));
+        markdownString.append("\n").append(MarkdownUtils.getSingleLineMarkdownStringEntry("isPluginExecutionCommand", executionCommand.metadata.isPlugin, "-"));
 
         markdownString.append("\n\n").append(ResultDestination.getMarkdownString(executionCommand.resultPendingIntentDestination, executionCommand.resultDirectoryDestination));
 
         markdownString.append("\n\n").append(ResultData.getResultDataMarkdownString(executionCommand.resultData));
 
-        if (executionCommand.commandDescription != null || executionCommand.commandHelp != null) {
-            if (executionCommand.commandDescription != null)
-                markdownString.append("\n\n### Command Description\n\n").append(executionCommand.commandDescription).append("\n");
-            if (executionCommand.commandHelp != null)
-                markdownString.append("\n\n### Command Help\n\n").append(executionCommand.commandHelp).append("\n");
+        if (executionCommand.metadata.description != null || executionCommand.metadata.help != null) {
+            if (executionCommand.metadata.description != null)
+                markdownString.append("\n\n### Command Description\n\n").append(executionCommand.metadata.description).append("\n");
+            if (executionCommand.metadata.help != null)
+                markdownString.append("\n\n### Command Help\n\n").append(executionCommand.metadata.help).append("\n");
             markdownString.append("\n##\n");
         }
 
-        if (executionCommand.pluginAPIHelp != null) {
-            markdownString.append("\n\n### Plugin API Help\n\n").append(executionCommand.pluginAPIHelp);
+        if (executionCommand.metadata.pluginAPIHelp != null) {
+            markdownString.append("\n\n### Plugin API Help\n\n").append(executionCommand.metadata.pluginAPIHelp);
             markdownString.append("\n##\n");
         }
 
@@ -553,10 +535,7 @@ public class ExecutionCommand {
     }
 
     public String getCommandLabelLogString() {
-        if (commandLabel != null && !commandLabel.isEmpty())
-            return commandLabel;
-        else
-            return "Execution Command";
+        return metadata.label;
     }
 
     public String getCommandIdAndLabelLogString() {
@@ -611,26 +590,26 @@ public class ExecutionCommand {
     }
 
     public String getCommandDescriptionLogString() {
-        return Logger.getSingleLineLogStringEntry("Command Description", commandDescription, "-");
+        return Logger.getSingleLineLogStringEntry("Command Description", metadata.description, "-");
     }
 
     public String getCommandHelpLogString() {
-        return Logger.getSingleLineLogStringEntry("Command Help", commandHelp, "-");
+        return Logger.getSingleLineLogStringEntry("Command Help", metadata.help, "-");
     }
 
     public String getPluginAPIHelpLogString() {
-        return Logger.getSingleLineLogStringEntry("Plugin API Help", pluginAPIHelp, "-");
+        return Logger.getSingleLineLogStringEntry("Plugin API Help", metadata.pluginAPIHelp, "-");
     }
 
     public String getCommandIntentLogString() {
-        if (commandIntent == null)
+        if (metadata.commandIntent == null)
             return "Command Intent: -";
         else
-            return Logger.getMultiLineLogStringEntry("Command Intent", IntentUtils.getIntentString(commandIntent), "-");
+            return Logger.getMultiLineLogStringEntry("Command Intent", IntentUtils.getIntentString(metadata.commandIntent), "-");
     }
 
     public String getIsPluginExecutionCommandLogString() {
-        return "isPluginExecutionCommand: `" + isPluginExecutionCommand + "`";
+        return "isPluginExecutionCommand: `" + metadata.isPlugin + "`";
     }
 
 
