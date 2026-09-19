@@ -111,10 +111,11 @@ public class RunCommandService extends Service {
         executionCommand.workingDirectory = IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_WORKDIR, null);
 
         // If EXTRA_RUNNER is passed, use that, otherwise check EXTRA_BACKGROUND and default to Runner.TERMINAL_SESSION
-        executionCommand.runner = IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_RUNNER,
-            (intent.getBooleanExtra(RUN_COMMAND_SERVICE.EXTRA_BACKGROUND, false) ? Runner.APP_SHELL.getName() : Runner.TERMINAL_SESSION.getName()));
-        if (Runner.runnerOf(executionCommand.runner) == null) {
-            errmsg = this.getString(R.string.error_run_command_service_invalid_execution_command_runner, executionCommand.runner);
+        String runnerStr = IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_RUNNER,
+            intent.getBooleanExtra(RUN_COMMAND_SERVICE.EXTRA_BACKGROUND, false) ? Runner.APP_SHELL.getName() : Runner.TERMINAL_SESSION.getName());
+        executionCommand.runner = Runner.runnerOf(runnerStr);
+        if (executionCommand.runner == null) {
+            errmsg = this.getString(R.string.error_run_command_service_invalid_execution_command_runner, runnerStr);
             executionCommand.setStateFailed(Errno.ERRNO_FAILED.getCode(), errmsg);
             TermuxPluginUtils.processPluginExecutionCommandError(this, LOG_TAG, executionCommand, false);
             stopService(); return;
@@ -230,7 +231,7 @@ public class RunCommandService extends Service {
         execIntent.putExtra(TERMUX_SERVICE.EXTRA_ARGUMENTS, executionCommand.arguments);
         execIntent.putExtra(TERMUX_SERVICE.EXTRA_STDIN, executionCommand.stdin);
         if (executionCommand.workingDirectory != null && !executionCommand.workingDirectory.isEmpty()) execIntent.putExtra(TERMUX_SERVICE.EXTRA_WORKDIR, executionCommand.workingDirectory);
-        execIntent.putExtra(TERMUX_SERVICE.EXTRA_RUNNER, executionCommand.runner);
+        execIntent.putExtra(TERMUX_SERVICE.EXTRA_RUNNER, executionCommand.runner != null ? executionCommand.runner.getName() : null);
         execIntent.putExtra(TERMUX_SERVICE.EXTRA_BACKGROUND_CUSTOM_LOG_LEVEL, DataUtils.getStringFromInteger(executionCommand.backgroundCustomLogLevel, null));
         execIntent.putExtra(TERMUX_SERVICE.EXTRA_SESSION_ACTION, executionCommand.sessionAction);
         execIntent.putExtra(TERMUX_SERVICE.EXTRA_SHELL_NAME, executionCommand.shellName);

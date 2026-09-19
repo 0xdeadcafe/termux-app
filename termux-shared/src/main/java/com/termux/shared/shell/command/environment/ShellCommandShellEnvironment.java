@@ -48,7 +48,7 @@ public class ShellCommandShellEnvironment {
                                                   @NonNull ExecutionCommand executionCommand) {
         HashMap<String, String> environment = new HashMap<>();
 
-        ExecutionCommand.Runner runner = ExecutionCommand.Runner.runnerOf(executionCommand.runner);
+        ExecutionCommand.Runner runner = executionCommand.runner;
         if (runner == null) return environment;
 
         ShellEnvironmentUtils.putToEnvIfSet(environment, ENV_SHELL_CMD__RUNNER_NAME, runner.getName());

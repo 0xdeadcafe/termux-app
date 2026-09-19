@@ -82,10 +82,6 @@ public class ExecutionCommand {
             return name;
         }
 
-        public boolean equalsRunner(String runner) {
-            return runner != null && runner.equals(this.name);
-        }
-
         /** Get {@link Runner} for {@code name} if found, otherwise {@code null}. */
         @Nullable
         public static Runner runnerOf(String name) {
@@ -171,7 +167,7 @@ public class ExecutionCommand {
 
 
     /** The {@link Runner} for the {@link ExecutionCommand}. */
-    public String runner;
+    public Runner runner;
 
     /** If the {@link ExecutionCommand} is meant to start a failsafe terminal session. */
     public boolean isFailsafe;
@@ -272,7 +268,7 @@ public class ExecutionCommand {
         this.id = id;
     }
 
-    public ExecutionCommand(Integer id, String executable, String[] arguments, String stdin, String workingDirectory, String runner, boolean isFailsafe) {
+    public ExecutionCommand(Integer id, String executable, String[] arguments, String stdin, String workingDirectory, Runner runner, boolean isFailsafe) {
         this.id = id;
         this.executable = executable;
         this.arguments = arguments;
@@ -408,7 +404,7 @@ public class ExecutionCommand {
         logString.append("\n").append(executionCommand.getRunnerLogString());
         logString.append("\n").append(executionCommand.getIsFailsafeLogString());
 
-        if (Runner.APP_SHELL.equalsRunner(executionCommand.runner)) {
+        if (executionCommand.runner == Runner.APP_SHELL) {
             if (logStdin && (!ignoreNull || !DataUtils.isNullOrEmpty(executionCommand.stdin)))
                 logString.append("\n").append(executionCommand.getStdinLogString());
 
@@ -509,10 +505,10 @@ public class ExecutionCommand {
         markdownString.append("\n").append(MarkdownUtils.getSingleLineMarkdownStringEntry("Executable", executionCommand.executable, "-"));
         markdownString.append("\n").append(getArgumentsMarkdownString("Arguments", executionCommand.arguments));
         markdownString.append("\n").append(MarkdownUtils.getSingleLineMarkdownStringEntry("Working Directory", executionCommand.workingDirectory, "-"));
-        markdownString.append("\n").append(MarkdownUtils.getSingleLineMarkdownStringEntry("Runner", executionCommand.runner, "-"));
+        markdownString.append("\n").append(MarkdownUtils.getSingleLineMarkdownStringEntry("Runner", executionCommand.runner != null ? executionCommand.runner.getName() : null, "-"));
         markdownString.append("\n").append(MarkdownUtils.getSingleLineMarkdownStringEntry("isFailsafe", executionCommand.isFailsafe, "-"));
 
-        if (Runner.APP_SHELL.equalsRunner(executionCommand.runner)) {
+        if (executionCommand.runner == Runner.APP_SHELL) {
             if (!DataUtils.isNullOrEmpty(executionCommand.stdin))
                 markdownString.append("\n").append(MarkdownUtils.getMultiLineMarkdownStringEntry("Stdin", executionCommand.stdin, "-"));
             if (executionCommand.backgroundCustomLogLevel != null)
@@ -591,7 +587,7 @@ public class ExecutionCommand {
     }
 
     public String getRunnerLogString() {
-        return Logger.getSingleLineLogStringEntry("Runner", runner, "-");
+        return Logger.getSingleLineLogStringEntry("Runner", runner != null ? runner.getName() : null, "-");
     }
 
     public String getIsFailsafeLogString() {

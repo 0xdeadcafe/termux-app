@@ -377,10 +377,11 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         executionCommand.isPluginExecutionCommand = true;
 
         // If EXTRA_RUNNER is passed, use that, otherwise check EXTRA_BACKGROUND and default to Runner.TERMINAL_SESSION
-        executionCommand.runner = IntentUtils.getStringExtraIfSet(intent, TERMUX_SERVICE.EXTRA_RUNNER,
-            (intent.getBooleanExtra(TERMUX_SERVICE.EXTRA_BACKGROUND, false) ? Runner.APP_SHELL.getName() : Runner.TERMINAL_SESSION.getName()));
-        if (Runner.runnerOf(executionCommand.runner) == null) {
-            String errmsg = this.getString(R.string.error_termux_service_invalid_execution_command_runner, executionCommand.runner);
+        String runnerStr = IntentUtils.getStringExtraIfSet(intent, TERMUX_SERVICE.EXTRA_RUNNER,
+            intent.getBooleanExtra(TERMUX_SERVICE.EXTRA_BACKGROUND, false) ? Runner.APP_SHELL.getName() : Runner.TERMINAL_SESSION.getName());
+        executionCommand.runner = Runner.runnerOf(runnerStr);
+        if (executionCommand.runner == null) {
+            String errmsg = this.getString(R.string.error_termux_service_invalid_execution_command_runner, runnerStr);
             executionCommand.setStateFailed(Errno.ERRNO_FAILED.getCode(), errmsg);
             TermuxPluginUtils.processPluginExecutionCommandError(this, LOG_TAG, executionCommand, false);
             return;
@@ -392,7 +393,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
             // Get full path including fragment (anything after last "#")
             executionCommand.executable = UriUtils.getUriFilePathWithFragment(executionCommand.executableUri);
             executionCommand.arguments = IntentUtils.getStringArrayExtraIfSet(intent, TERMUX_SERVICE.EXTRA_ARGUMENTS, null);
-            if (Runner.APP_SHELL.equalsRunner(executionCommand.runner))
+            if (executionCommand.runner == Runner.APP_SHELL)
                 executionCommand.stdin = IntentUtils.getStringExtraIfSet(intent, TERMUX_SERVICE.EXTRA_STDIN, null);
             executionCommand.backgroundCustomLogLevel = IntentUtils.getIntegerExtraIfSet(intent, TERMUX_SERVICE.EXTRA_BACKGROUND_CUSTOM_LOG_LEVEL, null);
         }
@@ -422,12 +423,12 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         // Add the execution command to pending plugin execution commands list
         mShellManager.mPendingPluginExecutionCommands.add(executionCommand);
 
-        if (Runner.APP_SHELL.equalsRunner(executionCommand.runner))
+        if (executionCommand.runner == Runner.APP_SHELL)
             executeTermuxTaskCommand(executionCommand);
-        else if (Runner.TERMINAL_SESSION.equalsRunner(executionCommand.runner))
+        else if (executionCommand.runner == Runner.TERMINAL_SESSION)
             executeTermuxSessionCommand(executionCommand);
         else {
-            String errmsg = getString(R.string.error_termux_service_unsupported_execution_command_runner, executionCommand.runner);
+            String errmsg = getString(R.string.error_termux_service_unsupported_execution_command_runner, executionCommand.runner.getName());
             executionCommand.setStateFailed(Errno.ERRNO_FAILED.getCode(), errmsg);
             TermuxPluginUtils.processPluginExecutionCommandError(this, LOG_TAG, executionCommand, false);
         }
@@ -466,7 +467,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     @Nullable
     public AppShell createTermuxTask(String executablePath, String[] arguments, String stdin, String workingDirectory) {
         return createTermuxTask(new ExecutionCommand(TermuxShellManager.getNextShellId(), executablePath,
-            arguments, stdin, workingDirectory, Runner.APP_SHELL.getName(), false));
+            arguments, stdin, workingDirectory, Runner.APP_SHELL, false));
     }
 
     /** Create a TermuxTask. */
@@ -476,8 +477,8 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
 
         Logger.logDebug(LOG_TAG, "Creating \"" + executionCommand.getCommandIdAndLabelLogString() + "\" TermuxTask");
 
-        if (!Runner.APP_SHELL.equalsRunner(executionCommand.runner)) {
-            Logger.logDebug(LOG_TAG, "Ignoring wrong runner \"" + executionCommand.runner + "\" command passed to createTermuxTask()");
+        if (executionCommand.runner != Runner.APP_SHELL) {
+            Logger.logDebug(LOG_TAG, "Ignoring wrong runner \"" + executionCommand.runner.getName() + "\" command passed to createTermuxTask()");
             return null;
         }
 
@@ -576,7 +577,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     public TermuxSession createTermuxSession(String executablePath, String[] arguments, String stdin,
                                              String workingDirectory, boolean isFailSafe, String sessionName) {
         ExecutionCommand executionCommand = new ExecutionCommand(TermuxShellManager.getNextShellId(),
-            executablePath, arguments, stdin, workingDirectory, Runner.TERMINAL_SESSION.getName(), isFailSafe);
+            executablePath, arguments, stdin, workingDirectory, Runner.TERMINAL_SESSION, isFailSafe);
         executionCommand.shellName = sessionName;
         return createTermuxSession(executionCommand);
     }
@@ -588,8 +589,8 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
 
         Logger.logDebug(LOG_TAG, "Creating \"" + executionCommand.getCommandIdAndLabelLogString() + "\" TermuxSession");
 
-        if (!Runner.TERMINAL_SESSION.equalsRunner(executionCommand.runner)) {
-            Logger.logDebug(LOG_TAG, "Ignoring wrong runner \"" + executionCommand.runner + "\" command passed to createTermuxSession()");
+        if (executionCommand.runner != Runner.TERMINAL_SESSION) {
+            Logger.logDebug(LOG_TAG, "Ignoring wrong runner \"" + executionCommand.runner.getName() + "\" command passed to createTermuxSession()");
             return null;
         }
 
