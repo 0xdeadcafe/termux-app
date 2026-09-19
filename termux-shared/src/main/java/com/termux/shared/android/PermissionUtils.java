@@ -15,7 +15,7 @@ import android.os.PowerManager;
 import android.provider.Settings;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.RequiresApi;
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
@@ -282,7 +282,7 @@ public class PermissionUtils {
         if (requestCode < 0)
             return false;
 
-        if (requestLegacyStoragePermission || Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+        if (requestLegacyStoragePermission) {
             requestLegacyStorageExternalPermission(context, requestCode);
         } else {
             requestManageStorageExternalPermission(context, requestCode);
@@ -304,7 +304,7 @@ public class PermissionUtils {
      * @return Returns {@code true} if permission is granted, otherwise {@code false}.
      */
     public static boolean checkStoragePermission(@NonNull Context context, boolean checkLegacyStoragePermission) {
-        if (checkLegacyStoragePermission || Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+        if (checkLegacyStoragePermission) {
             return checkPermissions(context,
                 new String[]{Manifest.permission.READ_EXTERNAL_STORAGE,
                     Manifest.permission.WRITE_EXTERNAL_STORAGE});
@@ -329,7 +329,6 @@ public class PermissionUtils {
     }
 
     /** Wrapper for {@link #requestManageStorageExternalPermission(Context, int)}. */
-    @RequiresApi(api = Build.VERSION_CODES.R)
     public static Error requestManageStorageExternalPermission(@NonNull Context context) {
         return requestManageStorageExternalPermission(context, -1);
     }
@@ -345,7 +344,6 @@ public class PermissionUtils {
      *                    result it required.
      * @return Returns the {@code error} if requesting the permission was not successful, otherwise {@code null}.
      */
-    @RequiresApi(api = Build.VERSION_CODES.R)
     public static Error requestManageStorageExternalPermission(@NonNull Context context, int requestCode) {
         Logger.logInfo(LOG_TAG, "Requesting manage external storage permission");
 
@@ -383,8 +381,9 @@ public class PermissionUtils {
      * https://developer.android.com/training/data-storage/use-cases#opt-out-scoped-storage
      */
     public static boolean isLegacyExternalStoragePossible(@NonNull Context context) {
-        return !(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
-            PackageUtils.getTargetSDKForPackage(context) >= Build.VERSION_CODES.R);
+        // minSdk=30 (R): SDK_INT is always >= R, so legacy storage is only possible if
+        // the package targets below R.
+        return PackageUtils.getTargetSDKForPackage(context) < Build.VERSION_CODES.R;
     }
 
     /**
@@ -399,15 +398,10 @@ public class PermissionUtils {
      * requested if running on sdk 29 (android 10) and higher.
      */
     public static boolean checkIfHasRequestedLegacyExternalStorage(@NonNull Context context) {
-        int targetSdkVersion = PackageUtils.getTargetSDKForPackage(context);
-
-        if (targetSdkVersion >= Build.VERSION_CODES.R) {
-            return Build.VERSION.SDK_INT == Build.VERSION_CODES.Q;
-        } else if (targetSdkVersion == Build.VERSION_CODES.Q) {
-            return Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q;
-        } else {
-            return false;
-        }
+        // minSdk=30: SDK_INT is always >= R, so it can never equal Q.
+        // SDK_INT is always >= Q, so the Q-target branch is always true.
+        // Simplified: only need to check the manifest opt-in when targetSdk == Q.
+        return PackageUtils.getTargetSDKForPackage(context) == Build.VERSION_CODES.Q;
     }
 
     /**
@@ -490,8 +484,6 @@ public class PermissionUtils {
      */
     public static boolean validateDisplayOverOtherAppsPermissionForPostAndroid10(@NonNull Context context,
                                                                                  boolean logResults) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return true;
-
         if (!checkDisplayOverOtherAppsPermission(context)) {
             if (logResults)
                 Logger.logWarn(LOG_TAG, context.getPackageName() + " does not have Display over other apps (SYSTEM_ALERT_WINDOW) permission");
