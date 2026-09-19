@@ -78,63 +78,55 @@ public class TermuxSession {
                                         @NonNull final IShellEnvironment shellEnvironmentClient,
                                         @Nullable HashMap<String, String> additionalEnvironment,
                                         final boolean setStdoutOnExit) {
-        if (executionCommand.executable != null && executionCommand.executable.isEmpty())
-            executionCommand.executable = null;
-        if (executionCommand.workingDirectory == null || executionCommand.workingDirectory.isEmpty())
-            executionCommand.workingDirectory = shellEnvironmentClient.getDefaultWorkingDirectoryPath();
-        if (executionCommand.workingDirectory.isEmpty())
-            executionCommand.workingDirectory = "/";
+        // Resolve executable — use local var so the immutable request is not modified
+        String executable = executionCommand.request.executable;
+        if (executable != null && executable.isEmpty()) executable = null;
+
+        String workingDirectory = executionCommand.request.workingDirectory;
+        if (workingDirectory == null || workingDirectory.isEmpty())
+            workingDirectory = shellEnvironmentClient.getDefaultWorkingDirectoryPath();
+        if (workingDirectory.isEmpty())
+            workingDirectory = "/";
 
         String defaultBinPath = shellEnvironmentClient.getDefaultBinPath();
         if (defaultBinPath.isEmpty())
             defaultBinPath = "/system/bin";
 
         boolean isLoginShell = false;
-        if (executionCommand.executable == null) {
-            if (!executionCommand.isFailsafe) {
+        if (executable == null) {
+            if (!executionCommand.request.isFailsafe) {
                 for (String shellBinary : UnixShellEnvironment.LOGIN_SHELL_BINARIES) {
                     File shellFile = new File(defaultBinPath, shellBinary);
                     if (shellFile.canExecute()) {
-                        executionCommand.executable = shellFile.getAbsolutePath();
+                        executable = shellFile.getAbsolutePath();
                         break;
                     }
                 }
             }
-
-            if (executionCommand.executable == null) {
-                // Fall back to system shell as last resort:
-                // Do not start a login shell since ~/.profile may cause startup failure if its invalid.
-                // /system/bin/sh is provided by mksh (not toybox) and does load .mkshrc but for android its set
-                // to /system/etc/mkshrc even though its default is ~/.mkshrc.
-                // So /system/etc/mkshrc must still be valid for failsafe session to start properly.
-                // https://cs.android.com/android/platform/superproject/+/android-11.0.0_r3:external/mksh/src/main.c;l=663
-                // https://cs.android.com/android/platform/superproject/+/android-11.0.0_r3:external/mksh/src/main.c;l=41
-                // https://cs.android.com/android/platform/superproject/+/android-11.0.0_r3:external/mksh/Android.bp;l=114
-                executionCommand.executable = "/system/bin/sh";
+            if (executable == null) {
+                // Fall back to system shell as last resort.
+                executable = "/system/bin/sh";
             } else {
                 isLoginShell = true;
             }
-
         }
 
-        // Setup command args
-        String[] commandArgs = shellEnvironmentClient.setupShellCommandArguments(executionCommand.executable, executionCommand.arguments);
-
-        executionCommand.executable = commandArgs[0];
-        String processName = (isLoginShell ? "-" : "") + ShellUtils.getExecutableBasename(executionCommand.executable);
+        String[] commandArgs = shellEnvironmentClient.setupShellCommandArguments(
+            executable, executionCommand.request.arguments);
+        executable = commandArgs[0];
+        String processName = (isLoginShell ? "-" : "") + ShellUtils.getExecutableBasename(executable);
 
         String[] arguments = new String[commandArgs.length];
         arguments[0] = processName;
         if (commandArgs.length > 1) System.arraycopy(commandArgs, 1, arguments, 1, commandArgs.length - 1);
 
-        executionCommand.arguments = arguments;
+        // Update label in request if still at default
+        if ("Execution Command".equals(executionCommand.request.metadata.label))
+            executionCommand.request = executionCommand.request.toBuilder()
+                .metadata(executionCommand.request.metadata.withLabel(processName)).build();
 
-        if ("Execution Command".equals(executionCommand.metadata.label))
-            executionCommand.metadata = executionCommand.metadata.withLabel(processName);
-
-        // Setup command environment
-        HashMap<String, String> environment = shellEnvironmentClient.setupShellCommandEnvironment(currentPackageContext,
-            executionCommand);
+        HashMap<String, String> environment = shellEnvironmentClient.setupShellCommandEnvironment(
+            currentPackageContext, executionCommand);
         if (additionalEnvironment != null)
             environment.putAll(additionalEnvironment);
         List<String> environmentList = ShellEnvironmentUtils.convertEnvironmentToEnviron(environment);
@@ -152,12 +144,12 @@ public class TermuxSession {
             String.join("\n", environmentArray));
 
         Logger.logDebug(LOG_TAG, "Running \"" + executionCommand.getCommandIdAndLabelLogString() + "\" TermuxSession");
-        TerminalSession terminalSession = new TerminalSession(executionCommand.executable,
-            executionCommand.workingDirectory, executionCommand.arguments, environmentArray,
-            executionCommand.terminalTranscriptRows, terminalSessionClient);
+        TerminalSession terminalSession = new TerminalSession(executable,
+            workingDirectory, arguments, environmentArray,
+            executionCommand.request.terminalTranscriptRows, terminalSessionClient);
 
-        if (executionCommand.shellName != null) {
-            terminalSession.mSessionName = executionCommand.shellName;
+        if (executionCommand.request.shellName != null) {
+            terminalSession.mSessionName = executionCommand.request.shellName;
         }
 
         return new TermuxSession(terminalSession, executionCommand, termuxSessionClient, setStdoutOnExit);

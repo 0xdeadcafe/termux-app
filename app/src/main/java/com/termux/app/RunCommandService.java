@@ -27,6 +27,7 @@ import com.termux.shared.notification.NotificationUtils;
 import com.termux.shared.shell.command.CommandMetadata;
 import com.termux.shared.shell.command.ExecutionCommand;
 import com.termux.shared.shell.command.ExecutionCommand.Runner;
+import com.termux.shared.shell.command.ExecutionRequest;
 import com.termux.shared.shell.command.result.ResultIntake;
 
 /**
@@ -74,11 +75,13 @@ public class RunCommandService extends Service {
     private void processCommandIntentAsync(Intent intent) {
         Logger.logVerboseExtended(LOG_TAG, "Intent Received:\n" + IntentUtils.getIntentString(intent));
 
+        // Minimal early request: only pluginAPIHelp + pendingIntent for error notifications
+        // before full validation is complete.
+        String pluginAPIHelp = this.getString(R.string.error_run_command_service_api_help, RUN_COMMAND_SERVICE.RUN_COMMAND_API_HELP_URL);
         ExecutionCommand executionCommand = new ExecutionCommand();
-        // Set pluginAPIHelp early so early-exit error paths include it in notifications.
-        executionCommand.metadata = new CommandMetadata("Execution Command", null, null,
-            this.getString(R.string.error_run_command_service_api_help, RUN_COMMAND_SERVICE.RUN_COMMAND_API_HELP_URL),
-            null, false);
+        executionCommand.request = new ExecutionRequest.Builder()
+            .metadata(new CommandMetadata("Execution Command", null, null, pluginAPIHelp, null, false))
+            .build();
 
         Error error;
         String errmsg;
@@ -91,63 +94,58 @@ public class RunCommandService extends Service {
             stopService(); return;
         }
 
-        String executableExtra = executionCommand.executable = IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_COMMAND_PATH, null);
-        executionCommand.arguments = IntentUtils.getStringArrayExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_ARGUMENTS, null);
+        // --- Stage 1: parse all intent extras into local variables ---
+
+        String executableExtra = IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_COMMAND_PATH, null);
+        String executable = executableExtra;
+        String[] arguments = IntentUtils.getStringArrayExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_ARGUMENTS, null);
 
         /*
         * If intent was sent with `am` command, then normal comma characters may have been replaced
         * with alternate characters if a normal comma existed in an argument itself to prevent it
         * splitting into multiple arguments by `am` command.
-        * If `tudo` or `sudo` are used, then simply using their `-r` and `--comma-alternative` command
-        * options can be used without passing the below extras, but native supports is helpful if
-        * they are not being used.
-        * https://github.com/agnostic-apollo/tudo#passing-arguments-using-run_command-intent
-        * https://android.googlesource.com/platform/frameworks/base/+/21bdaf1/cmds/am/src/com/android/commands/am/Am.java#572
         */
         boolean replaceCommaAlternativeCharsInArguments = intent.getBooleanExtra(RUN_COMMAND_SERVICE.EXTRA_REPLACE_COMMA_ALTERNATIVE_CHARS_IN_ARGUMENTS, false);
         if (replaceCommaAlternativeCharsInArguments) {
             String commaAlternativeCharsInArguments = IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_COMMA_ALTERNATIVE_CHARS_IN_ARGUMENTS, null);
             if (commaAlternativeCharsInArguments == null)
                 commaAlternativeCharsInArguments = TermuxConstants.COMMA_ALTERNATIVE;
-            // Replace any commaAlternativeCharsInArguments characters with normal commas
-            DataUtils.replaceSubStringsInStringArrayItems(executionCommand.arguments, commaAlternativeCharsInArguments, TermuxConstants.COMMA_NORMAL);
+            DataUtils.replaceSubStringsInStringArrayItems(arguments, commaAlternativeCharsInArguments, TermuxConstants.COMMA_NORMAL);
         }
 
-        executionCommand.stdin = IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_STDIN, null);
-        executionCommand.workingDirectory = IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_WORKDIR, null);
+        String stdin = IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_STDIN, null);
+        String workingDirectory = IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_WORKDIR, null);
 
-        // If EXTRA_RUNNER is passed, use that, otherwise check EXTRA_BACKGROUND and default to Runner.TERMINAL_SESSION
         String runnerStr = IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_RUNNER,
             intent.getBooleanExtra(RUN_COMMAND_SERVICE.EXTRA_BACKGROUND, false) ? Runner.APP_SHELL.getName() : Runner.TERMINAL_SESSION.getName());
-        executionCommand.runner = Runner.runnerOf(runnerStr);
-        if (executionCommand.runner == null) {
+        Runner runner = Runner.runnerOf(runnerStr);
+        if (runner == null) {
             errmsg = this.getString(R.string.error_run_command_service_invalid_execution_command_runner, runnerStr);
             executionCommand.setStateFailed(Errno.ERRNO_FAILED.getCode(), errmsg);
             TermuxPluginUtils.processPluginExecutionCommandError(this, LOG_TAG, executionCommand, false);
             stopService(); return;
         }
 
-        executionCommand.backgroundCustomLogLevel = IntentUtils.getIntegerExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_BACKGROUND_CUSTOM_LOG_LEVEL, null);
-        executionCommand.sessionAction = intent.getStringExtra(RUN_COMMAND_SERVICE.EXTRA_SESSION_ACTION);
-        executionCommand.shellName = IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_SHELL_NAME, null);
-        executionCommand.shellCreateMode = IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_SHELL_CREATE_MODE, null);
-        executionCommand.metadata = new CommandMetadata(
+        Integer backgroundCustomLogLevel = IntentUtils.getIntegerExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_BACKGROUND_CUSTOM_LOG_LEVEL, null);
+        String sessionAction = intent.getStringExtra(RUN_COMMAND_SERVICE.EXTRA_SESSION_ACTION);
+        String shellName = IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_SHELL_NAME, null);
+        String shellCreateMode = IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_SHELL_CREATE_MODE, null);
+        CommandMetadata metadata = new CommandMetadata(
             IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_COMMAND_LABEL, "RUN_COMMAND Execution Intent Command"),
             IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_COMMAND_DESCRIPTION, null),
             IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_COMMAND_HELP, null),
-            executionCommand.metadata.pluginAPIHelp,
-            null, true);
+            pluginAPIHelp, null, true);
+
         // Set pendingIntent early so that the allow-external-apps error notification can show
         // the creator package. Directory fields are withheld until the check passes (see below).
         PendingIntent earlyPi = intent.getParcelableExtra(RUN_COMMAND_SERVICE.EXTRA_PENDING_INTENT);
         if (earlyPi != null)
-            executionCommand.resultIntake = new ResultIntake(earlyPi, null, false, null, null, null, "");
+            executionCommand.request = executionCommand.request.toBuilder()
+                .resultIntake(new ResultIntake(earlyPi, null, false, null, null, null, "")).build();
+
+        // --- Stage 2: allow-external-apps security check ---
 
         // If "allow-external-apps" property to not set to "true", then just return
-        // We enable force notifications if "allow-external-apps" policy is violated so that the
-        // user knows someone tried to run a command in termux context, since it may be malicious
-        // app or imported (tasker) plugin project and not the user himself. If a pending intent is
-        // also sent, then its creator is also logged and shown.
         errmsg = TermuxPluginUtils.checkIfAllowExternalAppsPolicyIsViolated(this, LOG_TAG);
         if (errmsg != null) {
             executionCommand.setStateFailed(Errno.ERRNO_FAILED.getCode(), errmsg);
@@ -169,57 +167,42 @@ public class RunCommandService extends Service {
         // this security issue.
         PendingIntent resultPi = intent.getParcelableExtra(RUN_COMMAND_SERVICE.EXTRA_PENDING_INTENT);
         String resultDir = IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_RESULT_DIRECTORY, null);
-        if (resultPi != null || resultDir != null) {
-            executionCommand.resultIntake = new ResultIntake(
-                resultPi, resultDir,
-                intent.getBooleanExtra(RUN_COMMAND_SERVICE.EXTRA_RESULT_SINGLE_FILE, false),
-                IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_RESULT_FILE_BASENAME, null),
-                IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_RESULT_FILE_OUTPUT_FORMAT, null),
-                IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_RESULT_FILE_ERROR_FORMAT, null),
-                DataUtils.getDefaultIfNull(IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_RESULT_FILES_SUFFIX, null), ""));
-        } else {
-            executionCommand.resultIntake = null;
-        }
+        ResultIntake resultIntake = (resultPi != null || resultDir != null) ? new ResultIntake(
+            resultPi, resultDir,
+            intent.getBooleanExtra(RUN_COMMAND_SERVICE.EXTRA_RESULT_SINGLE_FILE, false),
+            IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_RESULT_FILE_BASENAME, null),
+            IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_RESULT_FILE_OUTPUT_FORMAT, null),
+            IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_RESULT_FILE_ERROR_FORMAT, null),
+            DataUtils.getDefaultIfNull(IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_RESULT_FILES_SUFFIX, null), "")) : null;
+        // Now that we have the full resultIntake, update the command for any remaining error paths
+        executionCommand.request = executionCommand.request.toBuilder()
+            .metadata(metadata).resultIntake(resultIntake).build();
 
+        // --- Stage 3: validate executable ---
 
-
-        // If executable is null or empty, then exit here instead of getting canonical path which would expand to "/"
-        if (executionCommand.executable == null || executionCommand.executable.isEmpty()) {
-            errmsg  = this.getString(R.string.error_run_command_service_mandatory_extra_missing, RUN_COMMAND_SERVICE.EXTRA_COMMAND_PATH);
+        if (executable == null || executable.isEmpty()) {
+            errmsg = this.getString(R.string.error_run_command_service_mandatory_extra_missing, RUN_COMMAND_SERVICE.EXTRA_COMMAND_PATH);
             executionCommand.setStateFailed(Errno.ERRNO_FAILED.getCode(), errmsg);
             TermuxPluginUtils.processPluginExecutionCommandError(this, LOG_TAG, executionCommand, false);
             stopService(); return;
         }
 
-        // Get canonical path of executable
-        executionCommand.executable = TermuxFileUtils.getCanonicalPath(executionCommand.executable, null, true);
+        executable = TermuxFileUtils.getCanonicalPath(executable, null, true);
 
-        // If executable is not a regular file, or is not readable or executable, then just return
-        // Setting of missing read and execute permissions is not done
-        error = FileUtils.validateRegularFileExistenceAndPermissions("executable", executionCommand.executable, null,
-            FileUtils.APP_EXECUTABLE_FILE_PERMISSIONS, true, true,
-            false);
+        error = FileUtils.validateRegularFileExistenceAndPermissions("executable", executable, null,
+            FileUtils.APP_EXECUTABLE_FILE_PERMISSIONS, true, true, false);
         if (error != null) {
             executionCommand.setStateFailed(error);
             TermuxPluginUtils.processPluginExecutionCommandError(this, LOG_TAG, executionCommand, false);
             stopService(); return;
         }
 
+        // --- Stage 4: validate workingDirectory ---
 
-
-        // If workingDirectory is not null or empty
-        if (executionCommand.workingDirectory != null && !executionCommand.workingDirectory.isEmpty()) {
-            // Get canonical path of workingDirectory
-            executionCommand.workingDirectory = TermuxFileUtils.getCanonicalPath(executionCommand.workingDirectory, null, true);
-
-            // If workingDirectory is not a directory, or is not readable or writable, then just return
-            // Creation of missing directory and setting of read, write and execute permissions are only done if workingDirectory is
-            // under allowed termux working directory paths.
-            // We try to set execute permissions, but ignore if they are missing, since only read and write permissions are required
-            // for working directories.
-            error = TermuxFileUtils.validateDirectoryFileExistenceAndPermissions("working", executionCommand.workingDirectory,
-                true, true, true,
-                false, true);
+        if (workingDirectory != null && !workingDirectory.isEmpty()) {
+            workingDirectory = TermuxFileUtils.getCanonicalPath(workingDirectory, null, true);
+            error = TermuxFileUtils.validateDirectoryFileExistenceAndPermissions("working", workingDirectory,
+                true, true, true, false, true);
             if (error != null) {
                 executionCommand.setStateFailed(error);
                 TermuxPluginUtils.processPluginExecutionCommandError(this, LOG_TAG, executionCommand, false);
@@ -227,43 +210,58 @@ public class RunCommandService extends Service {
             }
         }
 
-        // If the executable passed as the extra was an applet for coreutils/busybox, then we must
-        // use it instead of the canonical path above since otherwise arguments would be passed to
-        // coreutils/busybox instead and command would fail. Broken symlinks would already have been
-        // validated so it should be fine to use it.
+        // If the executable passed as the extra was an applet for coreutils/busybox, use it
+        // instead of the canonical path since otherwise arguments would be passed to coreutils/busybox.
         executableExtra = TermuxFileUtils.getExpandedTermuxPath(executableExtra);
         if (FileUtils.getFileType(executableExtra, false) == FileType.SYMLINK) {
-            Logger.logVerbose(LOG_TAG, "The executableExtra path \"" + executableExtra + "\" is a symlink so using it instead of the canonical path \"" + executionCommand.executable + "\"");
-            executionCommand.executable = executableExtra;
+            Logger.logVerbose(LOG_TAG, "The executableExtra path \"" + executableExtra + "\" is a symlink so using it instead of the canonical path \"" + executable + "\"");
+            executable = executableExtra;
         }
 
-        executionCommand.executableUri = new Uri.Builder().scheme(TERMUX_SERVICE.URI_SCHEME_SERVICE_EXECUTE).path(executionCommand.executable).build();
+        Uri executableUri = new Uri.Builder().scheme(TERMUX_SERVICE.URI_SCHEME_SERVICE_EXECUTE).path(executable).build();
+
+        // --- Stage 5: build final request and forward to TermuxService ---
+
+        executionCommand.request = new ExecutionRequest.Builder()
+            .executable(executable)
+            .executableUri(executableUri)
+            .arguments(arguments)
+            .stdin(stdin)
+            .workingDirectory(workingDirectory)
+            .runner(runner)
+            .backgroundCustomLogLevel(backgroundCustomLogLevel)
+            .sessionAction(sessionAction)
+            .shellName(shellName)
+            .shellCreateMode(shellCreateMode)
+            .metadata(metadata)
+            .resultIntake(resultIntake)
+            .build();
 
         Logger.logVerboseExtended(LOG_TAG, executionCommand.toString());
 
-        // Create execution intent with the action TERMUX_SERVICE#ACTION_SERVICE_EXECUTE to be sent to the TERMUX_SERVICE
-        Intent execIntent = new Intent(TERMUX_SERVICE.ACTION_SERVICE_EXECUTE, executionCommand.executableUri);
+        Intent execIntent = new Intent(TERMUX_SERVICE.ACTION_SERVICE_EXECUTE, executionCommand.request.executableUri);
         execIntent.setClass(this, TermuxService.class);
-        execIntent.putExtra(TERMUX_SERVICE.EXTRA_ARGUMENTS, executionCommand.arguments);
-        execIntent.putExtra(TERMUX_SERVICE.EXTRA_STDIN, executionCommand.stdin);
-        if (executionCommand.workingDirectory != null && !executionCommand.workingDirectory.isEmpty()) execIntent.putExtra(TERMUX_SERVICE.EXTRA_WORKDIR, executionCommand.workingDirectory);
-        execIntent.putExtra(TERMUX_SERVICE.EXTRA_RUNNER, executionCommand.runner != null ? executionCommand.runner.getName() : null);
-        execIntent.putExtra(TERMUX_SERVICE.EXTRA_BACKGROUND_CUSTOM_LOG_LEVEL, DataUtils.getStringFromInteger(executionCommand.backgroundCustomLogLevel, null));
-        execIntent.putExtra(TERMUX_SERVICE.EXTRA_SESSION_ACTION, executionCommand.sessionAction);
-        execIntent.putExtra(TERMUX_SERVICE.EXTRA_SHELL_NAME, executionCommand.shellName);
-        execIntent.putExtra(TERMUX_SERVICE.EXTRA_SHELL_CREATE_MODE, executionCommand.shellCreateMode);
-        execIntent.putExtra(TERMUX_SERVICE.EXTRA_COMMAND_LABEL, executionCommand.metadata.label);
-        execIntent.putExtra(TERMUX_SERVICE.EXTRA_COMMAND_DESCRIPTION, executionCommand.metadata.description);
-        execIntent.putExtra(TERMUX_SERVICE.EXTRA_COMMAND_HELP, executionCommand.metadata.help);
-        execIntent.putExtra(TERMUX_SERVICE.EXTRA_PLUGIN_API_HELP, executionCommand.metadata.pluginAPIHelp);
-        execIntent.putExtra(TERMUX_SERVICE.EXTRA_PENDING_INTENT, executionCommand.resultIntake != null ? executionCommand.resultIntake.pendingIntent : null);
-        execIntent.putExtra(TERMUX_SERVICE.EXTRA_RESULT_DIRECTORY, executionCommand.resultIntake != null ? executionCommand.resultIntake.directoryPath : null);
-        if (executionCommand.resultIntake != null && executionCommand.resultIntake.directoryPath != null) {
-            execIntent.putExtra(TERMUX_SERVICE.EXTRA_RESULT_SINGLE_FILE, executionCommand.resultIntake.singleFile);
-            execIntent.putExtra(TERMUX_SERVICE.EXTRA_RESULT_FILE_BASENAME, executionCommand.resultIntake.fileBasename);
-            execIntent.putExtra(TERMUX_SERVICE.EXTRA_RESULT_FILE_OUTPUT_FORMAT, executionCommand.resultIntake.fileOutputFormat);
-            execIntent.putExtra(TERMUX_SERVICE.EXTRA_RESULT_FILE_ERROR_FORMAT, executionCommand.resultIntake.fileErrorFormat);
-            execIntent.putExtra(TERMUX_SERVICE.EXTRA_RESULT_FILES_SUFFIX, executionCommand.resultIntake.filesSuffix);
+        execIntent.putExtra(TERMUX_SERVICE.EXTRA_ARGUMENTS, executionCommand.request.arguments);
+        execIntent.putExtra(TERMUX_SERVICE.EXTRA_STDIN, executionCommand.request.stdin);
+        if (executionCommand.request.workingDirectory != null && !executionCommand.request.workingDirectory.isEmpty())
+            execIntent.putExtra(TERMUX_SERVICE.EXTRA_WORKDIR, executionCommand.request.workingDirectory);
+        execIntent.putExtra(TERMUX_SERVICE.EXTRA_RUNNER, executionCommand.request.runner != null ? executionCommand.request.runner.getName() : null);
+        execIntent.putExtra(TERMUX_SERVICE.EXTRA_BACKGROUND_CUSTOM_LOG_LEVEL, DataUtils.getStringFromInteger(executionCommand.request.backgroundCustomLogLevel, null));
+        execIntent.putExtra(TERMUX_SERVICE.EXTRA_SESSION_ACTION, executionCommand.request.sessionAction);
+        execIntent.putExtra(TERMUX_SERVICE.EXTRA_SHELL_NAME, executionCommand.request.shellName);
+        execIntent.putExtra(TERMUX_SERVICE.EXTRA_SHELL_CREATE_MODE, executionCommand.request.shellCreateMode);
+        execIntent.putExtra(TERMUX_SERVICE.EXTRA_COMMAND_LABEL, executionCommand.request.metadata.label);
+        execIntent.putExtra(TERMUX_SERVICE.EXTRA_COMMAND_DESCRIPTION, executionCommand.request.metadata.description);
+        execIntent.putExtra(TERMUX_SERVICE.EXTRA_COMMAND_HELP, executionCommand.request.metadata.help);
+        execIntent.putExtra(TERMUX_SERVICE.EXTRA_PLUGIN_API_HELP, executionCommand.request.metadata.pluginAPIHelp);
+        execIntent.putExtra(TERMUX_SERVICE.EXTRA_PENDING_INTENT, executionCommand.request.resultIntake != null ? executionCommand.request.resultIntake.pendingIntent : null);
+        execIntent.putExtra(TERMUX_SERVICE.EXTRA_RESULT_DIRECTORY, executionCommand.request.resultIntake != null ? executionCommand.request.resultIntake.directoryPath : null);
+        if (executionCommand.request.resultIntake != null && executionCommand.request.resultIntake.directoryPath != null) {
+            execIntent.putExtra(TERMUX_SERVICE.EXTRA_RESULT_SINGLE_FILE, executionCommand.request.resultIntake.singleFile);
+            execIntent.putExtra(TERMUX_SERVICE.EXTRA_RESULT_FILE_BASENAME, executionCommand.request.resultIntake.fileBasename);
+            execIntent.putExtra(TERMUX_SERVICE.EXTRA_RESULT_FILE_OUTPUT_FORMAT, executionCommand.request.resultIntake.fileOutputFormat);
+            execIntent.putExtra(TERMUX_SERVICE.EXTRA_RESULT_FILE_ERROR_FORMAT, executionCommand.request.resultIntake.fileErrorFormat);
+            execIntent.putExtra(TERMUX_SERVICE.EXTRA_RESULT_FILES_SUFFIX, executionCommand.request.resultIntake.filesSuffix);
         }
 
         // Start TERMUX_SERVICE and pass it execution intent

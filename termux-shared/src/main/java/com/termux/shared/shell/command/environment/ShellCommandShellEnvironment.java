@@ -4,6 +4,7 @@ import android.content.Context;
 
 import androidx.annotation.NonNull;
 
+import com.termux.shared.shell.ShellUtils;
 import com.termux.shared.shell.command.ExecutionCommand;
 
 import java.util.HashMap;
@@ -48,13 +49,17 @@ public class ShellCommandShellEnvironment {
                                                   @NonNull ExecutionCommand executionCommand) {
         HashMap<String, String> environment = new HashMap<>();
 
-        ExecutionCommand.Runner runner = executionCommand.runner;
+        ExecutionCommand.Runner runner = executionCommand.request.runner;
         if (runner == null) return environment;
 
         ShellEnvironmentUtils.putToEnvIfSet(environment, ENV_SHELL_CMD__RUNNER_NAME, runner.getName());
         ShellEnvironmentUtils.putToEnvIfSet(environment, ENV_SHELL_CMD__PACKAGE_NAME, currentPackageContext.getPackageName());
-        ShellEnvironmentUtils.putToEnvIfSet(environment, ENV_SHELL_CMD__SHELL_ID, String.valueOf(executionCommand.id));
-        ShellEnvironmentUtils.putToEnvIfSet(environment, ENV_SHELL_CMD__SHELL_NAME, executionCommand.shellName);
+        ShellEnvironmentUtils.putToEnvIfSet(environment, ENV_SHELL_CMD__SHELL_ID, String.valueOf(executionCommand.request.id));
+        // Derive shell name from executable basename if not explicitly set in the request
+        String shellName = executionCommand.request.shellName != null
+            ? executionCommand.request.shellName
+            : ShellUtils.getExecutableBasename(executionCommand.request.executable);
+        ShellEnvironmentUtils.putToEnvIfSet(environment, ENV_SHELL_CMD__SHELL_NAME, shellName);
 
         return environment;
     }

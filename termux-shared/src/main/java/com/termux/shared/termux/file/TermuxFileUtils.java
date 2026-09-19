@@ -400,8 +400,9 @@ public class TermuxFileUtils {
         // Run script
         ExecutionCommand executionCommand = new ExecutionCommand(-1, "/system/bin/sh", null,
             statScript.toString() + "\n", "/", ExecutionCommand.Runner.APP_SHELL, true);
-        executionCommand.metadata = executionCommand.metadata.withLabel(TermuxConstants.TERMUX_APP_NAME + " Files Stat Command");
-        executionCommand.backgroundCustomLogLevel = Logger.LOG_LEVEL_OFF;
+        executionCommand.request = executionCommand.request.toBuilder()
+            .metadata(executionCommand.request.metadata.withLabel(TermuxConstants.TERMUX_APP_NAME + " Files Stat Command"))
+            .backgroundCustomLogLevel(Logger.LOG_LEVEL_OFF).build();
         AppShell appShell = AppShell.execute(context, executionCommand, null, new TermuxShellEnvironment(), null, true);
         if (appShell == null || !executionCommand.isSuccessful()) {
             Logger.logErrorExtended(LOG_TAG, executionCommand.toString());

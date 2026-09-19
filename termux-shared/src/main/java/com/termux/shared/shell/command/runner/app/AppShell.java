@@ -79,33 +79,31 @@ public final class AppShell {
                                    @NonNull final IShellEnvironment shellEnvironmentClient,
                                    @Nullable HashMap<String, String> additionalEnvironment,
                                    final boolean isSynchronous) {
-        if (executionCommand.executable == null || executionCommand.executable.isEmpty()) {
+        if (executionCommand.request.executable == null || executionCommand.request.executable.isEmpty()) {
             executionCommand.setStateFailed(Errno.ERRNO_FAILED.getCode(),
                 currentPackageContext.getString(R.string.error_executable_unset, executionCommand.getCommandIdAndLabelLogString()));
             AppShell.processAppShellResult(null, executionCommand);
             return null;
         }
 
-        if (executionCommand.workingDirectory == null || executionCommand.workingDirectory.isEmpty())
-            executionCommand.workingDirectory = shellEnvironmentClient.getDefaultWorkingDirectoryPath();
-        if (executionCommand.workingDirectory.isEmpty())
-            executionCommand.workingDirectory = "/";
+        String workingDirectory = executionCommand.request.workingDirectory;
+        if (workingDirectory == null || workingDirectory.isEmpty())
+            workingDirectory = shellEnvironmentClient.getDefaultWorkingDirectoryPath();
+        if (workingDirectory.isEmpty())
+            workingDirectory = "/";
 
-        // Transform executable path to shell/session name, e.g. "/bin/do-something.sh" => "do-something.sh".
-        String executableBasename = ShellUtils.getExecutableBasename(executionCommand.executable);
+        String executableBasename = ShellUtils.getExecutableBasename(executionCommand.request.executable);
 
-        if (executionCommand.shellName == null)
-            executionCommand.shellName = executableBasename;
+        // Resolve shellName and label from basename if not set in request
+        if ("Execution Command".equals(executionCommand.request.metadata.label))
+            executionCommand.request = executionCommand.request.toBuilder().metadata(
+                executionCommand.request.metadata.withLabel(executableBasename)).build();
 
-        if ("Execution Command".equals(executionCommand.metadata.label))
-            executionCommand.metadata = executionCommand.metadata.withLabel(executableBasename);
+        final String[] commandArray = shellEnvironmentClient.setupShellCommandArguments(
+            executionCommand.request.executable, executionCommand.request.arguments);
 
-        // Setup command args
-        final String[] commandArray = shellEnvironmentClient.setupShellCommandArguments(executionCommand.executable, executionCommand.arguments);
-
-        // Setup command environment
-        HashMap<String, String> environment = shellEnvironmentClient.setupShellCommandEnvironment(currentPackageContext,
-            executionCommand);
+        HashMap<String, String> environment = shellEnvironmentClient.setupShellCommandEnvironment(
+            currentPackageContext, executionCommand);
         if (additionalEnvironment != null)
             environment.putAll(additionalEnvironment);
         List<String> environmentList = ShellEnvironmentUtils.convertEnvironmentToEnviron(environment);
@@ -118,16 +116,15 @@ public final class AppShell {
             return null;
         }
 
-        // No need to log stdin if logging is disabled, like for app internal scripts
         Logger.logDebugExtended(LOG_TAG, ExecutionCommand.getExecutionInputLogString(executionCommand,
-            true, Logger.shouldEnableLoggingForCustomLogLevel(executionCommand.backgroundCustomLogLevel)));
+            true, Logger.shouldEnableLoggingForCustomLogLevel(executionCommand.request.backgroundCustomLogLevel)));
         Logger.logVerboseExtended(LOG_TAG, "\"" + executionCommand.getCommandIdAndLabelLogString() + "\" AppShell Environment:\n" +
             String.join("\n", environmentArray));
 
         // Exec the process
         final Process process;
         try {
-            process = Runtime.getRuntime().exec(commandArray, environmentArray, new File(executionCommand.workingDirectory));
+            process = Runtime.getRuntime().exec(commandArray, environmentArray, new File(workingDirectory));
         } catch (IOException e) {
             executionCommand.setStateFailed(Errno.ERRNO_FAILED.getCode(), currentPackageContext.getString(R.string.error_failed_to_execute_app_shell_command, executionCommand.getCommandIdAndLabelLogString()), e);
             AppShell.processAppShellResult(null, executionCommand);
@@ -177,16 +174,16 @@ public final class AppShell {
 
         // setup stdin, and stdout and stderr gobblers
         DataOutputStream STDIN = new DataOutputStream(mProcess.getOutputStream());
-        StreamGobbler STDOUT = new StreamGobbler(mExecutionCommand.mPid + "-stdout", mProcess.getInputStream(), mExecutionCommand.resultData.stdout, mExecutionCommand.backgroundCustomLogLevel);
-        StreamGobbler STDERR = new StreamGobbler(mExecutionCommand.mPid + "-stderr", mProcess.getErrorStream(), mExecutionCommand.resultData.stderr, mExecutionCommand.backgroundCustomLogLevel);
+        StreamGobbler STDOUT = new StreamGobbler(mExecutionCommand.mPid + "-stdout", mProcess.getInputStream(), mExecutionCommand.resultData.stdout, mExecutionCommand.request.backgroundCustomLogLevel);
+        StreamGobbler STDERR = new StreamGobbler(mExecutionCommand.mPid + "-stderr", mProcess.getErrorStream(), mExecutionCommand.resultData.stderr, mExecutionCommand.request.backgroundCustomLogLevel);
 
         // start gobbling
         STDOUT.start();
         STDERR.start();
 
-        if (!DataUtils.isNullOrEmpty(mExecutionCommand.stdin)) {
+        if (!DataUtils.isNullOrEmpty(mExecutionCommand.request.stdin)) {
             try {
-                STDIN.write((mExecutionCommand.stdin + "\n").getBytes(StandardCharsets.UTF_8));
+                STDIN.write((mExecutionCommand.request.stdin + "\n").getBytes(StandardCharsets.UTF_8));
                 STDIN.flush();
                 STDIN.close();
             } catch(IOException e) {

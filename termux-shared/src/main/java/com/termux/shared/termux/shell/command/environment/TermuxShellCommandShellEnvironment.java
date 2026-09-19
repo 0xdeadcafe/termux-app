@@ -27,13 +27,13 @@ public class TermuxShellCommandShellEnvironment extends ShellCommandShellEnviron
         TermuxAppSharedPreferences preferences = TermuxAppSharedPreferences.build(currentPackageContext);
         if (preferences == null) return environment;
 
-        if (executionCommand.runner == ExecutionCommand.Runner.APP_SHELL) {
+        if (executionCommand.request.runner == ExecutionCommand.Runner.APP_SHELL) {
             ShellEnvironmentUtils.putToEnvIfSet(environment, ENV_SHELL_CMD__APP_SHELL_NUMBER_SINCE_BOOT,
                 String.valueOf(preferences.getAndIncrementAppShellNumberSinceBoot()));
             ShellEnvironmentUtils.putToEnvIfSet(environment, ENV_SHELL_CMD__APP_SHELL_NUMBER_SINCE_APP_START,
                 String.valueOf(TermuxShellManager.getAndIncrementAppShellNumberSinceAppStart()));
 
-        } else if (executionCommand.runner == ExecutionCommand.Runner.TERMINAL_SESSION) {
+        } else if (executionCommand.request.runner == ExecutionCommand.Runner.TERMINAL_SESSION) {
             ShellEnvironmentUtils.putToEnvIfSet(environment, ENV_SHELL_CMD__TERMINAL_SESSION_NUMBER_SINCE_BOOT,
                 String.valueOf(preferences.getAndIncrementTerminalSessionNumberSinceBoot()));
             ShellEnvironmentUtils.putToEnvIfSet(environment, ENV_SHELL_CMD__TERMINAL_SESSION_NUMBER_SINCE_APP_START,

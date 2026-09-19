@@ -350,7 +350,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (service != null) {
             TermuxSession termuxSession = service.getTermuxSessionForTerminalSession(sessionToRename);
             if (termuxSession != null)
-                termuxSession.getExecutionCommand().shellName = text;
+                termuxSession.getExecutionCommand().request = termuxSession.getExecutionCommand().request.toBuilder().shellName(text).build();
         }
     }
 

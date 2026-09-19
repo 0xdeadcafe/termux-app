@@ -83,15 +83,15 @@ public class AndroidShellEnvironment extends UnixShellEnvironment {
     @Override
     public HashMap<String, String> setupShellCommandEnvironment(@NonNull Context currentPackageContext,
                                                                 @NonNull ExecutionCommand executionCommand) {
-        HashMap<String, String> environment = getEnvironment(currentPackageContext, executionCommand.isFailsafe);
+        HashMap<String, String> environment = getEnvironment(currentPackageContext, executionCommand.request.isFailsafe);
 
-        String workingDirectory = executionCommand.workingDirectory;
+        String workingDirectory = executionCommand.request.workingDirectory;
         environment.put(ENV_PWD,
-            workingDirectory != null && !workingDirectory.isEmpty() ? new File(workingDirectory).getAbsolutePath() : // PWD must be absolute path
+            workingDirectory != null && !workingDirectory.isEmpty() ? new File(workingDirectory).getAbsolutePath() :
             getDefaultWorkingDirectoryPath());
         ShellEnvironmentUtils.createHomeDir(environment);
 
-        if (executionCommand.setShellCommandShellEnvironment && shellCommandShellEnvironment != null)
+        if (executionCommand.request.setShellCommandShellEnvironment && shellCommandShellEnvironment != null)
             environment.putAll(shellCommandShellEnvironment.getEnvironment(currentPackageContext, executionCommand));
 
         return environment;

@@ -66,7 +66,7 @@ public class TermuxPluginUtils {
         }
 
         boolean isPluginExecutionCommandWithPendingResult = executionCommand.isPluginExecutionCommandWithPendingResult();
-        boolean isExecutionCommandLoggingEnabled = Logger.shouldEnableLoggingForCustomLogLevel(executionCommand.backgroundCustomLogLevel);
+        boolean isExecutionCommandLoggingEnabled = Logger.shouldEnableLoggingForCustomLogLevel(executionCommand.request.backgroundCustomLogLevel);
 
         // Log the output. ResultData should not be logged if pending result since ResultSender will do it
         // or if logging is disabled
@@ -76,9 +76,9 @@ public class TermuxPluginUtils {
         // If execution command was started by a plugin which expects the result back
         if (isPluginExecutionCommandWithPendingResult) {
             // Build typed destinations then dispatch
-            if (executionCommand.resultIntake.pendingIntent != null)
+            if (executionCommand.request.resultIntake.pendingIntent != null)
                 setPluginResultPendingIntentVariables(executionCommand);
-            if (executionCommand.resultIntake.directoryPath != null)
+            if (executionCommand.request.resultIntake.directoryPath != null)
                 setPluginResultDirectoryVariables(executionCommand);
 
             // Send result to caller
@@ -101,7 +101,7 @@ public class TermuxPluginUtils {
                     ResultData.getErrorsListMinimalString(resultData),
                     ExecutionCommand.getExecutionCommandMarkdownString(executionCommand),
                     false, true, TermuxUtils.AppInfoMode.TERMUX_AND_CALLING_PACKAGE,true,
-                    executionCommand.resultIntake.pendingIntent != null ? executionCommand.resultIntake.pendingIntent.getCreatorPackage(): null);
+                    executionCommand.request.resultIntake.pendingIntent != null ? executionCommand.request.resultIntake.pendingIntent.getCreatorPackage(): null);
             }
 
         }
@@ -171,7 +171,7 @@ public class TermuxPluginUtils {
         }
 
         boolean isPluginExecutionCommandWithPendingResult = executionCommand.isPluginExecutionCommandWithPendingResult();
-        boolean isExecutionCommandLoggingEnabled = Logger.shouldEnableLoggingForCustomLogLevel(executionCommand.backgroundCustomLogLevel);
+        boolean isExecutionCommandLoggingEnabled = Logger.shouldEnableLoggingForCustomLogLevel(executionCommand.request.backgroundCustomLogLevel);
 
         // Log the error and any exception. ResultData should not be logged if pending result since ResultSender will do it
         Logger.logError(logTag, "Processing plugin execution error for:\n" + executionCommand.getCommandIdAndLabelLogString());
@@ -182,9 +182,9 @@ public class TermuxPluginUtils {
         // If execution command was started by a plugin which expects the result back
         if (isPluginExecutionCommandWithPendingResult) {
             // Build typed destinations then dispatch
-            if (executionCommand.resultIntake.pendingIntent != null)
+            if (executionCommand.request.resultIntake.pendingIntent != null)
                 setPluginResultPendingIntentVariables(executionCommand);
-            if (executionCommand.resultIntake.directoryPath != null)
+            if (executionCommand.request.resultIntake.directoryPath != null)
                 setPluginResultDirectoryVariables(executionCommand);
 
             // Send result to caller
@@ -213,13 +213,13 @@ public class TermuxPluginUtils {
             ResultData.getErrorsListMinimalString(resultData),
             ExecutionCommand.getExecutionCommandMarkdownString(executionCommand),
             forceNotification, true, TermuxUtils.AppInfoMode.TERMUX_AND_CALLING_PACKAGE, true,
-            executionCommand.resultIntake != null && executionCommand.resultIntake.pendingIntent != null ? executionCommand.resultIntake.pendingIntent.getCreatorPackage() : null);
+            executionCommand.request.resultIntake != null && executionCommand.request.resultIntake.pendingIntent != null ? executionCommand.request.resultIntake.pendingIntent.getCreatorPackage() : null);
     }
 
     /** Construct a {@link ResultDestination.PendingIntentResult} and attach it to the command. */
     public static void setPluginResultPendingIntentVariables(ExecutionCommand executionCommand) {
         executionCommand.resultPendingIntentDestination = new ResultDestination.PendingIntentResult(
-            executionCommand.resultIntake.pendingIntent,
+            executionCommand.request.resultIntake.pendingIntent,
             TERMUX_SERVICE.EXTRA_PLUGIN_RESULT_BUNDLE,
             TERMUX_SERVICE.EXTRA_PLUGIN_RESULT_BUNDLE_STDOUT,
             TERMUX_SERVICE.EXTRA_PLUGIN_RESULT_BUNDLE_STDERR,
@@ -232,22 +232,22 @@ public class TermuxPluginUtils {
 
     /** Construct a {@link ResultDestination.DirectoryResult} and attach it to the command. */
     public static void setPluginResultDirectoryVariables(ExecutionCommand executionCommand) {
-        String dirPath = TermuxFileUtils.getCanonicalPath(executionCommand.resultIntake.directoryPath, null, true);
+        String dirPath = TermuxFileUtils.getCanonicalPath(executionCommand.request.resultIntake.directoryPath, null, true);
         String allowedParentPath = TermuxFileUtils.getMatchedAllowedTermuxWorkingDirectoryParentPathForPath(dirPath);
 
         // Default fileBasename to `<executable_basename>-<timestamp>.log` when singleFile is true
-        String basename = executionCommand.resultIntake.fileBasename;
-        if (executionCommand.resultIntake.singleFile && basename == null)
-            basename = ShellUtils.getExecutableBasename(executionCommand.executable) + "-" + AndroidUtils.getCurrentMilliSecondLocalTimeStamp() + ".log";
+        String basename = executionCommand.request.resultIntake.fileBasename;
+        if (executionCommand.request.resultIntake.singleFile && basename == null)
+            basename = ShellUtils.getExecutableBasename(executionCommand.request.executable) + "-" + AndroidUtils.getCurrentMilliSecondLocalTimeStamp() + ".log";
 
         executionCommand.resultDirectoryDestination = new ResultDestination.DirectoryResult(
             dirPath,
             allowedParentPath,
-            executionCommand.resultIntake.singleFile,
+            executionCommand.request.resultIntake.singleFile,
             basename,
-            executionCommand.resultIntake.fileOutputFormat,
-            executionCommand.resultIntake.fileErrorFormat,
-            executionCommand.resultIntake.filesSuffix);
+            executionCommand.request.resultIntake.fileOutputFormat,
+            executionCommand.request.resultIntake.fileErrorFormat,
+            executionCommand.request.resultIntake.filesSuffix);
     }
 
 

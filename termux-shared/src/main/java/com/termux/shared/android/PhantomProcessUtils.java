@@ -81,8 +81,9 @@ public class PhantomProcessUtils {
         String script = "/system/bin/dumpsys activity settings | /system/bin/grep -iE '^[\t ]+" + KEY_MAX_PHANTOM_PROCESSES + "=[0-9]+$' | /system/bin/cut -d = -f2";
         ExecutionCommand executionCommand = new ExecutionCommand(-1, "/system/bin/sh", null,
             script + "\n", "/", ExecutionCommand.Runner.APP_SHELL, true);
-        executionCommand.metadata = executionCommand.metadata.withLabel(" ActivityManager " + KEY_MAX_PHANTOM_PROCESSES + " Command");
-        executionCommand.backgroundCustomLogLevel = Logger.LOG_LEVEL_OFF;
+        executionCommand.request = executionCommand.request.toBuilder()
+            .metadata(executionCommand.request.metadata.withLabel(" ActivityManager " + KEY_MAX_PHANTOM_PROCESSES + " Command"))
+            .backgroundCustomLogLevel(Logger.LOG_LEVEL_OFF).build();
         AppShell appShell = AppShell.execute(context, executionCommand, null, new AndroidShellEnvironment(), null, true);
         boolean stderrSet = !executionCommand.resultData.stderr.toString().isEmpty();
         if (appShell == null || !executionCommand.isSuccessful() || executionCommand.resultData.exitCode != 0 || stderrSet) {
@@ -93,7 +94,7 @@ public class PhantomProcessUtils {
         try {
             return Integer.parseInt(executionCommand.resultData.stdout.toString().trim());
         } catch (NumberFormatException e) {
-            Logger.logStackTraceWithMessage(LOG_TAG, "The " + executionCommand.metadata.label + " did not return a valid integer", e);
+            Logger.logStackTraceWithMessage(LOG_TAG, "The " + executionCommand.request.metadata.label + " did not return a valid integer", e);
             Logger.logErrorExtended(LOG_TAG, executionCommand.toString());
         }
 
