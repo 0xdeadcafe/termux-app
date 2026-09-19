@@ -97,6 +97,21 @@ public abstract class TerminalTestCase extends TestCase {
 		return this;
 	}
 
+	/**
+	 * Feed {@code s} to the emulator one byte at a time, simulating TCP/PTY read boundaries
+	 * splitting an escape sequence across multiple {@code read()} calls.
+	 * {@link #assertInvariants()} is called only after the last byte so mid-sequence state is
+	 * never checked prematurely.
+	 */
+	public TerminalTestCase enterStringSplit(String s) {
+		byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
+		for (int i = 0; i < bytes.length; i++) {
+			mTerminal.append(bytes, i, 1);
+		}
+		assertInvariants();
+		return this;
+	}
+
 	public void assertEnteringStringGivesResponse(String input, String expectedResponse) {
 		enterString(input);
 		String response = mOutput.getOutputAndClear();

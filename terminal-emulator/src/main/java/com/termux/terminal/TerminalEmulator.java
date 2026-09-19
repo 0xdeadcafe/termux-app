@@ -687,7 +687,11 @@ public final class TerminalEmulator {
      * @param length the number of bytes in the array to process
      */
     public void append(byte[] buffer, int length) {
-        for (int i = 0; i < length; i++)
+        append(buffer, 0, length);
+    }
+
+    public void append(byte[] buffer, int offset, int length) {
+        for (int i = offset; i < offset + length; i++)
             processByte(buffer[i]);
     }
 
