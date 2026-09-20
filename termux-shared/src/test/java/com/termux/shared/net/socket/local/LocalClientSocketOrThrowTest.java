@@ -22,7 +22,7 @@ import org.robolectric.RuntimeEnvironment;
 public class LocalClientSocketOrThrowTest {
 
     private LocalClientSocket newClientSocketWithInvalidFd() {
-        ILocalSocketManager client = new LocalSocketManagerClientBase() {
+        LocalSocketManagerClientBase client = new LocalSocketManagerClientBase() {
             @Override
             protected String getLogTag() {
                 return "test";

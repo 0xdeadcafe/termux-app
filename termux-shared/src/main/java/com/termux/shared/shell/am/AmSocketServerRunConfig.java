@@ -6,7 +6,7 @@ import androidx.annotation.NonNull;
 
 import com.termux.shared.logger.Logger;
 import com.termux.shared.markdown.MarkdownUtils;
-import com.termux.shared.net.socket.local.ILocalSocketManager;
+import com.termux.shared.net.socket.local.LocalSocketManagerClientBase;
 import com.termux.shared.net.socket.local.LocalSocketRunConfig;
 
 import java.io.Serializable;
@@ -33,7 +33,7 @@ public class AmSocketServerRunConfig extends LocalSocketRunConfig implements Ser
      * @param path The {@link #mPath} value.
      * @param localSocketManagerClient The {@link #mLocalSocketManagerClient} value.
      */
-    public AmSocketServerRunConfig(@NonNull String title, @NonNull String path, @NonNull ILocalSocketManager localSocketManagerClient) {
+    public AmSocketServerRunConfig(@NonNull String title, @NonNull String path, @NonNull LocalSocketManagerClientBase localSocketManagerClient) {
         super(title, path, localSocketManagerClient);
     }
 

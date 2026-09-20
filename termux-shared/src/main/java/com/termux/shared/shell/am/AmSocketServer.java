@@ -14,7 +14,6 @@ import com.termux.shared.android.PermissionUtils;
 import com.termux.shared.errors.Error;
 import com.termux.shared.errors.TermuxException;
 import com.termux.shared.logger.Logger;
-import com.termux.shared.net.socket.local.ILocalSocketManager;
 import com.termux.shared.net.socket.local.LocalClientSocket;
 import com.termux.shared.net.socket.local.LocalServerSocket;
 import com.termux.shared.net.socket.local.LocalSocketManager;
@@ -43,8 +42,9 @@ import java.util.List;
  *
  * Usage:
  * 1. Optionally extend {@link AmSocketServerClient}, the implementation for
- *    {@link ILocalSocketManager} that will receive call backs from the server including
- *    when client connects via {@link ILocalSocketManager#onClientAccepted(LocalSocketManager, LocalClientSocket)}.
+ *    Extend the {@link LocalSocketManagerClientBase} class that provides base implementation for
+ *    callbacks including
+ *    when client connects via {@link LocalSocketManagerClientBase#onClientAccepted(LocalSocketManager, LocalClientSocket)}.
  * 2. Create a {@link AmSocketServerRunConfig} instance which extends from {@link LocalSocketRunConfig}
  *    with the run config of the am server. It would  be better to use a filesystem socket instead
  *    of abstract namespace socket for security reasons.
@@ -270,7 +270,7 @@ public class AmSocketServer {
 
 
 
-    /** Implementation for {@link ILocalSocketManager} for {@link AmSocketServer}. */
+    /** Implementation of {@link LocalSocketManagerClientBase} for {@link AmSocketServer}. */
     public abstract static class AmSocketServerClient extends LocalSocketManagerClientBase {
 
         @Override

@@ -13,7 +13,6 @@ import com.termux.shared.shell.command.environment.UnixShellEnvironment;
 import com.termux.shared.shell.command.result.ResultData;
 import com.termux.shared.errors.Errno;
 import com.termux.shared.logger.Logger;
-import com.termux.shared.shell.command.environment.IShellEnvironment;
 import com.termux.shared.shell.ShellUtils;
 import com.termux.terminal.TerminalSession;
 import com.termux.terminal.TerminalSessionClient;
@@ -61,7 +60,7 @@ public class TermuxSession {
      * @param executionCommand The {@link ExecutionCommand} containing the information for execution command.
      * @param terminalSessionClient The {@link TerminalSessionClient} interface implementation.
      * @param termuxSessionClient The {@link TermuxSessionClient} interface implementation.
-     * @param shellEnvironmentClient The {@link IShellEnvironment} interface implementation.
+     * @param shellEnvironmentClient The {@link UnixShellEnvironment} implementation.
      * @param additionalEnvironment The additional shell environment variables to export. Existing
      *                              variables will be overridden.
      * @param setStdoutOnExit If set to {@code true}, then the {@link ResultData#stdout}
@@ -75,7 +74,7 @@ public class TermuxSession {
      */
     public static TermuxSession execute(@NonNull final Context currentPackageContext, @NonNull ExecutionCommand executionCommand,
                                         @NonNull final TerminalSessionClient terminalSessionClient, final TermuxSessionClient termuxSessionClient,
-                                        @NonNull final IShellEnvironment shellEnvironmentClient,
+                                        @NonNull final UnixShellEnvironment shellEnvironmentClient,
                                         @Nullable HashMap<String, String> additionalEnvironment,
                                         final boolean setStdoutOnExit) {
         // Resolve executable — use local var so the immutable request is not modified

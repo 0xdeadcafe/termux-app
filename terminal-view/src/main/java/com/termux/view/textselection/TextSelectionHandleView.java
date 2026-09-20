@@ -19,7 +19,7 @@ import com.termux.view.TerminalView;
 public class TextSelectionHandleView extends View {
     private final TerminalView terminalView;
     private PopupWindow mHandle;
-    private final CursorController mCursorController;
+    private final TextSelectionCursorController mCursorController;
 
     private final Drawable mHandleLeftDrawable;
     private final Drawable mHandleRightDrawable;
@@ -51,7 +51,7 @@ public class TextSelectionHandleView extends View {
 
     private long mLastTime;
 
-    public TextSelectionHandleView(TerminalView terminalView, CursorController cursorController, int initialOrientation) {
+    public TextSelectionHandleView(TerminalView terminalView, TextSelectionCursorController cursorController, int initialOrientation) {
         super(terminalView.getContext());
         this.terminalView = terminalView;
         mCursorController = cursorController;

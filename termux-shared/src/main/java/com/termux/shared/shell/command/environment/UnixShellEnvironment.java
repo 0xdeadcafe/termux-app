@@ -16,7 +16,7 @@ import java.util.HashMap;
  * https://manpages.debian.org/testing/manpages/environ.7.en.html
  * https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap08.html
  */
-public abstract class UnixShellEnvironment implements IShellEnvironment {
+public abstract class UnixShellEnvironment {
 
     /** Environment variable for the terminal's colour capabilities. */
     public static final String ENV_COLORTERM = "COLORTERM";
@@ -62,21 +62,17 @@ public abstract class UnixShellEnvironment implements IShellEnvironment {
                                                            boolean isFailSafe);
 
     @NonNull
-    @Override
     public abstract String getDefaultWorkingDirectoryPath();
 
     @NonNull
-    @Override
     public abstract String getDefaultBinPath();
 
     @NonNull
-    @Override
     public String[] setupShellCommandArguments(@NonNull String executable, @Nullable String[] arguments) {
         return ShellUtils.setupShellCommandArguments(executable, arguments);
     }
 
     @NonNull
-    @Override
     public abstract HashMap<String, String> setupShellCommandEnvironment(@NonNull Context currentPackageContext,
                                                                          @NonNull ExecutionCommand executionCommand);
 

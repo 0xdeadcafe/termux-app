@@ -14,9 +14,9 @@ import com.termux.shared.logger.Logger;
  * Manager for an AF_UNIX/SOCK_STREAM local server.
  *
  * Usage:
- * 1. Implement the {@link ILocalSocketManager} that will receive call backs from the server including
- *    when client connects via {@link ILocalSocketManager#onClientAccepted(LocalSocketManager, LocalClientSocket)}.
- *    Optionally extend the {@link LocalSocketManagerClientBase} class that provides base implementation.
+ * 1. Extend the {@link LocalSocketManagerClientBase} class that provides base implementation for
+ *    callbacks from the server including
+ *    when client connects via {@link LocalSocketManagerClientBase#onClientAccepted(LocalSocketManager, LocalClientSocket)}.
  * 2. Create a {@link LocalSocketRunConfig} instance with the run config of the server.
  * 3. Create a {@link LocalSocketManager} instance and call {@link #start()}.
  * 4. Stop server if needed with a call to {@link #stop()}.
@@ -40,8 +40,8 @@ public class LocalSocketManager {
     /** The {@link LocalServerSocket} for the {@link LocalSocketManager}. */
     @NonNull protected final LocalServerSocket mServerSocket;
 
-    /** The {@link ILocalSocketManager} client for the {@link LocalSocketManager}. */
-    @NonNull protected final ILocalSocketManager mLocalSocketManagerClient;
+    /** The {@link LocalSocketManagerClientBase} client for the {@link LocalSocketManager}. */
+    @NonNull protected final LocalSocketManagerClientBase mLocalSocketManagerClient;
 
     /** The {@link Thread.UncaughtExceptionHandler} used for client thread started by {@link LocalSocketManager}. */
     @NonNull protected final Thread.UncaughtExceptionHandler mLocalSocketManagerClientThreadUEH;
@@ -332,19 +332,19 @@ public class LocalSocketManager {
         onError(null, error);
     }
 
-    /** Wrapper to call {@link ILocalSocketManager#onError(LocalSocketManager, LocalClientSocket, Error)} in a new thread. */
+    /** Wrapper to call {@link LocalSocketManagerClientBase#onError(LocalSocketManager, LocalClientSocket, Error)} in a new thread. */
     public void onError(@Nullable LocalClientSocket clientSocket, @NonNull Error error) {
         startLocalSocketManagerClientThread(() ->
             mLocalSocketManagerClient.onError(this, clientSocket, error));
     }
 
-    /** Wrapper to call {@link ILocalSocketManager#onDisallowedClientConnected(LocalSocketManager, LocalClientSocket, Error)} in a new thread. */
+    /** Wrapper to call {@link LocalSocketManagerClientBase#onDisallowedClientConnected(LocalSocketManager, LocalClientSocket, Error)} in a new thread. */
     public void onDisallowedClientConnected(@NonNull LocalClientSocket clientSocket, @NonNull Error error) {
         startLocalSocketManagerClientThread(() ->
             mLocalSocketManagerClient.onDisallowedClientConnected(this, clientSocket, error));
     }
 
-    /** Wrapper to call {@link ILocalSocketManager#onClientAccepted(LocalSocketManager, LocalClientSocket)} in a new thread. */
+    /** Wrapper to call {@link LocalSocketManagerClientBase#onClientAccepted(LocalSocketManager, LocalClientSocket)} in a new thread. */
     public void onClientAccepted(@NonNull LocalClientSocket clientSocket) {
         startLocalSocketManagerClientThread(() ->
             mLocalSocketManagerClient.onClientAccepted(this, clientSocket));
@@ -374,7 +374,7 @@ public class LocalSocketManager {
     }
 
     /** Get {@link #mLocalSocketManagerClient}. */
-    public ILocalSocketManager getLocalSocketManagerClient() {
+    public LocalSocketManagerClientBase getLocalSocketManagerClient() {
         return mLocalSocketManagerClient;
     }
 
@@ -390,7 +390,7 @@ public class LocalSocketManager {
 
     /**
      * Get {@link Thread.UncaughtExceptionHandler} returned by call to
-     * {@link ILocalSocketManager#getLocalSocketManagerClientThreadUEH(LocalSocketManager)}
+     * {@link LocalSocketManagerClientBase#getLocalSocketManagerClientThreadUEH(LocalSocketManager)}
      * or the default handler that just logs the exception.
      */
     protected Thread.UncaughtExceptionHandler getLocalSocketManagerClientThreadUEHOrDefault() {

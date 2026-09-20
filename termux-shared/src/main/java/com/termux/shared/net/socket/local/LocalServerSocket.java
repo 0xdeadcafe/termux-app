@@ -24,8 +24,8 @@ public class LocalServerSocket implements Closeable {
     /** The {@link LocalSocketRunConfig} containing run config for the {@link LocalServerSocket}. */
     @NonNull protected final LocalSocketRunConfig mLocalSocketRunConfig;
 
-    /** The {@link ILocalSocketManager} client for the {@link LocalSocketManager}. */
-    @NonNull protected final ILocalSocketManager mLocalSocketManagerClient;
+    /** The {@link LocalSocketManagerClientBase} client for the {@link LocalSocketManager}. */
+    @NonNull protected final LocalSocketManagerClientBase mLocalSocketManagerClient;
 
     /** The {@link ClientSocketListener} {@link Thread} for the {@link LocalServerSocket}. */
     @NonNull protected final Thread mClientSocketListener;

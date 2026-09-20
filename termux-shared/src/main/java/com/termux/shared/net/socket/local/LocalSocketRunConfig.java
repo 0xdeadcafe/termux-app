@@ -45,8 +45,8 @@ public class LocalSocketRunConfig implements Serializable {
     /** If abstract namespace {@link LocalServerSocket} instead of filesystem. */
     protected final boolean mAbstractNamespaceSocket;
 
-    /** The {@link ILocalSocketManager} client for the {@link LocalSocketManager}. */
-    protected final ILocalSocketManager mLocalSocketManagerClient;
+    /** The {@link LocalSocketManagerClientBase} client for the {@link LocalSocketManager}. */
+    protected final LocalSocketManagerClientBase mLocalSocketManagerClient;
 
     /**
      * The {@link LocalServerSocket} file descriptor.
@@ -102,7 +102,7 @@ public class LocalSocketRunConfig implements Serializable {
      * @param path The {@link #mPath} value.
      * @param localSocketManagerClient The {@link #mLocalSocketManagerClient} value.
      */
-    public LocalSocketRunConfig(@NonNull String title, @NonNull String path, @NonNull ILocalSocketManager localSocketManagerClient) {
+    public LocalSocketRunConfig(@NonNull String title, @NonNull String path, @NonNull LocalSocketManagerClientBase localSocketManagerClient) {
         mTitle = title;
         mLocalSocketManagerClient = localSocketManagerClient;
         mAbstractNamespaceSocket = path.getBytes(StandardCharsets.UTF_8)[0] == 0;
@@ -136,7 +136,7 @@ public class LocalSocketRunConfig implements Serializable {
     }
 
     /** Get {@link #mLocalSocketManagerClient}. */
-    public ILocalSocketManager getLocalSocketManagerClient() {
+    public LocalSocketManagerClientBase getLocalSocketManagerClient() {
         return mLocalSocketManagerClient;
     }
 

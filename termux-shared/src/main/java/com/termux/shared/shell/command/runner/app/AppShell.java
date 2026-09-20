@@ -15,7 +15,7 @@ import com.termux.shared.shell.command.result.ResultData;
 import com.termux.shared.errors.Errno;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.shell.command.ExecutionCommand.ExecutionState;
-import com.termux.shared.shell.command.environment.IShellEnvironment;
+import com.termux.shared.shell.command.environment.UnixShellEnvironment;
 import com.termux.shared.shell.ShellUtils;
 import com.termux.shared.shell.StreamGobbler;
 
@@ -63,7 +63,7 @@ public final class AppShell {
      *                           be called regardless of {@code isSynchronous} value but not if
      *                           {@code null} is returned by this method. This can
      *                           optionally be {@code null}.
-     * @param shellEnvironmentClient The {@link IShellEnvironment} interface implementation.
+     * @param shellEnvironmentClient The {@link UnixShellEnvironment} implementation.
      * @param additionalEnvironment The additional shell environment variables to export. Existing
      *                              variables will be overridden.
      * @param isSynchronous If set to {@code true}, then the command will be executed in the
@@ -75,7 +75,7 @@ public final class AppShell {
      */
     public static AppShell execute(@NonNull final Context currentPackageContext, @NonNull ExecutionCommand executionCommand,
                                    final AppShellClient appShellClient,
-                                   @NonNull final IShellEnvironment shellEnvironmentClient,
+                                   @NonNull final UnixShellEnvironment shellEnvironmentClient,
                                    @Nullable HashMap<String, String> additionalEnvironment,
                                    final boolean isSynchronous) {
         if (executionCommand.request.executable == null || executionCommand.request.executable.isEmpty()) {

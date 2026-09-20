@@ -10,6 +10,8 @@ import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 
+import android.view.ViewTreeObserver;
+
 import androidx.annotation.Nullable;
 
 import com.termux.terminal.TerminalBuffer;
@@ -17,7 +19,7 @@ import com.termux.terminal.WcWidth;
 import com.termux.view.R;
 import com.termux.view.TerminalView;
 
-public class TextSelectionCursorController implements CursorController {
+public class TextSelectionCursorController implements ViewTreeObserver.OnTouchModeChangeListener {
 
     private final TerminalView terminalView;
     private final TextSelectionHandleView mStartHandle, mEndHandle;
@@ -41,7 +43,6 @@ public class TextSelectionCursorController implements CursorController {
         mHandleHeight = Math.max(mStartHandle.getHandleHeight(), mEndHandle.getHandleHeight());
     }
 
-    @Override
     public void show(MotionEvent event) {
         setInitialTextSelectionPosition(event);
         mStartHandle.positionAtCursor(mSelX1, mSelY1, true);
@@ -52,7 +53,6 @@ public class TextSelectionCursorController implements CursorController {
         mIsSelectingText = true;
     }
 
-    @Override
     public boolean hide() {
         if (!isActive()) return false;
 
@@ -77,7 +77,6 @@ public class TextSelectionCursorController implements CursorController {
         return true;
     }
 
-    @Override
     public void render() {
         if (!isActive()) return;
 
@@ -207,7 +206,6 @@ public class TextSelectionCursorController implements CursorController {
         }, ActionMode.TYPE_FLOATING);
     }
 
-    @Override
     public void updatePosition(TextSelectionHandleView handle, int x, int y) {
         TerminalBuffer screen = terminalView.mEmulator.getScreen();
         final int scrollRows = screen.getActiveRows() - terminalView.mEmulator.mRows;
@@ -343,11 +341,9 @@ public class TextSelectionCursorController implements CursorController {
         }
     }
 
-    @Override
     public void onDetached() {
     }
 
-    @Override
     public boolean isActive() {
         return mIsSelectingText;
     }

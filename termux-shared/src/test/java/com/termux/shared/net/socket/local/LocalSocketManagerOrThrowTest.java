@@ -23,7 +23,7 @@ import org.robolectric.RuntimeEnvironment;
 public class LocalSocketManagerOrThrowTest {
 
     private LocalSocketManager newManager() {
-        ILocalSocketManager client = new LocalSocketManagerClientBase() {
+        LocalSocketManagerClientBase client = new LocalSocketManagerClientBase() {
             @Override
             protected String getLogTag() {
                 return "test";
