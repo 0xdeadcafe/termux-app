@@ -113,9 +113,11 @@ static int create_subprocess(JNIEnv* env,
         char* error_message;
         if (asprintf(&error_message, "exec(\"%s\")", cmd) == -1) error_message = "exec()";
         perror(error_message);
+        fprintf(stderr, "Trying fallback: bash\n");
         fflush(stderr);
-        // Try bash via PATH (finds Termux bash if installed), then the system shell.
-        execlp("bash", "bash", NULL);
+        execlp("bash", "-bash", NULL);
+        fprintf(stderr, "Trying fallback: /system/bin/sh\n");
+        fflush(stderr);
         execl("/system/bin/sh", "/system/bin/sh", NULL);
         perror("exec(\"/system/bin/sh\")");
         _exit(1);

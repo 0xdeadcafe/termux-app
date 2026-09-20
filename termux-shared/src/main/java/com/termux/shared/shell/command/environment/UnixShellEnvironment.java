@@ -53,7 +53,7 @@ public abstract class UnixShellEnvironment {
 
 
     /** Names for common/supported login shell binaries. */
-    public static final String[] LOGIN_SHELL_BINARIES = new String[]{"login", "bash", "zsh", "fish", "sh"};
+    public static final String[] LOGIN_SHELL_BINARIES = new String[]{"bash", "zsh", "fish", "sh", "login"};
 
 
 
