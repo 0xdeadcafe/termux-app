@@ -11,7 +11,6 @@ import com.termux.shared.file.FileUtils;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.termux.settings.properties.TermuxProperties;
 
-import org.apache.commons.io.filefilter.TrueFileFilter;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -113,7 +112,7 @@ public class TermuxShellUtils {
             try {
                 FileUtils.deleteFilesOlderThanXDaysOrThrow("$TMPDIR",
                     FileUtils.getCanonicalPath(TermuxConstants.TERMUX_TMP_PREFIX_DIR_PATH, null),
-                    TrueFileFilter.INSTANCE, days, true, FileTypes.FILE_TYPE_ANY_FLAGS);
+                    days, true, FileTypes.FILE_TYPE_ANY_FLAGS);
             } catch (TermuxException e) {
                 Logger.logErrorExtended(LOG_TAG, "Failed to delete files from termux $TMPDIR older than " + days + " days\n" + e);
             }

@@ -26,9 +26,9 @@ import com.termux.shared.android.PackageUtils;
 import com.termux.shared.termux.TermuxConstants.TERMUX_APP;
 import com.termux.shared.termux.shell.command.environment.TermuxShellEnvironment;
 
-import org.apache.commons.io.IOUtils;
-
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.util.List;
@@ -588,14 +588,16 @@ public class TermuxUtils {
 
         String aptInfoScript;
         InputStream inputStream = context.getResources().openRawResource(com.termux.shared.R.raw.apt_info_script);
-        try {
-            aptInfoScript = IOUtils.toString(inputStream, Charset.defaultCharset());
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, Charset.defaultCharset()))) {
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null)
+                sb.append(line).append('\n');
+            aptInfoScript = sb.toString();
         } catch (IOException e) {
             Logger.logError(LOG_TAG, "Failed to get APT info script: " + e.getMessage());
             return null;
         }
-
-        IOUtils.closeQuietly(inputStream);
 
         if (aptInfoScript == null || aptInfoScript.isEmpty()) {
             Logger.logError(LOG_TAG, "The APT info script is null or empty");

@@ -37,7 +37,7 @@ public class FileUtilsWriteAndMiscOrThrowTest {
         File file = tempFolder.newFile("out.txt"); // pre-created, see beads-94h re new paths
         FileUtils.writeTextToFileOrThrow("test", file.getAbsolutePath(), StandardCharsets.UTF_8, "hello world", false);
 
-        assertEquals("hello world", org.apache.commons.io.FileUtils.readFileToString(file, "UTF-8"));
+        assertEquals("hello world", new String(java.nio.file.Files.readAllBytes(file.toPath()), java.nio.charset.StandardCharsets.UTF_8));
     }
 
     @Test

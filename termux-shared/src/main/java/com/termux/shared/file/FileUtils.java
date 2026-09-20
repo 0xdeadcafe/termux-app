@@ -15,9 +15,6 @@ import com.termux.shared.errors.FunctionErrno;
 import com.termux.shared.errors.FunctionException;
 import com.termux.shared.errors.TermuxException;
 
-import org.apache.commons.io.filefilter.AgeFileFilter;
-import org.apache.commons.io.filefilter.IOFileFilter;
-
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.Closeable;
@@ -43,11 +40,12 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -862,8 +860,19 @@ public class FileUtils {
                 createParentDirectoryFileOrThrow(label + "dest file parent", destFilePath);
 
                 if (srcFileType == FileType.DIRECTORY) {
-                    // Will give runtime exceptions on android < 8 due to missing classes like java.nio.file.Path if org.apache.commons.io version > 2.5
-                    org.apache.commons.io.FileUtils.copyDirectory(srcFile, destFile, true);
+                    // Walk the source tree and recreate under dest (symlinks copied as-is, not followed)
+                    final Path srcPath = srcFile.toPath();
+                    final Path dstPath = destFile.toPath();
+                    try (java.util.stream.Stream<Path> tree = Files.walk(srcPath)) {
+                        for (java.util.Iterator<Path> it = tree.iterator(); it.hasNext(); ) {
+                            Path s = it.next();
+                            Path d = dstPath.resolve(srcPath.relativize(s));
+                            if (Files.isDirectory(s, LinkOption.NOFOLLOW_LINKS))
+                                Files.createDirectories(d);
+                            else
+                                Files.copy(s, d, StandardCopyOption.REPLACE_EXISTING, LinkOption.NOFOLLOW_LINKS);
+                        }
+                    }
                 } else {
                     // Handles both regular files and symlinks: NOFOLLOW_LINKS preserves a symlink
                     // as a symlink (copying it, not its target) rather than dereferencing it.
@@ -1075,10 +1084,10 @@ public class FileUtils {
     }
 
     /**
-     * Exception-throwing sibling of {@link #deleteFilesOlderThanXDays(String, String, IOFileFilter, int, boolean, int)}.
+     * Exception-throwing sibling of the former {@code deleteFilesOlderThanXDays} method.
      * @throws TermuxException If deleting was not successful.
      */
-    public static void deleteFilesOlderThanXDaysOrThrow(String label, final String filePath, final IOFileFilter dirFilter, int days, final boolean ignoreNonExistentFile, int allowedFileTypeFlags) throws TermuxException {
+    public static void deleteFilesOlderThanXDaysOrThrow(String label, final String filePath, int days, final boolean ignoreNonExistentFile, int allowedFileTypeFlags) throws TermuxException {
         label = (label == null || label.isEmpty() ? "" : label + " ");
         if (filePath == null || filePath.isEmpty()) throw new TermuxException(FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(label + "file path", "deleteFilesOlderThanXDays"));
         if (days < 0) throw new TermuxException(FunctionErrno.ERRNO_INVALID_PARAMETER.getError(label + "days", "deleteFilesOlderThanXDays", " It must be >= 0."));
@@ -1096,30 +1105,25 @@ public class FileUtils {
 
             // If file does not exist
             if (fileType == FileType.NO_EXIST) {
-                // If delete is to be ignored if file does not exist
-                if (ignoreNonExistentFile)
-                    return;
-                    // Else return with error
-                else {
-                    label += "directory under which files had to be deleted";
-                    throw new TermuxException(FileUtilsErrno.ERRNO_FILE_NOT_FOUND_AT_PATH.getError(label, filePath).setLabel(label));
+                if (ignoreNonExistentFile) return;
+                label += "directory under which files had to be deleted";
+                throw new TermuxException(FileUtilsErrno.ERRNO_FILE_NOT_FOUND_AT_PATH.getError(label, filePath).setLabel(label));
+            }
+
+            // Collect files (not directories) whose mtime predates the cutoff, then delete them.
+            Instant cutoff = Instant.now().minus(days, ChronoUnit.DAYS);
+            List<Path> toDelete = new ArrayList<>();
+            try (java.util.stream.Stream<Path> tree = Files.walk(file.toPath())) {
+                for (java.util.Iterator<Path> it = tree.iterator(); it.hasNext(); ) {
+                    Path p = it.next();
+                    if (p.equals(file.toPath())) continue;
+                    if (Files.isDirectory(p, LinkOption.NOFOLLOW_LINKS)) continue;
+                    if (Files.getLastModifiedTime(p, LinkOption.NOFOLLOW_LINKS).toInstant().isBefore(cutoff))
+                        toDelete.add(p);
                 }
             }
-
-            // TODO: Use FileAttributes with support for atime (default), mtime, ctime. Add regex for ignoring file and dir absolute paths.
-            // FIXME: iterateFiles() does not return subdirectories even with TrueFileFilter for file and dir.
-            // FIXME: Empty directories remain
-
-            // If directory exists, delete its contents
-            Calendar calendar = Calendar.getInstance();
-            calendar.add(Calendar.DATE, -(days));
-            // AgeFileFilter seems to apply to symlink destination timestamp instead of symlink file itself
-            Iterator<File> filesToDelete =
-                org.apache.commons.io.FileUtils.iterateFiles(file, new AgeFileFilter(calendar.getTime()), dirFilter);
-            while (filesToDelete.hasNext()) {
-                File subFile = filesToDelete.next();
-                deleteFileOrThrow(label + " directory sub", subFile.getAbsolutePath(), true, true, allowedFileTypeFlags);
-            }
+            for (Path p : toDelete)
+                deleteFileOrThrow(label + "directory sub", p.toString(), true, true, allowedFileTypeFlags);
         } catch (TermuxException e) {
             throw e;
         } catch (Exception e) {

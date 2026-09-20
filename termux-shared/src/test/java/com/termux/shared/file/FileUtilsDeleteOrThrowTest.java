@@ -143,14 +143,14 @@ public class FileUtilsDeleteOrThrowTest {
     public void deleteFilesOlderThanXDaysOrThrow_throwsForNegativeDays() {
         File dir = tempFolder.getRoot();
         assertThrows(TermuxException.class, () ->
-            FileUtils.deleteFilesOlderThanXDaysOrThrow("test", dir.getAbsolutePath(), null, -1, false, FileTypes.FILE_TYPE_ANY_FLAGS));
+            FileUtils.deleteFilesOlderThanXDaysOrThrow("test", dir.getAbsolutePath(), -1, false, FileTypes.FILE_TYPE_ANY_FLAGS));
     }
 
     @Test
     public void deleteFilesOlderThanXDaysOrThrow_throwsWhenPathIsNotADirectory() throws Exception {
         File file = tempFolder.newFile("not-a-dir-for-cleanup.txt");
         assertThrows(TermuxException.class, () ->
-            FileUtils.deleteFilesOlderThanXDaysOrThrow("test", file.getAbsolutePath(), null, 1, false, FileTypes.FILE_TYPE_ANY_FLAGS));
+            FileUtils.deleteFilesOlderThanXDaysOrThrow("test", file.getAbsolutePath(), 1, false, FileTypes.FILE_TYPE_ANY_FLAGS));
     }
 
     @Test
@@ -160,6 +160,6 @@ public class FileUtilsDeleteOrThrowTest {
 
         // Files just created are not older than 1 day, so nothing should be deleted and no error
         // should be raised.
-        FileUtils.deleteFilesOlderThanXDaysOrThrow("test", dir.getAbsolutePath(), null, 1, false, FileTypes.FILE_TYPE_ANY_FLAGS);
+        FileUtils.deleteFilesOlderThanXDaysOrThrow("test", dir.getAbsolutePath(), 1, false, FileTypes.FILE_TYPE_ANY_FLAGS);
     }
 }

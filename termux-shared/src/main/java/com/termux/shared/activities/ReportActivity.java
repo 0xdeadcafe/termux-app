@@ -440,7 +440,7 @@ public class ReportActivity extends AppCompatActivity {
         String reportInfoDirectoryPath = getReportInfoDirectoryPath(context);
         Logger.logVerbose(LOG_TAG, "Deleting " + ReportInfo.class.getSimpleName() + " serialized object files under directory path \"" + reportInfoDirectoryPath + "\" older than " + days + " days");
         try {
-            FileUtils.deleteFilesOlderThanXDaysOrThrow(ReportInfo.class.getSimpleName(), reportInfoDirectoryPath, null, days, true, FileType.REGULAR.getValue());
+            FileUtils.deleteFilesOlderThanXDaysOrThrow(ReportInfo.class.getSimpleName(), reportInfoDirectoryPath, days, true, FileType.REGULAR.getValue());
             return null;
         } catch (TermuxException e) {
             return e.getError();
