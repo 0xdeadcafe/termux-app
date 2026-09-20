@@ -43,6 +43,10 @@ public class Logger {
         logError(client, tag, getMessageAndStackTraceString(message, throwable));
     }
 
+    // NOTE: getMessageAndStackTraceString() and getStackTraceString() are intentionally duplicated
+    // from com.termux.shared.logger.Logger. terminal-emulator cannot depend on termux-shared
+    // (that would create a circular dependency), and extracting these ~6 lines into a new shared
+    // module would add more complexity than it removes. Keep both copies in sync manually.
     public static String getMessageAndStackTraceString(String message, Throwable throwable) {
         if (message == null && throwable == null)
             return null;

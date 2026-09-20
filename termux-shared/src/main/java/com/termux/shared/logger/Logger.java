@@ -258,6 +258,9 @@ public class Logger {
 
 
 
+    // NOTE: getMessageAndStackTraceString() and getStackTraceString() below are intentionally
+    // duplicated in com.termux.terminal.Logger. terminal-emulator cannot depend on termux-shared
+    // (circular dependency), so these helpers live in both places. Keep them in sync manually.
     public static String getMessageAndStackTraceString(String message, Throwable throwable) {
         if (message == null && throwable == null)
             return null;
