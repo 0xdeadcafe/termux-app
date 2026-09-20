@@ -8,7 +8,6 @@ import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
-import android.os.Build;
 import android.os.UserHandle;
 import android.os.UserManager;
 
@@ -178,23 +177,6 @@ public class PackageUtils {
     }
 
     /**
-     * Get the {@code privateFlags} {@link Field} of the {@link ApplicationInfo} class.
-     *
-     * @param applicationInfo The {@link ApplicationInfo} for the package.
-     * @return Returns the private flags or {@code null} if an exception was raised.
-     */
-    @Nullable
-    public static Integer getApplicationInfoPrivateFlagsForPackage(@NonNull final ApplicationInfo applicationInfo) {
-        try {
-            return (Integer) ReflectionUtils.invokeField(ApplicationInfo.class, "privateFlags", applicationInfo).value;
-        } catch (Exception e) {
-            // ClassCastException may be thrown
-            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to get privateFlags field value for ApplicationInfo class", e);
-            return null;
-        }
-    }
-
-    /**
      * Get the {@code seInfo} {@link Field} of the {@link ApplicationInfo} class.
      *
      * String retrieved from the seinfo tag found in selinux policy. This value can be set through
@@ -239,43 +221,6 @@ public class PackageUtils {
             return null;
         }
     }
-
-    /**
-     * Get the {@code privateFlags} {@link Field} of the {@link ApplicationInfo} class.
-     *
-     * @param fieldName The name of the field to get.
-     * @return Returns the field value or {@code null} if an exception was raised.
-     */
-    @Nullable
-    public static Integer getApplicationInfoStaticIntFieldValue(@NonNull String fieldName) {
-        try {
-            return (Integer) ReflectionUtils.invokeField(ApplicationInfo.class, fieldName, null).value;
-        } catch (Exception e) {
-            // ClassCastException may be thrown
-            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to get \"" + fieldName + "\" field value for ApplicationInfo class", e);
-            return null;
-        }
-    }
-
-    /**
-     * Check if the app associated with the {@code applicationInfo} has a specific flag set.
-     *
-     * @param flagToCheckName The name of the field for the flag to check.
-     * @param applicationInfo The {@link ApplicationInfo} for the package.
-     * @return Returns {@code true} if app has flag is set, otherwise {@code false}. This will be
-     * {@code null} if an exception is raised.
-     */
-    @Nullable
-    public static Boolean isApplicationInfoPrivateFlagSetForPackage(@NonNull String flagToCheckName, @NonNull final ApplicationInfo applicationInfo) {
-        Integer privateFlags = getApplicationInfoPrivateFlagsForPackage(applicationInfo);
-        if (privateFlags == null) return null;
-
-        Integer flagToCheck = getApplicationInfoStaticIntFieldValue(flagToCheckName);
-        if (flagToCheck == null) return null;
-
-        return ( 0 != ( privateFlags & flagToCheck ) );
-    }
-
 
 
 
@@ -439,35 +384,6 @@ public class PackageUtils {
 
 
 
-    /**
-     * Check if the app associated with the {@code context} has
-     * ApplicationInfo.PRIVATE_FLAG_REQUEST_LEGACY_EXTERNAL_STORAGE (requestLegacyExternalStorage)
-     * set to {@code true} in app manifest.
-     *
-     * @param context The {@link Context} for the package.
-     * @return Returns {@code true} if app has requested legacy external storage, otherwise
-     * {@code false}. This will be {@code null} if an exception is raised.
-     */
-    @Nullable
-    public static Boolean hasRequestedLegacyExternalStorage(@NonNull final Context context) {
-        return hasRequestedLegacyExternalStorage(context.getApplicationInfo());
-    }
-
-    /**
-     * Check if the app associated with the {@code applicationInfo} has
-     * ApplicationInfo.PRIVATE_FLAG_REQUEST_LEGACY_EXTERNAL_STORAGE (requestLegacyExternalStorage)
-     * set to {@code true} in app manifest.
-     *
-     * @param applicationInfo The {@link ApplicationInfo} for the package.
-     * @return Returns {@code true} if app has requested legacy external storage, otherwise
-     * {@code false}. This will be {@code null} if an exception is raised.
-     */
-    @Nullable
-    public static Boolean hasRequestedLegacyExternalStorage(@NonNull final ApplicationInfo applicationInfo) {
-        return isApplicationInfoPrivateFlagSetForPackage("PRIVATE_FLAG_REQUEST_LEGACY_EXTERNAL_STORAGE", applicationInfo);
-    }
-
-
 
     /**
      * Get the {@code versionCode} for the package associated with the {@code context}.
@@ -571,9 +487,9 @@ public class PackageUtils {
              * the package and removes its apk automatically if its installed as a user app instead of system app
              * W/PackageManager: Failed to parse /path/to/com.termux.tasker.apk: Signature mismatch for shared user: SharedUserSetting{xxxxxxx com.termux/10xxx}
              */
-            PackageInfo packageInfo = getPackageInfoForPackage(context, packageName, PackageManager.GET_SIGNATURES);
-            if (packageInfo == null) return null;
-            return DataUtils.bytesToHex(MessageDigest.getInstance("SHA-256").digest(packageInfo.signatures[0].toByteArray()));
+            PackageInfo packageInfo = getPackageInfoForPackage(context, packageName, PackageManager.GET_SIGNING_CERTIFICATES);
+            if (packageInfo == null || packageInfo.signingInfo == null) return null;
+            return DataUtils.bytesToHex(MessageDigest.getInstance("SHA-256").digest(packageInfo.signingInfo.getApkContentsSigners()[0].toByteArray()));
         } catch (final Exception e) {
             return null;
         }

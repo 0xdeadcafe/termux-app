@@ -204,7 +204,7 @@ public class FileReceiverActivity extends AppCompatActivity {
                 Intent executeIntent = new Intent(TERMUX_SERVICE.ACTION_SERVICE_EXECUTE, scriptUri);
                 executeIntent.setClass(FileReceiverActivity.this, TermuxService.class);
                 executeIntent.putExtra(TERMUX_SERVICE.EXTRA_ARGUMENTS, new String[]{outFile.getAbsolutePath()});
-                startService(executeIntent);
+                startForegroundService(executeIntent);
                 finish();
             },
             R.string.action_file_received_open_directory, text -> {
@@ -213,7 +213,7 @@ public class FileReceiverActivity extends AppCompatActivity {
                 Intent executeIntent = new Intent(TERMUX_SERVICE.ACTION_SERVICE_EXECUTE);
                 executeIntent.putExtra(TERMUX_SERVICE.EXTRA_WORKDIR, TERMUX_RECEIVEDIR);
                 executeIntent.setClass(FileReceiverActivity.this, TermuxService.class);
-                startService(executeIntent);
+                startForegroundService(executeIntent);
                 finish();
             },
             android.R.string.cancel, text -> finish(), dialog -> {
@@ -268,7 +268,7 @@ public class FileReceiverActivity extends AppCompatActivity {
         Intent executeIntent = new Intent(TERMUX_SERVICE.ACTION_SERVICE_EXECUTE, urlOpenerProgramUri);
         executeIntent.setClass(FileReceiverActivity.this, TermuxService.class);
         executeIntent.putExtra(TERMUX_SERVICE.EXTRA_ARGUMENTS, new String[]{url});
-        startService(executeIntent);
+        startForegroundService(executeIntent);
         finish();
     }
 

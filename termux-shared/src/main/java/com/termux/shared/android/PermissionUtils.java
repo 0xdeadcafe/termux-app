@@ -9,7 +9,6 @@ import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Environment;
 import android.os.PowerManager;
 import android.provider.Settings;
@@ -226,55 +225,28 @@ public class PermissionUtils {
     }
 
     /**
-     * Check if legacy or manage external storage permissions has been granted. If
-     * {@link #isLegacyExternalStoragePossible(Context)} returns {@code true}, them it will be
-     * checked if app has has been granted {@link Manifest.permission#READ_EXTERNAL_STORAGE} and
-     * {@link Manifest.permission#WRITE_EXTERNAL_STORAGE} permissions, otherwise it will be checked
-     * if app has been granted the {@link Manifest.permission#MANAGE_EXTERNAL_STORAGE} permission.
+     * Check if {@link Manifest.permission#MANAGE_EXTERNAL_STORAGE} has been granted. If not,
+     * requests it from the user when {@code requestCode >= 0}.
      *
-     * If storage permission is missing, it will be requested from the user if {@code context} is an
-     * instance of {@link Activity} or {@link AppCompatActivity} and {@code requestCode}
-     * is `>=0` and the function will automatically return. The caller should register for
-     * Activity.onActivityResult() and Activity.onRequestPermissionsResult() and call this function
-     * again but set {@code requestCode} to `-1` to check if permission was granted or not.
+     * Caller must declare the following in AndroidManifest.xml:
+     * {@code <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />}
      *
-     * Caller must add following to AndroidManifest.xml of the app, otherwise errors will be thrown.
-     * {@code
-     * <manifest
-     *     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-     *     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-     *     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
-     *
-     *    <application
-     *        android:requestLegacyExternalStorage="true"
-     *        ....
-     *    </application>
-     * </manifest>
-     *}
      * @param context The context for operations.
-     * @param requestCode The request code to use while asking for permission.
+     * @param requestCode The request code to use while asking for permission. Pass {@code -1} to
+     *                    check without requesting.
      * @param showErrorMessage If an error message toast should be shown if permission is not granted.
      * @return Returns {@code true} if permission is granted, otherwise {@code false}.
      */
     public static boolean checkAndRequestLegacyOrManageExternalStoragePermission(@NonNull Context context,
                                                                                  int requestCode,
                                                                                  boolean showErrorMessage) {
-        String errmsg;
-        boolean requestLegacyStoragePermission = isLegacyExternalStoragePossible(context);
-        boolean checkIfHasRequestedLegacyExternalStorage = checkIfHasRequestedLegacyExternalStorage(context);
-
-        if (requestLegacyStoragePermission && checkIfHasRequestedLegacyExternalStorage) {
-            // Check if requestLegacyExternalStorage is set to true in app manifest
-            if (!hasRequestedLegacyExternalStorage(context, showErrorMessage))
-                return false;
-        }
-
-        if (checkStoragePermission(context, requestLegacyStoragePermission)) {
+        // minSdk=30, targetSdk=34: requestLegacyExternalStorage is ignored by Android 11+ when
+        // targetSdk >= 30. The only relevant permission path is MANAGE_EXTERNAL_STORAGE.
+        if (Environment.isExternalStorageManager()) {
             return true;
         }
 
-
-        errmsg = context.getString(R.string.msg_storage_permission_not_granted);
+        String errmsg = context.getString(R.string.msg_storage_permission_not_granted);
         Logger.logError(LOG_TAG, errmsg);
         if (showErrorMessage)
             Logger.showToast(context, errmsg, false);
@@ -282,50 +254,8 @@ public class PermissionUtils {
         if (requestCode < 0)
             return false;
 
-        if (requestLegacyStoragePermission) {
-            requestLegacyStorageExternalPermission(context, requestCode);
-        } else {
-            requestManageStorageExternalPermission(context, requestCode);
-        }
-
+        requestManageStorageExternalPermission(context, requestCode);
         return false;
-    }
-
-    /**
-     * Check if app has been granted storage permission.
-     *
-     * @param context The context for operations.
-     * @param checkLegacyStoragePermission If set to {@code true}, then it will be checked if app
-     *                                     has been granted {@link Manifest.permission#READ_EXTERNAL_STORAGE}
-     *                                     and {@link Manifest.permission#WRITE_EXTERNAL_STORAGE}
-     *                                     permissions, otherwise it will be checked if app has been
-     *                                     granted the {@link Manifest.permission#MANAGE_EXTERNAL_STORAGE}
-     *                                     permission.
-     * @return Returns {@code true} if permission is granted, otherwise {@code false}.
-     */
-    public static boolean checkStoragePermission(@NonNull Context context, boolean checkLegacyStoragePermission) {
-        if (checkLegacyStoragePermission) {
-            return checkPermissions(context,
-                new String[]{Manifest.permission.READ_EXTERNAL_STORAGE,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE});
-        } else {
-            return Environment.isExternalStorageManager();
-        }
-    }
-
-    /**
-     * Request user to grant {@link Manifest.permission#READ_EXTERNAL_STORAGE} and
-     * {@link Manifest.permission#WRITE_EXTERNAL_STORAGE} permissions to the app.
-     *
-     * @param context The context for operations. It must be an instance of {@link Activity} or
-     * {@link AppCompatActivity}.
-     * @param requestCode The request code to use while asking for permission. It must be `>=0` or
-     *                    will fail silently and will log an exception.
-     * @return Returns {@code true} if requesting the permission was successful, otherwise {@code false}.
-     */
-    public static boolean requestLegacyStorageExternalPermission(@NonNull Context context, int requestCode) {
-        Logger.logInfo(LOG_TAG, "Requesting legacy external storage permission");
-        return requestPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE, requestCode);
     }
 
     /** Wrapper for {@link #requestManageStorageExternalPermission(Context, int)}. */
@@ -374,59 +304,6 @@ public class PermissionUtils {
 
         return null;
     }
-
-    /**
-     * If app is targeting targetSdkVersion 30 (android 11) and running on sdk 30 (android 11) or
-     * higher, then {@link android.R.attr#requestLegacyExternalStorage} attribute is ignored.
-     * https://developer.android.com/training/data-storage/use-cases#opt-out-scoped-storage
-     */
-    public static boolean isLegacyExternalStoragePossible(@NonNull Context context) {
-        // minSdk=30 (R): SDK_INT is always >= R, so legacy storage is only possible if
-        // the package targets below R.
-        return PackageUtils.getTargetSDKForPackage(context) < Build.VERSION_CODES.R;
-    }
-
-    /**
-     * Return whether it should be checked if app has set
-     * {@link android.R.attr#requestLegacyExternalStorage} attribute to {@code true}, if storage
-     * permissions are to be requested based on if {@link #isLegacyExternalStoragePossible(Context)}
-     * return {@code true}.
-     *
-     * If app is targeting targetSdkVersion 30 (android 11), then legacy storage can only be
-     * requested if running on sdk 29 (android 10).
-     * If app is targeting targetSdkVersion 29 (android 10), then legacy storage can only be
-     * requested if running on sdk 29 (android 10) and higher.
-     */
-    public static boolean checkIfHasRequestedLegacyExternalStorage(@NonNull Context context) {
-        // minSdk=30: SDK_INT is always >= R, so it can never equal Q.
-        // SDK_INT is always >= Q, so the Q-target branch is always true.
-        // Simplified: only need to check the manifest opt-in when targetSdk == Q.
-        return PackageUtils.getTargetSDKForPackage(context) == Build.VERSION_CODES.Q;
-    }
-
-    /**
-     * Call to {@link Environment#isExternalStorageLegacy()} will not return the actual value defined
-     * in app manifest for {@link android.R.attr#requestLegacyExternalStorage} attribute,
-     * since an app may inherit its legacy state based on when it was first installed, target sdk and
-     * other factors. To provide consistent experience for all users regardless of current legacy
-     * state on a specific device, we directly use the value defined in app` manifest.
-     */
-    public static boolean hasRequestedLegacyExternalStorage(@NonNull Context context,
-                                                            boolean showErrorMessage) {
-        String errmsg;
-        Boolean hasRequestedLegacyExternalStorage = PackageUtils.hasRequestedLegacyExternalStorage(context);
-        if (hasRequestedLegacyExternalStorage != null && !hasRequestedLegacyExternalStorage) {
-            errmsg = context.getString(R.string.error_has_not_requested_legacy_external_storage,
-                context.getPackageName(), PackageUtils.getTargetSDKForPackage(context), Build.VERSION.SDK_INT);
-            Logger.logError(LOG_TAG, errmsg);
-            if (showErrorMessage)
-                Logger.showToast(context, errmsg, true);
-            return false;
-        }
-
-        return true;
-    }
-
 
 
 

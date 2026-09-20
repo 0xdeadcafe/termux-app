@@ -247,7 +247,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         try {
             // Start the {@link TermuxService} and make it run regardless of who is bound to it
             Intent serviceIntent = new Intent(this, TermuxService.class);
-            startService(serviceIntent);
+            startForegroundService(serviceIntent);
 
             // Attempt to bind to the service, this will call the {@link #onServiceConnected(ComponentName, IBinder)}
             // callback if it succeeds.
@@ -751,9 +751,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
 
     /**
-     * For processes to access primary external storage (/sdcard, /storage/emulated/0, ~/storage/shared),
-     * termux needs to be granted legacy WRITE_EXTERNAL_STORAGE or MANAGE_EXTERNAL_STORAGE permissions
-     * if targeting targetSdkVersion 30 (android 11) and running on sdk 30 (android 11) and higher.
+     * Request {@link Manifest.permission#MANAGE_EXTERNAL_STORAGE} permission so that processes
+     * can access primary external storage (/sdcard, ~/storage/shared).
      */
     public void requestStoragePermission(boolean isPermissionCallback) {
         new Thread() {
