@@ -174,7 +174,7 @@ public class RunCommandService extends Service {
             IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_RESULT_FILE_BASENAME, null),
             IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_RESULT_FILE_OUTPUT_FORMAT, null),
             IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_RESULT_FILE_ERROR_FORMAT, null),
-            DataUtils.getDefaultIfNull(IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_RESULT_FILES_SUFFIX, null), "")) : null;
+            IntentUtils.getStringExtraIfSet(intent, RUN_COMMAND_SERVICE.EXTRA_RESULT_FILES_SUFFIX, "")) : null;
         // Now that we have the full resultIntake, update the command for any remaining error paths
         executionCommand.request = executionCommand.request.toBuilder()
             .metadata(metadata).resultIntake(resultIntake).build();
@@ -248,7 +248,7 @@ public class RunCommandService extends Service {
         if (executionCommand.request.workingDirectory != null && !executionCommand.request.workingDirectory.isEmpty())
             execIntent.putExtra(TERMUX_SERVICE.EXTRA_WORKDIR, executionCommand.request.workingDirectory);
         execIntent.putExtra(TERMUX_SERVICE.EXTRA_RUNNER, executionCommand.request.runner != null ? executionCommand.request.runner.getName() : null);
-        execIntent.putExtra(TERMUX_SERVICE.EXTRA_BACKGROUND_CUSTOM_LOG_LEVEL, DataUtils.getStringFromInteger(executionCommand.request.backgroundCustomLogLevel, null));
+        execIntent.putExtra(TERMUX_SERVICE.EXTRA_BACKGROUND_CUSTOM_LOG_LEVEL, executionCommand.request.backgroundCustomLogLevel == null ? null : String.valueOf((int) executionCommand.request.backgroundCustomLogLevel));
         execIntent.putExtra(TERMUX_SERVICE.EXTRA_SESSION_ACTION, executionCommand.request.sessionAction);
         execIntent.putExtra(TERMUX_SERVICE.EXTRA_SHELL_NAME, executionCommand.request.shellName);
         execIntent.putExtra(TERMUX_SERVICE.EXTRA_SHELL_CREATE_MODE, executionCommand.request.shellCreateMode);

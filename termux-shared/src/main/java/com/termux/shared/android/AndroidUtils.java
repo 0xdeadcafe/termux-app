@@ -9,7 +9,6 @@ import android.os.Build;
 import androidx.annotation.NonNull;
 
 import com.termux.shared.R;
-import com.termux.shared.data.DataUtils;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.markdown.MarkdownUtils;
 
@@ -94,7 +93,7 @@ public class AndroidUtils {
 
         String seInfoUser = PackageUtils.getApplicationInfoSeInfoUserForPackage(applicationInfo);
         AndroidUtils.appendPropertyToMarkdown(markdownString,"SE_INFO", PackageUtils.getApplicationInfoSeInfoForPackage(applicationInfo) +
-            (DataUtils.isNullOrEmpty(seInfoUser) ? "" : seInfoUser));
+            ((seInfoUser == null || seInfoUser.isEmpty()) ? "" : seInfoUser));
 
         return markdownString.toString();
     }

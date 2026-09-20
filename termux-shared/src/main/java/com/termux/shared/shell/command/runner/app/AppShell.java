@@ -9,7 +9,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.termux.shared.R;
-import com.termux.shared.data.DataUtils;
 import com.termux.shared.shell.command.ExecutionCommand;
 import com.termux.shared.shell.command.environment.ShellEnvironmentUtils;
 import com.termux.shared.shell.command.result.ResultData;
@@ -181,7 +180,7 @@ public final class AppShell {
         STDOUT.start();
         STDERR.start();
 
-        if (!DataUtils.isNullOrEmpty(mExecutionCommand.request.stdin)) {
+        if ((mExecutionCommand.request.stdin != null && !mExecutionCommand.request.stdin.isEmpty())) {
             try {
                 STDIN.write((mExecutionCommand.request.stdin + "\n").getBytes(StandardCharsets.UTF_8));
                 STDIN.flush();

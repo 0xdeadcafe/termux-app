@@ -5,7 +5,6 @@ import android.net.Uri;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.termux.shared.data.DataUtils;
 import com.termux.shared.file.FileUtils;
 
 public class UriUtils {
@@ -29,9 +28,9 @@ public class UriUtils {
     public static String getUriFilePathWithFragment(Uri uri) {
         if (uri == null) return null;
         String path = uri.getPath();
-        if (DataUtils.isNullOrEmpty(path)) return null;
+        if ((path == null || path.isEmpty())) return null;
         String fragment = uri.getFragment();
-        return path + (DataUtils.isNullOrEmpty(fragment) ? "" : "#" + fragment);
+        return path + ((fragment == null || fragment.isEmpty()) ? "" : "#" + fragment);
     }
 
     /**
@@ -51,7 +50,7 @@ public class UriUtils {
             path = getUriFilePathWithFragment(uri);
         } else {
             path = uri.getPath();
-            if (DataUtils.isNullOrEmpty(path)) return null;
+            if ((path == null || path.isEmpty())) return null;
         }
 
         return FileUtils.getFileBasename(path);

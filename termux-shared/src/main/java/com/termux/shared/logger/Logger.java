@@ -9,7 +9,6 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 
 import com.termux.shared.R;
-import com.termux.shared.data.DataUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -361,7 +360,7 @@ public class Logger {
 
 
     public static void showToast(final Context context, final String toastText, boolean longDuration) {
-        if (context == null || DataUtils.isNullOrEmpty(toastText)) return;
+        if (context == null || (toastText == null || toastText.isEmpty())) return;
 
         new Handler(Looper.getMainLooper()).post(() -> Toast.makeText(context, toastText, longDuration ? Toast.LENGTH_LONG : Toast.LENGTH_SHORT).show());
     }

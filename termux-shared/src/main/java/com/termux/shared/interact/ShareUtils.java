@@ -77,7 +77,7 @@ public class ShareUtils {
         shareTextIntent.putExtra(Intent.EXTRA_SUBJECT, subject);
         shareTextIntent.putExtra(Intent.EXTRA_TEXT, DataUtils.getTruncatedCommandOutput(text, DataUtils.TRANSACTION_SIZE_LIMIT_IN_BYTES, true, false, false));
 
-        openSystemAppChooser(context, shareTextIntent, DataUtils.isNullOrEmpty(title) ? context.getString(R.string.title_share_with) : title);
+        openSystemAppChooser(context, shareTextIntent, (title == null || title.isEmpty()) ? context.getString(R.string.title_share_with) : title);
     }
 
 

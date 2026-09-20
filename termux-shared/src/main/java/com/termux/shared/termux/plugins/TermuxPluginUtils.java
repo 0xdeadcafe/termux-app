@@ -33,7 +33,6 @@ import com.termux.shared.termux.settings.preferences.TermuxPreferenceConstants.T
 import com.termux.shared.models.ReportInfo;
 import com.termux.shared.termux.settings.properties.TermuxProperties;
 import com.termux.shared.shell.command.ExecutionCommand;
-import com.termux.shared.data.DataUtils;
 import com.termux.shared.markdown.MarkdownUtils;
 import com.termux.shared.termux.TermuxUtils;
 
@@ -56,7 +55,7 @@ public class TermuxPluginUtils {
     public static void processPluginExecutionCommandResult(final Context context, String logTag, final ExecutionCommand executionCommand) {
         if (executionCommand == null) return;
 
-        logTag = DataUtils.getDefaultIfNull(logTag, LOG_TAG);
+        logTag = (logTag != null ? logTag : LOG_TAG);
         Error error = null;
         ResultData resultData = executionCommand.resultData;
 
@@ -161,7 +160,7 @@ public class TermuxPluginUtils {
                                                           boolean forceNotification) {
         if (context == null || executionCommand == null) return;
 
-        logTag = DataUtils.getDefaultIfNull(logTag, LOG_TAG);
+        logTag = (logTag != null ? logTag : LOG_TAG);
         Error error = null;
         ResultData resultData = executionCommand.resultData;
 
@@ -361,7 +360,7 @@ public class TermuxPluginUtils {
         if (!preferences.arePluginErrorNotificationsEnabled(true) && !forceNotification)
             return;
 
-        logTag = DataUtils.getDefaultIfNull(logTag, LOG_TAG);
+        logTag = (logTag != null ? logTag : LOG_TAG);
 
         if (showToast)
             Logger.showToast(currentPackageContext, notificationTextString, true);

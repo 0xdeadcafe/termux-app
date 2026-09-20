@@ -3,8 +3,6 @@ package com.termux.shared.data;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-
 
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutputStream;
@@ -102,18 +100,7 @@ public class DataUtils {
         }
     }
 
-    /**
-     * Get the {@code String} from an {@link Integer}.
-     *
-     * @param value The {@link Integer} value.
-     * @param def The default {@link String} value.
-     * @return Returns {@code value} if it is not {@code null}, otherwise returns {@code def}.
-     */
-    public static String getStringFromInteger(Integer value, String def) {
-        return (value == null) ? def : String.valueOf((int) value);
-    }
-
-    /**
+/**
      * Get the {@code hex string} from a {@link byte[]}.
      *
      * @param bytes The {@link byte[]} value.
@@ -148,13 +135,6 @@ public class DataUtils {
 
     /**
      * If value is not in the range [min, max], set it to either min or max.
-     */
-    public static int clamp(int value, int min, int max) {
-        return Math.min(Math.max(value, min), max);
-    }
-
-    /**
-     * If value is not in the range [min, max], set it to default.
      */
     public static float rangedOrDefault(float value, float def, float min, float max) {
         if (value < min || value > max)
@@ -206,35 +186,6 @@ public class DataUtils {
             return string;
         else
             return string.replaceAll("(?m)^", String.join("", Collections.nCopies(Math.max(count, 1), indent)));
-    }
-
-
-
-    /**
-     * Get the object itself if it is not {@code null}, otherwise default.
-     *
-     * @param object The {@link Object} to check.
-     * @param def The default {@link Object}.
-     * @return Returns {@code object} if it is not {@code null}, otherwise returns {@code def}.
-     */
-    public static <T> T getDefaultIfNull(@Nullable T object, @Nullable T def) {
-        return (object == null) ? def : object;
-    }
-
-    /**
-     * Get the {@link String} itself if it is not {@code null} or empty, otherwise default.
-     *
-     * @param value The {@link String} to check.
-     * @param def The default {@link String}.
-     * @return Returns {@code value} if it is not {@code null} or empty, otherwise returns {@code def}.
-     */
-    public static String getDefaultIfUnset(@Nullable String value, String def) {
-        return (value == null || value.isEmpty()) ? def : value;
-    }
-
-    /** Check if a string is null or empty. */
-    public static boolean isNullOrEmpty(String string) {
-        return string == null || string.isEmpty();
     }
 
 

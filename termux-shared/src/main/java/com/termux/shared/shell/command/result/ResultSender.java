@@ -72,7 +72,7 @@ public class ResultSender {
             throw new TermuxException(FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(
                     "context, pi or resultData", "sendCommandResultDataWithPendingIntentOrThrow"));
 
-        logTag = DataUtils.getDefaultIfNull(logTag, LOG_TAG);
+        logTag = (logTag != null ? logTag : LOG_TAG);
 
         Logger.logDebugExtended(logTag, "Sending result for command \"" + label + "\":\n" + pi + "\n" + ResultData.getResultDataLogString(resultData, logStdoutAndStderr));
 
@@ -160,7 +160,7 @@ public class ResultSender {
             throw new TermuxException(FunctionErrno.ERRNO_NULL_OR_EMPTY_PARAMETER.getError(
                     "context, dir or resultData", "sendCommandResultDataToDirectoryOrThrow"));
 
-        logTag = DataUtils.getDefaultIfNull(logTag, LOG_TAG);
+        logTag = (logTag != null ? logTag : LOG_TAG);
 
         String resultDataStdout = resultData.stdout.toString();
         String resultDataStderr = resultData.stderr.toString();
@@ -169,8 +169,8 @@ public class ResultSender {
         if (resultData.exitCode != null)
             resultDataExitCode = String.valueOf(resultData.exitCode);
 
-        String resultDataErrmsg = DataUtils.getDefaultIfNull(
-                resultData.isStateFailed() ? ResultData.getErrorsListLogString(resultData) : null, "");
+        String resultDataErrmsg = resultData.isStateFailed() ? ResultData.getErrorsListLogString(resultData) : null;
+        if (resultDataErrmsg == null) resultDataErrmsg = "";
 
         Logger.logDebugExtended(logTag, "Writing result for command \"" + label + "\":\n" + dir + "\n" + ResultData.getResultDataLogString(resultData, logStdoutAndStderr));
 
@@ -185,14 +185,14 @@ public class ResultSender {
         }
 
         if (dir.singleFile) {
-            if (DataUtils.isNullOrEmpty(dir.fileBasename) || dir.fileBasename.contains("/"))
+            if ((dir.fileBasename == null || dir.fileBasename.isEmpty()) || dir.fileBasename.contains("/"))
                 throw new TermuxException(ResultSenderErrno.ERROR_RESULT_FILE_BASENAME_NULL_OR_INVALID.getError(dir.fileBasename));
 
             String error_or_output;
 
             if (resultData.isStateFailed()) {
                 try {
-                    if (DataUtils.isNullOrEmpty(dir.fileErrorFormat)) {
+                    if ((dir.fileErrorFormat == null || dir.fileErrorFormat.isEmpty())) {
                         error_or_output = String.format(RESULT_SENDER.FORMAT_FAILED_ERR__ERRMSG__STDOUT__STDERR__EXIT_CODE,
                             MarkdownUtils.getMarkdownCodeForString(String.valueOf(resultData.getErrCode()), false),
                             MarkdownUtils.getMarkdownCodeForString(resultDataErrmsg, true),
@@ -208,7 +208,7 @@ public class ResultSender {
                 }
             } else {
                 try {
-                    if (DataUtils.isNullOrEmpty(dir.fileOutputFormat)) {
+                    if ((dir.fileOutputFormat == null || dir.fileOutputFormat.isEmpty())) {
                         if (resultDataStderr.isEmpty() && resultDataExitCode.equals("0"))
                             error_or_output = String.format(RESULT_SENDER.FORMAT_SUCCESS_STDOUT, resultDataStdout);
                         else if (resultDataStderr.isEmpty())

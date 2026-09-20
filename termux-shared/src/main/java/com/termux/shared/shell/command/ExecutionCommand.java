@@ -304,7 +304,7 @@ public class ExecutionCommand {
         sb.append("\n").append(ec.getRunnerLogString());
         sb.append("\n").append(ec.getIsFailsafeLogString());
         if (ec.request.runner == Runner.APP_SHELL) {
-            if (logStdin && (!ignoreNull || !DataUtils.isNullOrEmpty(ec.request.stdin)))
+            if (logStdin && (!ignoreNull || (ec.request.stdin != null && !ec.request.stdin.isEmpty())))
                 sb.append("\n").append(ec.getStdinLogString());
             if (!ignoreNull || ec.request.backgroundCustomLogLevel != null)
                 sb.append("\n").append(ec.getBackgroundCustomLogLevelLogString());
@@ -360,7 +360,7 @@ public class ExecutionCommand {
         sb.append("\n").append(MarkdownUtils.getSingleLineMarkdownStringEntry("Runner", ec.request.runner != null ? ec.request.runner.getName() : null, "-"));
         sb.append("\n").append(MarkdownUtils.getSingleLineMarkdownStringEntry("isFailsafe", ec.request.isFailsafe, "-"));
         if (ec.request.runner == Runner.APP_SHELL) {
-            if (!DataUtils.isNullOrEmpty(ec.request.stdin))
+            if ((ec.request.stdin != null && !ec.request.stdin.isEmpty()))
                 sb.append("\n").append(MarkdownUtils.getMultiLineMarkdownStringEntry("Stdin", ec.request.stdin, "-"));
             if (ec.request.backgroundCustomLogLevel != null)
                 sb.append("\n").append(MarkdownUtils.getSingleLineMarkdownStringEntry("Background Custom Log Level", ec.request.backgroundCustomLogLevel, "-"));
@@ -435,7 +435,7 @@ public class ExecutionCommand {
     }
 
     public String getStdinLogString() {
-        if (DataUtils.isNullOrEmpty(request.stdin))
+        if ((request.stdin == null || request.stdin.isEmpty()))
             return "Stdin: -";
         else
             return Logger.getMultiLineLogStringEntry("Stdin", request.stdin, "-");

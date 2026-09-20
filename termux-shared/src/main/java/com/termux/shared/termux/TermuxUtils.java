@@ -13,7 +13,6 @@ import androidx.annotation.Nullable;
 
 import com.termux.shared.R;
 import com.termux.shared.android.AndroidUtils;
-import com.termux.shared.data.DataUtils;
 import com.termux.shared.file.FileUtils;
 import com.termux.shared.reflection.ReflectionUtils;
 import com.termux.shared.shell.command.runner.app.AppShell;
@@ -356,7 +355,7 @@ public class TermuxUtils {
 
             case TERMUX_AND_CALLING_PACKAGE:
                 appInfo.append(TermuxUtils.getAppInfoMarkdownString(currentPackageContext, false));
-                if (!DataUtils.isNullOrEmpty(callingPackageName)) {
+                if ((callingPackageName != null && !callingPackageName.isEmpty())) {
                     String callingPackageAppInfo = null;
                     if (TermuxConstants.TERMUX_PLUGIN_APP_PACKAGE_NAMES_LIST.contains(callingPackageName)) {
                         Context termuxPluginAppContext = PackageUtils.getContextForPackage(currentPackageContext, callingPackageName);

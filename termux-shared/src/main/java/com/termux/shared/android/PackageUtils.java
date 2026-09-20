@@ -77,7 +77,7 @@ public class PackageUtils {
         if (packageContext == null && exitAppOnError) {
             String errorMessage = context.getString(R.string.error_get_package_context_failed_message,
                 packageName);
-            if (!DataUtils.isNullOrEmpty(helpUrl))
+            if ((helpUrl != null && !helpUrl.isEmpty()))
                 errorMessage += "\n" + context.getString(R.string.error_get_package_context_failed_help_url_message, helpUrl);
             Logger.logError(LOG_TAG, errorMessage);
             MessageDialogUtils.exitAppWithErrorMessage(context,

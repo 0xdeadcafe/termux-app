@@ -1640,7 +1640,7 @@ public class FileUtils {
 
         List<Throwable> throwables = error.getThrowablesList();
         if (throwables.isEmpty())
-            return shortErrno.getError(DataUtils.getDefaultIfNull(error.getLabel(), "file"));
+            return shortErrno.getError(error.getLabel() != null ? error.getLabel() : "file");
         else
             return shortErrno.getError(throwables, error.getLabel(), "file");
     }
@@ -1653,7 +1653,7 @@ public class FileUtils {
      * @return Returns the file dirname if not {@code null}.
      */
     public static String getFileDirname(String filePath) {
-        if (DataUtils.isNullOrEmpty(filePath)) return null;
+        if ((filePath == null || filePath.isEmpty())) return null;
         int lastSlash = filePath.lastIndexOf('/');
         return (lastSlash == -1) ? null : filePath.substring(0, lastSlash);
     }
@@ -1665,7 +1665,7 @@ public class FileUtils {
      * @return Returns the file basename if not {@code null}.
      */
     public static String getFileBasename(String filePath) {
-        if (DataUtils.isNullOrEmpty(filePath)) return null;
+        if ((filePath == null || filePath.isEmpty())) return null;
         int lastSlash = filePath.lastIndexOf('/');
         return (lastSlash == -1) ? filePath : filePath.substring(lastSlash + 1);
     }
@@ -1678,7 +1678,7 @@ public class FileUtils {
      */
     public static String getFileBasenameWithoutExtension(String filePath) {
         String fileBasename = getFileBasename(filePath);
-        if (DataUtils.isNullOrEmpty(fileBasename)) return null;
+        if ((fileBasename == null || fileBasename.isEmpty())) return null;
         int lastDot = fileBasename.lastIndexOf('.');
         return (lastDot == -1) ? fileBasename : fileBasename.substring(0, lastDot);
     }

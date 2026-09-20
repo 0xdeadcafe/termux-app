@@ -14,7 +14,6 @@ import android.provider.MediaStore;
 import android.webkit.MimeTypeMap;
 
 import com.termux.shared.termux.plugins.TermuxPluginUtils;
-import com.termux.shared.data.DataUtils;
 import com.termux.shared.data.IntentUtils;
 import com.termux.shared.net.uri.UriUtils;
 import com.termux.shared.logger.Logger;
@@ -75,7 +74,7 @@ public class TermuxOpenReceiver extends BroadcastReceiver {
 
         // Get full path including fragment (anything after last "#")
         String filePath = UriUtils.getUriFilePathWithFragment(data);
-        if (DataUtils.isNullOrEmpty(filePath)) {
+        if ((filePath == null || filePath.isEmpty())) {
             Logger.logError(LOG_TAG, "filePath is null or empty");
             return;
         }
@@ -204,7 +203,7 @@ public class TermuxOpenReceiver extends BroadcastReceiver {
             File file = new File(uri.getPath());
             try {
                 String path = file.getCanonicalPath();
-                String callingPackageName = DataUtils.getDefaultIfNull(getCallingPackage(), "unknown");
+                String callingPackageName = getCallingPackage() != null ? getCallingPackage() : "unknown";
                 Logger.logDebug(LOG_TAG, "Open file request received from " + callingPackageName + " for \"" + path + "\" with mode \"" + mode + "\"");
                 String storagePath = Environment.getExternalStorageDirectory().getCanonicalPath();
                 // See https://support.google.com/faqs/answer/7496913:

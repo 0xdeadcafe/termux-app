@@ -11,7 +11,6 @@ import com.termux.shared.settings.preferences.AppSharedPreferences;
 import com.termux.shared.settings.preferences.SharedPreferenceUtils;
 import com.termux.shared.termux.TermuxConstants;
 import com.termux.shared.logger.Logger;
-import com.termux.shared.data.DataUtils;
 import com.termux.shared.termux.TermuxUtils;
 import com.termux.shared.termux.settings.preferences.TermuxPreferenceConstants.TERMUX_APP;
 
@@ -142,7 +141,7 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
 
     public int getFontSize() {
         int fontSize = SharedPreferenceUtils.getIntStoredAsString(mSharedPreferences, TERMUX_APP.KEY_FONTSIZE, DEFAULT_FONTSIZE);
-        return DataUtils.clamp(fontSize, MIN_FONTSIZE, MAX_FONTSIZE);
+        return Math.min(Math.max(fontSize, MIN_FONTSIZE), MAX_FONTSIZE);
     }
 
     public void setFontSize(int value) {

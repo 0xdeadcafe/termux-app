@@ -2,7 +2,6 @@ package com.termux.shared.net.url;
 
 import androidx.annotation.Nullable;
 
-import com.termux.shared.data.DataUtils;
 import com.termux.shared.logger.Logger;
 
 import java.net.MalformedURLException;
@@ -36,7 +35,7 @@ public class UrlUtils {
      */
     @Nullable
     public static String joinUrl(final String base, String destination, boolean logError) {
-        if (DataUtils.isNullOrEmpty(base)) return null;
+        if ((base == null || base.isEmpty())) return null;
         try {
             return new URL(new URL(base), destination).toString();
         } catch (MalformedURLException e) {
@@ -54,7 +53,7 @@ public class UrlUtils {
      */
     @Nullable
     public static URL getUrl(String urlString) {
-        if (DataUtils.isNullOrEmpty(urlString)) return null;
+        if ((urlString == null || urlString.isEmpty())) return null;
         try {
             return new URL(urlString);
         } catch (MalformedURLException e) {

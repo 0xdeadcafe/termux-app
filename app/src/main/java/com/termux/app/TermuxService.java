@@ -407,9 +407,8 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         boolean isFailsafe = intent.getBooleanExtra(TERMUX_ACTIVITY.EXTRA_FAILSAFE_SESSION, false);
         String sessionAction = intent.getStringExtra(TERMUX_SERVICE.EXTRA_SESSION_ACTION);
         String shellName = IntentUtils.getStringExtraIfSet(intent, TERMUX_SERVICE.EXTRA_SHELL_NAME, null);
-        String shellCreateMode = DataUtils.getDefaultIfNull(
-            IntentUtils.getStringExtraIfSet(intent, TERMUX_SERVICE.EXTRA_SHELL_CREATE_MODE, null),
-            ShellCreateMode.ALWAYS.getMode());
+        String shellCreateMode = IntentUtils.getStringExtraIfSet(intent, TERMUX_SERVICE.EXTRA_SHELL_CREATE_MODE, null);
+        if (shellCreateMode == null) shellCreateMode = ShellCreateMode.ALWAYS.getMode();
         CommandMetadata metadata = new CommandMetadata(
             IntentUtils.getStringExtraIfSet(intent, TERMUX_SERVICE.EXTRA_COMMAND_LABEL, "Execution Intent Command"),
             IntentUtils.getStringExtraIfSet(intent, TERMUX_SERVICE.EXTRA_COMMAND_DESCRIPTION, null),
@@ -424,7 +423,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
             IntentUtils.getStringExtraIfSet(intent, TERMUX_SERVICE.EXTRA_RESULT_FILE_BASENAME, null),
             IntentUtils.getStringExtraIfSet(intent, TERMUX_SERVICE.EXTRA_RESULT_FILE_OUTPUT_FORMAT, null),
             IntentUtils.getStringExtraIfSet(intent, TERMUX_SERVICE.EXTRA_RESULT_FILE_ERROR_FORMAT, null),
-            DataUtils.getDefaultIfNull(IntentUtils.getStringExtraIfSet(intent, TERMUX_SERVICE.EXTRA_RESULT_FILES_SUFFIX, null), "")) : null;
+            IntentUtils.getStringExtraIfSet(intent, TERMUX_SERVICE.EXTRA_RESULT_FILES_SUFFIX, "")) : null;
 
         executionCommand.request = new ExecutionRequest.Builder()
             .id(executionCommand.request.id)
@@ -708,7 +707,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         if (ShellCreateMode.ALWAYS.equalsMode(executionCommand.request.shellCreateMode))
             return ShellCreateMode.ALWAYS; // Default
         else if (ShellCreateMode.NO_SHELL_WITH_NAME.equalsMode(executionCommand.request.shellCreateMode))
-            if (DataUtils.isNullOrEmpty(executionCommand.request.shellName)) {
+            if ((executionCommand.request.shellName == null || executionCommand.request.shellName.isEmpty())) {
                 TermuxPluginUtils.setAndProcessPluginExecutionCommandError(this, LOG_TAG, executionCommand, false,
                     getString(R.string.error_termux_service_execution_command_shell_name_unset, executionCommand.request.shellCreateMode));
                 return null;
@@ -969,7 +968,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     }
 
     public synchronized AppShell getTermuxTaskForShellName(String name) {
-        if (DataUtils.isNullOrEmpty(name)) return null;
+        if ((name == null || name.isEmpty())) return null;
         AppShell appShell;
         for (int i = 0, len = mShellManager.mTermuxTasks.size(); i < len; i++) {
             appShell = mShellManager.mTermuxTasks.get(i);
@@ -981,7 +980,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     }
 
     public synchronized TermuxSession getTermuxSessionForShellName(String name) {
-        if (DataUtils.isNullOrEmpty(name)) return null;
+        if ((name == null || name.isEmpty())) return null;
         TermuxSession termuxSession;
         for (int i = 0, len = mShellManager.mTermuxSessions.size(); i < len; i++) {
             termuxSession = mShellManager.mTermuxSessions.get(i);

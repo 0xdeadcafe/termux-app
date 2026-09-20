@@ -13,7 +13,6 @@ import androidx.core.app.NotificationCompat;
 import com.termux.shared.activities.ReportActivity;
 import com.termux.shared.android.AndroidUtils;
 import com.termux.shared.crash.CrashHandler;
-import com.termux.shared.data.DataUtils;
 import com.termux.shared.errors.Error;
 import com.termux.shared.errors.TermuxException;
 import com.termux.shared.file.FileUtils;
@@ -167,7 +166,7 @@ public class TermuxCrashUtils implements CrashHandler.CrashHandlerClient {
     }
 
     private static synchronized void notifyAppCrashFromCrashLogFileInner(final Context context, final String logTagParam) {
-        String logTag = DataUtils.getDefaultIfNull(logTagParam, LOG_TAG);
+        String logTag = (logTagParam != null ? logTagParam : LOG_TAG);
 
         if (!FileUtils.regularFileExists(TermuxConstants.TERMUX_CRASH_LOG_FILE_PATH, false))
             return;
@@ -303,7 +302,7 @@ public class TermuxCrashUtils implements CrashHandler.CrashHandlerClient {
         if (!preferences.areCrashReportNotificationsEnabled(true) && !forceNotification)
             return;
 
-        logTag = DataUtils.getDefaultIfNull(logTag, LOG_TAG);
+        logTag = (logTag != null ? logTag : LOG_TAG);
 
         if (showToast)
             Logger.showToast(currentPackageContext, notificationTextString, true);

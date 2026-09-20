@@ -9,7 +9,6 @@ import androidx.annotation.Nullable;
 
 import com.termux.shared.android.PackageUtils;
 import com.termux.shared.android.SELinuxUtils;
-import com.termux.shared.data.DataUtils;
 import com.termux.shared.shell.command.environment.ShellEnvironmentUtils;
 import com.termux.shared.termux.TermuxBootstrap;
 import com.termux.shared.termux.TermuxConstants;
@@ -139,7 +138,7 @@ public class TermuxAppShellEnvironment {
 
             String seInfoUser = PackageUtils.getApplicationInfoSeInfoUserForPackage(applicationInfo);
             ShellEnvironmentUtils.putToEnvIfSet(environment, ENV_TERMUX_APP__SE_INFO, PackageUtils.getApplicationInfoSeInfoForPackage(applicationInfo) +
-                (DataUtils.isNullOrEmpty(seInfoUser) ? "" : seInfoUser));
+                ((seInfoUser == null || seInfoUser.isEmpty()) ? "" : seInfoUser));
 
             ShellEnvironmentUtils.putToEnvIfSet(environment, ENV_TERMUX_APP__USER_ID, String.valueOf(PackageUtils.getUserIdForPackage(currentPackageContext)));
             ShellEnvironmentUtils.putToEnvIfSet(environment, ENV_TERMUX_APP__PROFILE_OWNER, PackageUtils.getProfileOwnerPackageNameForUser(currentPackageContext));

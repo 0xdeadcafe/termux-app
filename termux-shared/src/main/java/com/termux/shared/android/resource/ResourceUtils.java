@@ -5,7 +5,6 @@ import android.content.Context;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.termux.shared.data.DataUtils;
 import com.termux.shared.logger.Logger;
 
 public class ResourceUtils {
@@ -48,7 +47,7 @@ public class ResourceUtils {
     public static Integer getResourceId(@NonNull Context context, String name,
                                         @Nullable String defType, @Nullable String defPackage,
                                         boolean logErrorMessage) {
-        if (DataUtils.isNullOrEmpty(name)) return null;
+        if ((name == null || name.isEmpty())) return null;
 
         Integer resourceId = null;
         try {

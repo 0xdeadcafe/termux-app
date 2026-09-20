@@ -12,7 +12,6 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.termux.R;
 import com.termux.shared.android.PackageUtils;
-import com.termux.shared.data.DataUtils;
 import com.termux.shared.data.IntentUtils;
 import com.termux.shared.net.uri.UriUtils;
 import com.termux.shared.interact.MessageDialogUtils;
@@ -107,7 +106,7 @@ public class FileReceiverActivity extends AppCompatActivity {
 
                 // Get full path including fragment (anything after last "#")
                 String path = UriUtils.getUriFilePathWithFragment(dataUri);
-                if (DataUtils.isNullOrEmpty(path)) {
+                if ((path == null || path.isEmpty())) {
                     showErrorDialogAndQuit("File path from data uri is null, empty or invalid.");
                     return;
                 }
@@ -225,7 +224,7 @@ public class FileReceiverActivity extends AppCompatActivity {
     public File saveStreamWithName(InputStream in, String attachmentFileName) {
         File receiveDir = new File(TERMUX_RECEIVEDIR);
 
-        if (DataUtils.isNullOrEmpty(attachmentFileName)) {
+        if ((attachmentFileName == null || attachmentFileName.isEmpty())) {
             showErrorDialogAndQuit("File name cannot be null or empty");
             return null;
         }

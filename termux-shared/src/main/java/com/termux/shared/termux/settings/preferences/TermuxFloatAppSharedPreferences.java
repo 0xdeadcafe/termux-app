@@ -5,7 +5,6 @@ import android.content.Context;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.termux.shared.data.DataUtils;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.android.PackageUtils;
 import com.termux.shared.settings.preferences.AppSharedPreferences;
@@ -117,7 +116,7 @@ public class TermuxFloatAppSharedPreferences extends AppSharedPreferences {
 
     public int getFontSize() {
         int fontSize = SharedPreferenceUtils.getIntStoredAsString(mSharedPreferences, TERMUX_FLOAT_APP.KEY_FONTSIZE, DEFAULT_FONTSIZE);
-        return DataUtils.clamp(fontSize, MIN_FONTSIZE, MAX_FONTSIZE);
+        return Math.min(Math.max(fontSize, MIN_FONTSIZE), MAX_FONTSIZE);
     }
 
     public void setFontSize(int value) {
