@@ -25,12 +25,12 @@ android {
     ndkVersion = System.getenv("JITPACK_NDK_VERSION") ?: project.properties.ndkVersion
 
     dependencies {
-        implementation "androidx.annotation:annotation:1.9.0"
-        implementation "androidx.core:core:1.13.1"
-        implementation "androidx.drawerlayout:drawerlayout:1.2.0"
-        implementation "androidx.preference:preference:1.2.1"
-        implementation "androidx.viewpager2:viewpager2:1.1.0"
-        implementation "com.google.android.material:material:1.12.0"
+        implementation libs.androidx.annotation
+        implementation libs.androidx.core
+        implementation libs.androidx.drawerlayout
+        implementation libs.androidx.preference
+        implementation libs.androidx.viewpager2
+        implementation libs.material
 
         implementation project(":terminal-view")
         implementation project(":termux-shared")
@@ -140,8 +140,8 @@ androidComponents {
 }
 
 dependencies {
-    testImplementation "junit:junit:4.13.2"
-    testImplementation "org.robolectric:robolectric:4.13"
+    testImplementation libs.junit
+    testImplementation libs.robolectric
 
 }
 
