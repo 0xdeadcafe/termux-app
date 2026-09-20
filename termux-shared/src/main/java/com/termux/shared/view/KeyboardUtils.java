@@ -11,6 +11,7 @@ import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 
 import androidx.annotation.NonNull;
+import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.termux.shared.logger.Logger;
@@ -103,13 +104,14 @@ public class KeyboardUtils {
             activity.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
     }
 
-    public static void setSoftInputModeAdjustResize(final Activity activity) {
-        // TODO: The flag is deprecated for API 30 and WindowInset API should be used
-        // https://developer.android.com/reference/android/view/WindowManager.LayoutParams#SOFT_INPUT_ADJUST_RESIZE
-        // https://medium.com/androiddevelopers/animating-your-keyboard-fb776a8fb66d
-        // https://stackoverflow.com/a/65194077/14686958
+    /**
+     * Tell the window the app will manage its own insets so that IME insets
+     * (WindowInsetsCompat.Type.ime()) are dispatched to the view hierarchy.
+     * This is the API-30+ replacement for the deprecated SOFT_INPUT_ADJUST_RESIZE.
+     */
+    public static void enableImeInsets(final Activity activity) {
         if (activity != null && activity.getWindow() != null)
-            activity.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+            WindowCompat.setDecorFitsSystemWindows(activity.getWindow(), false);
     }
 
     /**
@@ -176,10 +178,10 @@ public class KeyboardUtils {
              * in landscape mode, and then the keyboard is connected and phone is rotated to portrait
              * mode and then keyboard is toggled with Termux keyboard toggle buttons, then a blank
              * space is shown in-place of the soft keyboard. Its likely related to
-             * WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE which pushes up the view when
-             * keyboard is opened instead of the keyboard opening on top of the view (hiding stuff).
-             * If the "Show soft keyboard" toggle was disabled, then this resizing shouldn't happen.
-             * But it seems resizing does happen, but keyboard is never opened since its not supposed to.
+             * ime() insets which push up the view when the keyboard is opened instead of the
+             * keyboard opening on top of the view (hiding stuff). If the "Show soft keyboard" toggle
+             * was disabled, then this resizing shouldn't happen. But it seems resizing does happen,
+             * but keyboard is never opened since its not supposed to.
              * https://github.com/termux/termux-app/issues/1995#issuecomment-837080079
              */
             // If soft keyboard is disabled by user only if hardware keyboard is connected
