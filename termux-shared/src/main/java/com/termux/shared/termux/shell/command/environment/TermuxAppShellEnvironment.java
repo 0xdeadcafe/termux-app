@@ -136,8 +136,9 @@ public class TermuxAppShellEnvironment {
             ShellEnvironmentUtils.putToEnvIfSet(environment, ENV_TERMUX_APP__SE_PROCESS_CONTEXT, SELinuxUtils.getContext());
             ShellEnvironmentUtils.putToEnvIfSet(environment, ENV_TERMUX_APP__SE_FILE_CONTEXT, SELinuxUtils.getFileContext(filesDirPath));
 
+            String seInfo = PackageUtils.getApplicationInfoSeInfoForPackage(applicationInfo);
             String seInfoUser = PackageUtils.getApplicationInfoSeInfoUserForPackage(applicationInfo);
-            ShellEnvironmentUtils.putToEnvIfSet(environment, ENV_TERMUX_APP__SE_INFO, PackageUtils.getApplicationInfoSeInfoForPackage(applicationInfo) +
+            ShellEnvironmentUtils.putToEnvIfSet(environment, ENV_TERMUX_APP__SE_INFO, seInfo == null ? null : seInfo +
                 ((seInfoUser == null || seInfoUser.isEmpty()) ? "" : seInfoUser));
 
             ShellEnvironmentUtils.putToEnvIfSet(environment, ENV_TERMUX_APP__USER_ID, String.valueOf(PackageUtils.getUserIdForPackage(currentPackageContext)));

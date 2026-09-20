@@ -44,7 +44,7 @@ timeout 180 bash -c 'until "$0" shell getprop sys.boot_completed 2>/dev/null | t
 
 timeout 90 bash -c 'until "$0" shell ps -A | grep -q "com.termux" && "$0" shell ps -A | grep -Eq "(^|[[:space:]])-?(bash|sh|login)$"; do sleep 2; done' "$ADB"
 "$ADB" logcat -d -v time >"$LOG"
-if grep -Eiq 'avc: denied \{ execute_no_trans \}|execvp.*(EACCES|Permission denied)|Permission denied.*(/data/data/com.termux/files/usr/bin/(bash|login|sh)|exec)' "$LOG"; then
+if grep -Eiq 'avc: denied \{ execute_no_trans \}|execvp.*(EACCES|Permission denied)|Permission denied.*(/data/data/com.termux/files/usr/bin/(bash|login|sh)|exec)|Accessing hidden (field|method).*denied|Termux\.ReflectionUtils' "$LOG"; then
   echo "Termux smoke test failed; see $LOG" >&2
   exit 1
 fi

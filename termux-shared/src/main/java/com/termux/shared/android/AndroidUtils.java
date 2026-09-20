@@ -91,8 +91,9 @@ public class AndroidUtils {
         AndroidUtils.appendPropertyToMarkdown(markdownString,"SE_PROCESS_CONTEXT", SELinuxUtils.getContext());
         AndroidUtils.appendPropertyToMarkdown(markdownString,"SE_FILE_CONTEXT", SELinuxUtils.getFileContext(context.getFilesDir().getAbsolutePath()));
 
+        String seInfo = PackageUtils.getApplicationInfoSeInfoForPackage(applicationInfo);
         String seInfoUser = PackageUtils.getApplicationInfoSeInfoUserForPackage(applicationInfo);
-        AndroidUtils.appendPropertyToMarkdown(markdownString,"SE_INFO", PackageUtils.getApplicationInfoSeInfoForPackage(applicationInfo) +
+        AndroidUtils.appendPropertyToMarkdown(markdownString,"SE_INFO", seInfo == null ? null : seInfo +
             ((seInfoUser == null || seInfoUser.isEmpty()) ? "" : seInfoUser));
 
         return markdownString.toString();
