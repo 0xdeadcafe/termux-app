@@ -37,14 +37,29 @@ fi
 "$ADB" wait-for-device
 timeout 180 bash -c 'until "$0" shell getprop sys.boot_completed 2>/dev/null | tr -d "\r" | grep -q 1; do sleep 2; done' "$ADB"
 
+wait_for_termux_shell() {
+  timeout 90 bash -c 'until "$0" shell ps -A | grep -q "com.termux" && "$0" shell ps -A | grep -Eq "(^|[[:space:]])-?(bash|sh|login)$"; do sleep 2; done' "$ADB"
+}
+
 "$ADB" uninstall com.termux >/dev/null 2>&1 || true
 "$ADB" install -r -d -t "${APK[0]}" >/dev/null
 "$ADB" logcat -c
 "$ADB" shell monkey -p com.termux -c android.intent.category.LAUNCHER 1 >/dev/null
+wait_for_termux_shell
 
-timeout 90 bash -c 'until "$0" shell ps -A | grep -q "com.termux" && "$0" shell ps -A | grep -Eq "(^|[[:space:]])-?(bash|sh|login)$"; do sleep 2; done' "$ADB"
+"$ADB" shell "run-as com.termux sh -c 'mkdir -p files/home/.termux && printf \"allow-external-apps = true\\n\" > files/home/.termux/termux.properties && rm -f files/home/run-command-smoke.txt'"
+"$ADB" shell am force-stop com.termux
+"$ADB" shell monkey -p com.termux -c android.intent.category.LAUNCHER 1 >/dev/null
+wait_for_termux_shell
+
+"$ADB" shell run-as com.termux am startservice --user 0 -a com.termux.RUN_COMMAND -n com.termux/.app.RunCommandService \
+  --es com.termux.RUN_COMMAND_PATH /system/bin/toybox \
+  --esa com.termux.RUN_COMMAND_ARGUMENTS 'touch,/data/data/com.termux/files/home/run-command-smoke.txt' \
+  --es com.termux.RUN_COMMAND_RUNNER app-shell >/dev/null
+timeout 60 bash -c 'until "$0" shell run-as com.termux test -f files/home/run-command-smoke.txt; do sleep 2; done' "$ADB"
+
 "$ADB" logcat -d -v time >"$LOG"
-if grep -Eiq 'avc: denied \{ execute_no_trans \}|execvp.*(EACCES|Permission denied)|Permission denied.*(/data/data/com.termux/files/usr/bin/(bash|login|sh)|exec)|Accessing hidden (field|method).*denied|Termux\.ReflectionUtils' "$LOG"; then
+if grep -Eiq 'avc: denied \{ execute_no_trans \}|execvp.*(EACCES|Permission denied)|Permission denied.*(/data/data/com.termux/files/usr/bin/(bash|login|sh)|exec)|Accessing hidden (field|method).*denied|Termux\.ReflectionUtils|SecurityException.*RunCommandService|RunCommandService.*(Exception|Permission Denial|not allowed)' "$LOG"; then
   echo "Termux smoke test failed; see $LOG" >&2
   exit 1
 fi
