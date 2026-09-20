@@ -1,5 +1,6 @@
 package com.termux.shared.termux.settings.preferences;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 
 import androidx.annotation.NonNull;
@@ -8,7 +9,6 @@ import androidx.annotation.Nullable;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.android.PackageUtils;
 import com.termux.shared.settings.preferences.AppSharedPreferences;
-import com.termux.shared.settings.preferences.SharedPreferenceUtils;
 import com.termux.shared.termux.TermuxUtils;
 import com.termux.shared.termux.settings.preferences.TermuxPreferenceConstants.TERMUX_STYLING_APP;
 import com.termux.shared.termux.TermuxConstants;
@@ -19,19 +19,10 @@ public class TermuxStylingAppSharedPreferences extends AppSharedPreferences {
 
     private TermuxStylingAppSharedPreferences(@NonNull Context context) {
         super(context,
-            SharedPreferenceUtils.getPrivateSharedPreferences(context,
-                TermuxConstants.TERMUX_STYLING_DEFAULT_PREFERENCES_FILE_BASENAME_WITHOUT_EXTENSION),
-            SharedPreferenceUtils.getPrivateAndMultiProcessSharedPreferences(context,
-                TermuxConstants.TERMUX_STYLING_DEFAULT_PREFERENCES_FILE_BASENAME_WITHOUT_EXTENSION));
+            context.getSharedPreferences(TermuxConstants.TERMUX_STYLING_DEFAULT_PREFERENCES_FILE_BASENAME_WITHOUT_EXTENSION, Context.MODE_PRIVATE),
+            context.getSharedPreferences(TermuxConstants.TERMUX_STYLING_DEFAULT_PREFERENCES_FILE_BASENAME_WITHOUT_EXTENSION, Context.MODE_PRIVATE | Context.MODE_MULTI_PROCESS));
     }
 
-    /**
-     * Get {@link TermuxStylingAppSharedPreferences}.
-     *
-     * @param context The {@link Context} to use to get the {@link Context} of the
-     *                {@link TermuxConstants#TERMUX_STYLING_PACKAGE_NAME}.
-     * @return Returns the {@link TermuxStylingAppSharedPreferences}. This will {@code null} if an exception is raised.
-     */
     @Nullable
     public static TermuxStylingAppSharedPreferences build(@NonNull final Context context) {
         Context termuxStylingPackageContext = PackageUtils.getContextForPackage(context, TermuxConstants.TERMUX_STYLING_PACKAGE_NAME);
@@ -41,15 +32,6 @@ public class TermuxStylingAppSharedPreferences extends AppSharedPreferences {
             return new TermuxStylingAppSharedPreferences(termuxStylingPackageContext);
     }
 
-    /**
-     * Get {@link TermuxStylingAppSharedPreferences}.
-     *
-     * @param context The {@link Context} to use to get the {@link Context} of the
-     *                {@link TermuxConstants#TERMUX_STYLING_PACKAGE_NAME}.
-     * @param exitAppOnError If {@code true} and failed to get package context, then a dialog will
-     *                       be shown which when dismissed will exit the app.
-     * @return Returns the {@link TermuxStylingAppSharedPreferences}. This will {@code null} if an exception is raised.
-     */
     public static TermuxStylingAppSharedPreferences build(@NonNull final Context context, final boolean exitAppOnError) {
         Context termuxStylingPackageContext = TermuxUtils.getContextForPackageOrExitApp(context, TermuxConstants.TERMUX_STYLING_PACKAGE_NAME, exitAppOnError);
         if (termuxStylingPackageContext == null)
@@ -62,14 +44,18 @@ public class TermuxStylingAppSharedPreferences extends AppSharedPreferences {
 
     public int getLogLevel(boolean readFromFile) {
         if (readFromFile)
-            return SharedPreferenceUtils.getInt(mMultiProcessSharedPreferences, TERMUX_STYLING_APP.KEY_LOG_LEVEL, Logger.DEFAULT_LOG_LEVEL);
+            return mMultiProcessSharedPreferences.getInt(TERMUX_STYLING_APP.KEY_LOG_LEVEL, Logger.DEFAULT_LOG_LEVEL);
         else
-            return SharedPreferenceUtils.getInt(mSharedPreferences, TERMUX_STYLING_APP.KEY_LOG_LEVEL, Logger.DEFAULT_LOG_LEVEL);
+            return mSharedPreferences.getInt(TERMUX_STYLING_APP.KEY_LOG_LEVEL, Logger.DEFAULT_LOG_LEVEL);
     }
 
+    @SuppressLint("ApplySharedPref")
     public void setLogLevel(Context context, int logLevel, boolean commitToFile) {
         logLevel = Logger.setLogLevel(context, logLevel);
-        SharedPreferenceUtils.setInt(mSharedPreferences, TERMUX_STYLING_APP.KEY_LOG_LEVEL, logLevel, commitToFile);
+        if (commitToFile)
+            mSharedPreferences.edit().putInt(TERMUX_STYLING_APP.KEY_LOG_LEVEL, logLevel).commit();
+        else
+            mSharedPreferences.edit().putInt(TERMUX_STYLING_APP.KEY_LOG_LEVEL, logLevel).apply();
     }
 
 }

@@ -12,10 +12,10 @@ public class AppSharedPreferences {
     /** The {@link Context} for operations. */
     protected final Context mContext;
 
-    /** The {@link SharedPreferences} that ideally should be created with {@link SharedPreferenceUtils#getPrivateSharedPreferences(Context, String)}. */
+    /** The {@link SharedPreferences} for single-process reads/writes. */
     protected final SharedPreferences mSharedPreferences;
 
-    /** The {@link SharedPreferences}that ideally should be created with {@link SharedPreferenceUtils#getPrivateAndMultiProcessSharedPreferences(Context, String)}. */
+    /** The {@link SharedPreferences} for multi-process reads/writes. */
     protected final SharedPreferences mMultiProcessSharedPreferences;
 
     protected AppSharedPreferences(@NonNull Context context, @Nullable SharedPreferences sharedPreferences) {
