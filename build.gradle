@@ -8,6 +8,10 @@ buildscript {
     }
 }
 
+def targetSdkVersionValue = providers.gradleProperty("targetSdkVersion").get().toInteger()
+if (targetSdkVersionValue > 28)
+    throw new GradleException("targetSdkVersion must stay <= 28: Android 10+ blocks Termux app-data binary execution for apps targeting 29+.")
+
 allprojects {
     repositories {
         google()
