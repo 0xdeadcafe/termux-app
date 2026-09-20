@@ -171,8 +171,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      */
     private boolean mIsInvalidState;
 
-    private int mNavBarHeight;
-
     private float mTerminalToolbarDefaultHeight;
 
 
@@ -228,12 +226,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         mTermuxActivityRootView = findViewById(R.id.activity_termux_root_view);
         mTermuxActivityRootView.setActivity(this);
-
-        View content = findViewById(android.R.id.content);
-        content.setOnApplyWindowInsetsListener((v, insets) -> {
-            mNavBarHeight = insets.getSystemWindowInsetBottom();
-            return insets;
-        });
 
         applyFullScreenMode();
 
@@ -805,10 +797,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
 
-
-    public int getNavBarHeight() {
-        return mNavBarHeight;
-    }
 
     public TermuxActivityRootView getTermuxActivityRootView() {
         return mTermuxActivityRootView;

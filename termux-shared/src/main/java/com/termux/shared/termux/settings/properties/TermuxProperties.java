@@ -248,10 +248,6 @@ public class TermuxProperties {
         return (boolean) getFromCache(TermuxPropertyConstants.KEY_USE_FULLSCREEN);
     }
 
-    public boolean isUsingFullScreenWorkAround() {
-        return (boolean) getFromCache(TermuxPropertyConstants.KEY_USE_FULLSCREEN_WORKAROUND);
-    }
-
     public int getBellBehaviour() {
         return (int) getFromCache(TermuxPropertyConstants.KEY_BELL_BEHAVIOUR);
     }
