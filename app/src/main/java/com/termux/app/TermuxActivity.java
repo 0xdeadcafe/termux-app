@@ -20,6 +20,10 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ListView;
@@ -238,9 +242,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             return insets;
         });
 
-        if (mProperties.isUsingFullScreen()) {
-            getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        }
+        applyFullScreenMode();
 
         setTermuxTerminalViewAndClients();
 
@@ -460,6 +462,16 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         // trigger recreation of activity when uiMode/dark mode configuration is changed so that
         // day or night theme takes affect.
         AppCompatActivityUtils.setNightMode(this, NightMode.getAppNightMode().getName(), true);
+    }
+
+    private void applyFullScreenMode() {
+        WindowInsetsControllerCompat wic = WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+        if (mProperties.isUsingFullScreen()) {
+            wic.hide(WindowInsetsCompat.Type.statusBars());
+            wic.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+        } else {
+            wic.show(WindowInsetsCompat.Type.statusBars());
+        }
     }
 
     private void setMargins() {
@@ -995,6 +1007,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             TermuxThemeUtils.setAppNightMode(mProperties.getNightMode());
         }
 
+        applyFullScreenMode();
         setMargins();
         setTerminalToolbarHeight();
 
