@@ -88,15 +88,6 @@ public final class TermuxPreferenceConstants {
     public static final class TERMUX_APP {
 
         /**
-         * Defines the key for whether terminal view margin adjustment that is done to prevent soft
-         * keyboard from covering bottom part of terminal view on some devices is enabled or not.
-         * Margin adjustment may cause screen flickering on some devices and so should be disabled.
-         */
-        public static final String KEY_TERMINAL_MARGIN_ADJUSTMENT =  "terminal_margin_adjustment";
-        public static final boolean DEFAULT_TERMINAL_MARGIN_ADJUSTMENT = true;
-
-
-        /**
          * Defines the key for whether to show terminal toolbar containing extra keys and text input field.
          */
         public static final String KEY_SHOW_TERMINAL_TOOLBAR = "show_extra_keys";

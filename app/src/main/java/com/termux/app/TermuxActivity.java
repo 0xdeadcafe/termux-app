@@ -124,11 +124,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     TermuxActivityRootView mTermuxActivityRootView;
 
     /**
-     * The space at the bottom of {@link @mTermuxActivityRootView} of the {@link TermuxActivity}.
-     */
-    View mTermuxActivityBottomSpaceView;
-
-    /**
      * The terminal extra keys view.
      */
     ExtraKeysView mExtraKeysView;
@@ -233,8 +228,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         mTermuxActivityRootView = findViewById(R.id.activity_termux_root_view);
         mTermuxActivityRootView.setActivity(this);
-        mTermuxActivityBottomSpaceView = findViewById(R.id.activity_termux_bottom_space_view);
-        mTermuxActivityRootView.setOnApplyWindowInsetsListener(new TermuxActivityRootView.WindowInsetsListener());
 
         View content = findViewById(android.R.id.content);
         content.setOnApplyWindowInsetsListener((v, insets) -> {
@@ -298,9 +291,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         if (mTermuxTerminalViewClient != null)
             mTermuxTerminalViewClient.onStart();
 
-        if (mPreferences.isTerminalMarginAdjustmentEnabled())
-            addTermuxActivityRootViewGlobalLayoutListener();
-
         registerTermuxActivityBroadcastReceiver();
     }
 
@@ -340,8 +330,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         if (mTermuxTerminalViewClient != null)
             mTermuxTerminalViewClient.onStop();
-
-        removeTermuxActivityRootViewGlobalLayoutListener();
 
         unregisterTermuxActivityBroadcastReceiver();
         getDrawer().closeDrawers();
@@ -479,17 +467,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         int marginHorizontal = mProperties.getTerminalMarginHorizontal();
         int marginVertical = mProperties.getTerminalMarginVertical();
         ViewUtils.setLayoutMarginsInDp(relativeLayout, marginHorizontal, marginVertical, marginHorizontal, marginVertical);
-    }
-
-
-
-    public void addTermuxActivityRootViewGlobalLayoutListener() {
-        getTermuxActivityRootView().getViewTreeObserver().addOnGlobalLayoutListener(getTermuxActivityRootView());
-    }
-
-    public void removeTermuxActivityRootViewGlobalLayoutListener() {
-        if (getTermuxActivityRootView() != null)
-            getTermuxActivityRootView().getViewTreeObserver().removeOnGlobalLayoutListener(getTermuxActivityRootView());
     }
 
 
@@ -835,10 +812,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     public TermuxActivityRootView getTermuxActivityRootView() {
         return mTermuxActivityRootView;
-    }
-
-    public View getTermuxActivityBottomSpaceView() {
-        return mTermuxActivityBottomSpaceView;
     }
 
     public ExtraKeysView getExtraKeysView() {

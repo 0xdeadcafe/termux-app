@@ -100,9 +100,6 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
         // Also required if user changed the preference from {@link TermuxSettings} activity and returns
         boolean isTerminalViewKeyLoggingEnabled = mActivity.getPreferences().isTerminalViewKeyLoggingEnabled();
         mActivity.getTerminalView().setIsTerminalViewKeyLoggingEnabled(isTerminalViewKeyLoggingEnabled);
-
-        // Piggyback on the terminal view key logging toggle for now, should add a separate toggle in future
-        mActivity.getTermuxActivityRootView().setIsRootViewLoggingEnabled(isTerminalViewKeyLoggingEnabled);
         ViewUtils.setIsViewUtilsLoggingEnabled(isTerminalViewKeyLoggingEnabled);
     }
 
