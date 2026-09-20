@@ -106,10 +106,18 @@ static int create_subprocess(JNIEnv* env,
             fflush(stderr);
         }
         execvp(cmd, argv);
-        // Show terminal output about failing exec() call:
+        // execvp failed — print the error, then attempt fallback shells so the
+        // session stays alive rather than dying immediately. The Termux environment
+        // (PATH, HOME, LD_LIBRARY_PATH, etc.) was already installed via putenv()
+        // above, so fallback shells still have access to Termux binaries.
         char* error_message;
         if (asprintf(&error_message, "exec(\"%s\")", cmd) == -1) error_message = "exec()";
         perror(error_message);
+        fflush(stderr);
+        // Try bash via PATH (finds Termux bash if installed), then the system shell.
+        execlp("bash", "bash", NULL);
+        execl("/system/bin/sh", "/system/bin/sh", NULL);
+        perror("exec(\"/system/bin/sh\")");
         _exit(1);
     }
 }
