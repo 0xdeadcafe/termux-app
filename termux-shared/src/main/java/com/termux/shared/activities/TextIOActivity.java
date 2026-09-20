@@ -19,6 +19,7 @@ import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
@@ -83,6 +84,13 @@ public class TextIOActivity extends AppCompatActivity {
             mBundle = intent.getExtras();
         else if (savedInstanceState != null)
             mBundle = savedInstanceState;
+
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                confirm();
+            }
+        });
 
         updateUI();
     }
@@ -230,12 +238,6 @@ public class TextIOActivity extends AppCompatActivity {
         }
 
         return false;
-    }
-
-    @Override
-    public void onBackPressed() {
-        super.onBackPressed();
-        confirm();
     }
 
     /** Confirm current text and send it back to calling {@link Activity}. */

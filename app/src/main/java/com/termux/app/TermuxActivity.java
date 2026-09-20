@@ -68,6 +68,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.activity.OnBackPressedCallback;
 import androidx.viewpager2.widget.ViewPager2;
 
 import java.util.Arrays;
@@ -264,6 +265,17 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         // Send the {@link TermuxConstants#BROADCAST_TERMUX_OPENED} broadcast to notify apps that Termux
         // app has been opened.
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (getDrawer().isDrawerOpen(Gravity.LEFT)) {
+                    getDrawer().closeDrawers();
+                } else {
+                    finishActivityIfNotFinishing();
+                }
+            }
+        });
+
         TermuxUtils.sendTermuxOpenedBroadcast(this);
     }
 
@@ -585,17 +597,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
 
 
-
-    @SuppressLint("RtlHardcoded")
-    @Override
-    public void onBackPressed() {
-        if (getDrawer().isDrawerOpen(Gravity.LEFT)) {
-            getDrawer().closeDrawers();
-        } else {
-            super.onBackPressed();
-            finishActivityIfNotFinishing();
-        }
-    }
 
     public void finishActivityIfNotFinishing() {
         // prevent duplicate calls to finish() if called from multiple places

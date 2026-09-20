@@ -1,5 +1,6 @@
 package com.termux.shared.activities;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
@@ -88,6 +89,13 @@ public class ReportActivity extends AppCompatActivity {
             mBundle = intent.getExtras();
         else if (savedInstanceState != null)
             mBundle = savedInstanceState;
+
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                finishAndRemoveTask();
+            }
+        });
 
         updateUI();
 
@@ -192,13 +200,6 @@ public class ReportActivity extends AppCompatActivity {
         }
 
         return true;
-    }
-
-    @Override
-    public void onBackPressed() {
-        super.onBackPressed();
-        // Remove activity from recents menu on back button press
-        finishAndRemoveTask();
     }
 
     @Override
