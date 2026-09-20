@@ -88,7 +88,7 @@ Each item maps to a beads issue (internal tracker) and, where merged, to a commi
 
 | Issue | Summary |
 |---|---|
-| beads-ywe / beads-kqu | Bumped `targetSdkVersion` 28 → 34; fixed all API-34 blockers and one latent crash |
+| beads-ywe / beads-kqu / termux-app-ymp | Keep `targetSdkVersion` at 28; apps targeting 29+ cannot execute Termux bootstrap binaries from app data |
 | beads-7v6 | Raised `minSdkVersion` 21 → 26 (Android 8.0 Oreo); deleted all dead `< API 26` branches |
 | beads-47b | Replaced abandoned `Markwon` markdown library (last release 2021, archived) with `commonmark-java` + custom renderer |
 | beads-e6w | Removed `Guava 24.1-jre` (6-year-old, 3.5 MB dependency; all usages replaced with stdlib) |

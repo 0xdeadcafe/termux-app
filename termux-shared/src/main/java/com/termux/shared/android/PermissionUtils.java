@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Environment;
 import android.os.PowerManager;
 import android.provider.Settings;
@@ -240,8 +241,19 @@ public class PermissionUtils {
     public static boolean checkAndRequestLegacyOrManageExternalStoragePermission(@NonNull Context context,
                                                                                  int requestCode,
                                                                                  boolean showErrorMessage) {
-        // minSdk=30, targetSdk=34: requestLegacyExternalStorage is ignored by Android 11+ when
-        // targetSdk >= 30. The only relevant permission path is MANAGE_EXTERNAL_STORAGE.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            String[] permissions = new String[]{Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE};
+            if (checkPermissions(context, permissions))
+                return true;
+
+            if (showErrorMessage)
+                Logger.showToast(context, context.getString(R.string.msg_storage_permission_not_granted), false);
+            if (requestCode >= 0)
+                requestPermissions(context, permissions, requestCode);
+            return false;
+        }
+
         if (Environment.isExternalStorageManager()) {
             return true;
         }
